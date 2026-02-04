@@ -8,6 +8,33 @@ An interactive, consumer-facing website where parents can vote on and express pr
 
 ---
 
+## Business Requirements
+
+> **Note:** These are high-level strategic requirements that guide product decisions. They do not have automated test cases as they represent business goals rather than testable functionality.
+
+### BIZ-1: Leverage Parent Network for Site Discovery
+Alpha parents are highly connected in their communities. This application leverages that network to crowdsource potential school locations, reducing the burden on the real estate team and surfacing locations with built-in community support.
+
+### BIZ-2: Validate Demand Before Investment
+By allowing parents to vote on locations, the business can gauge demand before committing resources to site evaluation, zoning research, or lease negotiations. High vote counts indicate strong community interest.
+
+### BIZ-3: Scale Location Sourcing
+Traditional real estate sourcing doesn't scale to hundreds/thousands of locations. This tool enables parallel, community-driven location discovery across multiple markets simultaneously.
+
+### BIZ-4: Hyper-Local Real Estate Intelligence
+Real estate expertise (zoning, permitting, community dynamics) is hyper-local. Parent suggestions come with implicit local knowledge that would be expensive to acquire through traditional research.
+
+### BIZ-5: Build Community Engagement Early
+Engaging parents in the site selection process builds investment in the school before it opens. Parents who voted for a location are more likely to enroll and evangelize.
+
+### BIZ-6: Reduce Time-to-Open
+By pre-qualifying locations through community voting, the business can focus due diligence on high-probability sites, reducing the overall time from market entry decision to school opening.
+
+### BIZ-7: Data-Driven Expansion Decisions
+Aggregated voting data provides quantitative input for expansion planning, helping prioritize markets and neighborhoods based on demonstrated parent interest rather than assumptions.
+
+---
+
 ## 1. Layout & Structure
 
 ### REQ-1.1: Full-Screen Map Background
