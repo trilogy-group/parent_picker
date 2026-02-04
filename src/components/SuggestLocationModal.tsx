@@ -47,9 +47,9 @@ export function SuggestLocationModal() {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button className="gap-2">
+        <Button className="gap-2 bg-amber-400 hover:bg-amber-500 text-amber-950 font-semibold">
           <Plus className="h-4 w-4" />
-          Suggest Location
+          Suggest a Location
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-md">

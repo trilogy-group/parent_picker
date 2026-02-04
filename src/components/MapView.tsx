@@ -27,33 +27,26 @@ function LocationMarker({ location, isSelected, onClick }: LocationMarkerProps) 
     <Marker
       latitude={location.lat}
       longitude={location.lng}
-      anchor="bottom"
+      anchor="center"
       onClick={(e) => {
         e.originalEvent.stopPropagation();
         onClick();
       }}
     >
       <div
-        className={`cursor-pointer transition-transform ${
-          isSelected ? "scale-125" : "hover:scale-110"
+        className={`cursor-pointer transition-all duration-200 ${
+          isSelected ? "scale-150 z-10" : "hover:scale-125"
         }`}
       >
         <div
-          className={`relative flex items-center justify-center w-8 h-8 rounded-full ${
+          className={`w-4 h-4 rounded-full border-2 border-white shadow-md ${
             isSelected
-              ? "bg-primary text-primary-foreground"
+              ? "bg-blue-600"
               : location.suggested
-              ? "bg-amber-500 text-white"
-              : "bg-red-500 text-white"
-          } shadow-lg`}
-        >
-          <MapPin className="h-4 w-4" />
-          {location.votes > 0 && (
-            <span className="absolute -top-1 -right-1 bg-white text-foreground text-[10px] font-bold rounded-full w-4 h-4 flex items-center justify-center shadow">
-              {location.votes > 99 ? "99+" : location.votes}
-            </span>
-          )}
-        </div>
+              ? "bg-amber-500"
+              : "bg-slate-600"
+          }`}
+        />
       </div>
     </Marker>
   );
