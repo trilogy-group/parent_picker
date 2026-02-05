@@ -51,17 +51,88 @@ function DialogContent({
   className,
   children,
   showCloseButton = true,
+  draggable = false,
+  position: initialPosition,
   ...props
 }: React.ComponentProps<typeof DialogPrimitive.Content> & {
   showCloseButton?: boolean
+  draggable?: boolean
+  position?: "center" | "top-right"
 }) {
+  const [position, setPosition] = React.useState({ x: 0, y: 0 })
+  const [isDragging, setIsDragging] = React.useState(false)
+  const dragStartRef = React.useRef({ x: 0, y: 0 })
+  const positionRef = React.useRef({ x: 0, y: 0 })
+
+  const handleMouseDown = React.useCallback((e: React.MouseEvent) => {
+    if (!draggable) return
+    const target = e.target as HTMLElement
+    if (target.closest('[data-slot="dialog-header"]') || target.closest('[data-drag-handle]')) {
+      setIsDragging(true)
+      dragStartRef.current = { x: e.clientX - positionRef.current.x, y: e.clientY - positionRef.current.y }
+      e.preventDefault()
+    }
+  }, [draggable])
+
+  const handleMouseMove = React.useCallback((e: MouseEvent) => {
+    if (!isDragging) return
+    const newX = e.clientX - dragStartRef.current.x
+    const newY = e.clientY - dragStartRef.current.y
+    positionRef.current = { x: newX, y: newY }
+    setPosition({ x: newX, y: newY })
+  }, [isDragging])
+
+  const handleMouseUp = React.useCallback(() => {
+    setIsDragging(false)
+  }, [])
+
+  React.useEffect(() => {
+    if (isDragging) {
+      document.addEventListener('mousemove', handleMouseMove)
+      document.addEventListener('mouseup', handleMouseUp)
+      return () => {
+        document.removeEventListener('mousemove', handleMouseMove)
+        document.removeEventListener('mouseup', handleMouseUp)
+      }
+    }
+  }, [isDragging, handleMouseMove, handleMouseUp])
+
+  // Reset position when dialog opens
+  React.useEffect(() => {
+    setPosition({ x: 0, y: 0 })
+    positionRef.current = { x: 0, y: 0 }
+  }, [])
+
+  // Calculate style based on position prop and drag offset
+  const getStyle = (): React.CSSProperties => {
+    if (initialPosition === "top-right") {
+      // Position so bottom-left of dialog is slightly up and right of center
+      // Use calc to position: left at 55%, bottom at 45% of viewport
+      return {
+        top: "45%",
+        left: "55%",
+        transform: `translate(${position.x}px, calc(-100% + ${position.y}px))`,
+      }
+    }
+    // Default centered position
+    return {
+      top: "50%",
+      left: "50%",
+      transform: `translate(calc(-50% + ${position.x}px), calc(-50% + ${position.y}px))`,
+    }
+  }
+
   return (
     <DialogPortal data-slot="dialog-portal">
       <DialogOverlay />
       <DialogPrimitive.Content
         data-slot="dialog-content"
+        onMouseDown={handleMouseDown}
+        style={getStyle()}
         className={cn(
-          "bg-background data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 fixed top-[50%] left-[50%] z-50 grid w-full max-w-[calc(100%-2rem)] translate-x-[-50%] translate-y-[-50%] gap-4 rounded-lg border p-6 shadow-lg duration-200 outline-none sm:max-w-lg",
+          "bg-background data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 fixed z-50 grid w-full max-w-[calc(100%-2rem)] gap-4 rounded-lg border p-6 shadow-lg duration-200 outline-none sm:max-w-lg",
+          draggable && "cursor-default",
+          isDragging && "select-none",
           className
         )}
         {...props}
@@ -81,11 +152,16 @@ function DialogContent({
   )
 }
 
-function DialogHeader({ className, ...props }: React.ComponentProps<"div">) {
+function DialogHeader({ className, draggable, ...props }: React.ComponentProps<"div"> & { draggable?: boolean }) {
   return (
     <div
       data-slot="dialog-header"
-      className={cn("flex flex-col gap-2 text-center sm:text-left", className)}
+      data-drag-handle={draggable ? "true" : undefined}
+      className={cn(
+        "flex flex-col gap-2 text-center sm:text-left",
+        draggable && "cursor-move",
+        className
+      )}
       {...props}
     />
   )

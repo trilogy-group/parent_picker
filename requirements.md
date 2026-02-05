@@ -451,6 +451,47 @@ Uses Mapbox GL JS via react-map-gl.
 
 ---
 
+## 15. Address Autocomplete & Geocoding
+
+### REQ-15.1: Address Autocomplete Component
+The application provides address autocomplete using Mapbox Geocoding API.
+
+**Test Cases:**
+- [ ] `TC-15.1.1`: Typing 3+ characters in address field shows autocomplete dropdown
+- [ ] `TC-15.1.2`: Dropdown shows up to 5 address suggestions
+- [ ] `TC-15.1.3`: Each suggestion shows full address (street, city, state)
+- [ ] `TC-15.1.4`: Clicking a suggestion populates the address field
+- [ ] `TC-15.1.5`: Keyboard navigation (up/down arrows) works in dropdown
+- [ ] `TC-15.1.6`: Pressing Enter selects highlighted suggestion
+- [ ] `TC-15.1.7`: Pressing Escape closes dropdown
+- [ ] `TC-15.1.8`: Dropdown closes when clicking outside
+
+### REQ-15.2: Suggest Location Autocomplete
+The suggest location modal uses address autocomplete for the address field.
+
+**Test Cases:**
+- [ ] `TC-15.2.1`: Street Address field has autocomplete functionality
+- [ ] `TC-15.2.2`: Selecting autocomplete suggestion auto-fills city and state
+- [ ] `TC-15.2.3`: Submitted location uses geocoded coordinates from Mapbox
+- [ ] `TC-15.2.4`: New location marker appears at correct geocoded position
+
+### REQ-15.3: Search Autocomplete
+The location search input provides address autocomplete for finding new areas.
+
+**Test Cases:**
+- [ ] `TC-15.3.1`: Search input shows autocomplete dropdown when typing addresses
+- [ ] `TC-15.3.2`: Selecting an address suggestion centers map on that location
+- [ ] `TC-15.3.3`: Search still filters existing locations by name/address/city
+
+### REQ-15.4: Mock Data Accuracy
+All mock location coordinates are accurate to their addresses.
+
+**Test Cases:**
+- [ ] `TC-15.4.1`: Mock locations display at correct map positions
+- [ ] `TC-15.4.2`: Clicking mock location marker centers map on correct address
+
+---
+
 ## Test Execution Summary
 
 | Category | Total Tests | Passing | Failing |
@@ -469,7 +510,8 @@ Uses Mapbox GL JS via react-map-gl.
 | Error Handling | 4 | - | - |
 | Environment | 3 | - | - |
 | Tech Stack | 8 | - | - |
-| **TOTAL** | **137** | - | - |
+| Address Autocomplete & Geocoding | 14 | - | - |
+| **TOTAL** | **151** | - | - |
 
 ---
 
@@ -488,4 +530,3 @@ Uses Mapbox GL JS via react-map-gl.
 - Location scoring workflow
 - Parent assistance solicitation for low-scoring locations
 - Persistent vote storage (currently session-only)
-- Geocoding for suggested locations

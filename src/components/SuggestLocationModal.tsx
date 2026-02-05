@@ -14,6 +14,8 @@ import {
 import { Input } from "@/components/ui/input";
 import { useVotesStore } from "@/lib/votes";
 import { suggestLocation } from "@/lib/locations";
+import { AddressAutocomplete } from "./AddressAutocomplete";
+import { GeocodingResult, geocodeAddress } from "@/lib/geocoding";
 
 export function SuggestLocationModal() {
   const [open, setOpen] = useState(false);
@@ -21,9 +23,20 @@ export function SuggestLocationModal() {
   const [city, setCity] = useState("");
   const [state, setState] = useState("");
   const [notes, setNotes] = useState("");
+  const [coordinates, setCoordinates] = useState<{
+    lat: number;
+    lng: number;
+  } | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const { addLocation, setSelectedLocation } = useVotesStore();
+  const { addLocation, setSelectedLocation, setPreviewLocation } = useVotesStore();
+
+  const handleAddressSelect = (result: GeocodingResult) => {
+    setCity(result.city);
+    setState(result.state);
+    setCoordinates({ lat: result.lat, lng: result.lng });
+    setPreviewLocation({ lat: result.lat, lng: result.lng, address: result.address });
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -31,29 +44,55 @@ export function SuggestLocationModal() {
 
     setIsSubmitting(true);
     try {
-      const newLocation = await suggestLocation(address, city, state, notes);
+      let coords = coordinates;
+
+      // If no coordinates from autocomplete, try to geocode the address
+      if (!coords) {
+        coords = await geocodeAddress(address, city, state);
+      }
+
+      const newLocation = await suggestLocation(
+        address,
+        city,
+        state,
+        notes,
+        coords
+      );
       addLocation(newLocation);
       setSelectedLocation(newLocation.id);
       setOpen(false);
-      setAddress("");
-      setCity("");
-      setState("");
-      setNotes("");
+      resetForm();
     } finally {
       setIsSubmitting(false);
     }
   };
 
+  const resetForm = () => {
+    setAddress("");
+    setCity("");
+    setState("");
+    setNotes("");
+    setCoordinates(null);
+    setPreviewLocation(null);
+  };
+
+  const handleOpenChange = (isOpen: boolean) => {
+    setOpen(isOpen);
+    if (!isOpen) {
+      setPreviewLocation(null);
+    }
+  };
+
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
         <Button className="gap-2 bg-amber-400 hover:bg-amber-500 text-amber-950 font-semibold">
           <Plus className="h-4 w-4" />
           Suggest a Location
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
+      <DialogContent className="sm:max-w-md" draggable position="top-right">
+        <DialogHeader draggable>
           <DialogTitle>Suggest a New Location</DialogTitle>
           <DialogDescription>
             Know a great spot for a micro school? Share it with other parents.
@@ -64,11 +103,12 @@ export function SuggestLocationModal() {
             <label htmlFor="address" className="text-sm font-medium">
               Street Address
             </label>
-            <Input
+            <AddressAutocomplete
               id="address"
               placeholder="123 Main St"
               value={address}
-              onChange={(e) => setAddress(e.target.value)}
+              onChange={setAddress}
+              onSelect={handleAddressSelect}
               required
             />
           </div>
@@ -114,7 +154,7 @@ export function SuggestLocationModal() {
             <Button
               type="button"
               variant="outline"
-              onClick={() => setOpen(false)}
+              onClick={() => handleOpenChange(false)}
             >
               Cancel
             </Button>

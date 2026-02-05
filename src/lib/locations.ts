@@ -7,8 +7,8 @@ export const mockLocations: Location[] = [
     address: "401 Congress Ave",
     city: "Austin",
     state: "TX",
-    lat: 30.2672,
-    lng: -97.7431,
+    lat: 30.266595,
+    lng: -97.74291,
     votes: 42,
   },
   {
@@ -17,8 +17,8 @@ export const mockLocations: Location[] = [
     address: "3425 Bee Cave Rd",
     city: "Austin",
     state: "TX",
-    lat: 30.2969,
-    lng: -97.8014,
+    lat: 30.276329,
+    lng: -97.803671,
     votes: 28,
   },
   {
@@ -27,8 +27,8 @@ export const mockLocations: Location[] = [
     address: "201 E Main St",
     city: "Round Rock",
     state: "TX",
-    lat: 30.5083,
-    lng: -97.6789,
+    lat: 30.508723,
+    lng: -97.677449,
     votes: 35,
   },
   {
@@ -37,8 +37,8 @@ export const mockLocations: Location[] = [
     address: "500 Discovery Blvd",
     city: "Cedar Park",
     state: "TX",
-    lat: 30.5052,
-    lng: -97.8203,
+    lat: 30.519457,
+    lng: -97.823892,
     votes: 19,
   },
   {
@@ -47,8 +47,8 @@ export const mockLocations: Location[] = [
     address: "1619 S Congress Ave",
     city: "Austin",
     state: "TX",
-    lat: 30.2449,
-    lng: -97.7494,
+    lat: 30.247488,
+    lng: -97.750453,
     votes: 56,
   },
   {
@@ -57,8 +57,8 @@ export const mockLocations: Location[] = [
     address: "4550 Mueller Blvd",
     city: "Austin",
     state: "TX",
-    lat: 30.2984,
-    lng: -97.7048,
+    lat: 30.297248,
+    lng: -97.707322,
     votes: 31,
   },
   {
@@ -67,8 +67,8 @@ export const mockLocations: Location[] = [
     address: "103 Main St",
     city: "Lakeway",
     state: "TX",
-    lat: 30.3628,
-    lng: -97.9797,
+    lat: 30.347183,
+    lng: -97.968561,
     votes: 23,
   },
   {
@@ -77,8 +77,8 @@ export const mockLocations: Location[] = [
     address: "201 E Pecan St",
     city: "Pflugerville",
     state: "TX",
-    lat: 30.4394,
-    lng: -97.6201,
+    lat: 30.43919,
+    lng: -97.61993,
     votes: 17,
   },
 ];
@@ -92,7 +92,8 @@ export async function suggestLocation(
   address: string,
   city: string,
   state: string,
-  _notes?: string
+  _notes?: string,
+  coordinates?: { lat: number; lng: number } | null
 ): Promise<Location> {
   // Stub: In v2, this will insert into Supabase and trigger scoring
   // _notes will be used in v2 for parent feedback
@@ -102,8 +103,8 @@ export async function suggestLocation(
     address,
     city,
     state,
-    lat: 30.2672 + (Math.random() - 0.5) * 0.1, // Mock coordinates
-    lng: -97.7431 + (Math.random() - 0.5) * 0.1,
+    lat: coordinates?.lat ?? 30.2672, // Fallback to Austin center if no coordinates
+    lng: coordinates?.lng ?? -97.7431,
     votes: 0,
     suggested: true,
   };

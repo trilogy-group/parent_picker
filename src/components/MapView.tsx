@@ -55,7 +55,7 @@ function LocationMarker({ location, isSelected, onClick }: LocationMarkerProps) 
 export function MapView() {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const mapRef = useRef<any>(null);
-  const { filteredLocations, selectedLocationId, setSelectedLocation } =
+  const { filteredLocations, selectedLocationId, setSelectedLocation, flyToTarget, setFlyToTarget, previewLocation } =
     useVotesStore();
 
   const locations = filteredLocations();
@@ -69,11 +69,32 @@ export function MapView() {
     });
   }, []);
 
+  const flyToCoords = useCallback((coords: { lat: number; lng: number }) => {
+    mapRef.current?.flyTo({
+      center: [coords.lng, coords.lat],
+      zoom: 14,
+      duration: 1000,
+    });
+  }, []);
+
   useEffect(() => {
     if (selectedLocation) {
       flyToLocation(selectedLocation);
     }
   }, [selectedLocation, flyToLocation]);
+
+  useEffect(() => {
+    if (flyToTarget) {
+      flyToCoords(flyToTarget);
+      setFlyToTarget(null);
+    }
+  }, [flyToTarget, flyToCoords, setFlyToTarget]);
+
+  useEffect(() => {
+    if (previewLocation) {
+      flyToCoords(previewLocation);
+    }
+  }, [previewLocation, flyToCoords]);
 
   if (!MAPBOX_TOKEN) {
     return (
@@ -126,6 +147,36 @@ export function MapView() {
             </p>
           </div>
         </Popup>
+      )}
+
+      {previewLocation && (
+        <>
+          <Marker
+            latitude={previewLocation.lat}
+            longitude={previewLocation.lng}
+            anchor="center"
+          >
+            <div className="relative">
+              <div className="w-6 h-6 rounded-full bg-red-500 border-2 border-white shadow-lg animate-pulse" />
+              <div className="absolute inset-0 w-6 h-6 rounded-full bg-red-400 animate-ping opacity-75" />
+            </div>
+          </Marker>
+          <Popup
+            latitude={previewLocation.lat}
+            longitude={previewLocation.lng}
+            anchor="top"
+            closeButton={false}
+            closeOnClick={false}
+            offset={[0, 12]}
+          >
+            <div className="p-1">
+              <p className="font-semibold text-sm text-red-700">Preview</p>
+              <p className="text-xs text-muted-foreground">
+                {previewLocation.address}
+              </p>
+            </div>
+          </Popup>
+        </>
       )}
     </Map>
   );
