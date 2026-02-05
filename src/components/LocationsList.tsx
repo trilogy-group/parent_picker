@@ -82,11 +82,11 @@ export function LocationsList() {
       return;
     }
 
-    const results = await searchAddresses(query);
+    const results = await searchAddresses(query, mapCenter ?? undefined);
     setAddressSuggestions(results);
     setShowSuggestions(results.length > 0);
     setHighlightedIndex(-1);
-  }, []);
+  }, [mapCenter]);
 
   const handleSearchChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
