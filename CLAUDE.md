@@ -115,34 +115,31 @@ See [`docs/schema-design.md`](docs/schema-design.md) for complete Supabase schem
 
 ## Session State (2026-02-04)
 
-**Current branch:** `addcities`
+**Current branch:** `main` (commit `95c36b3`)
 
 **Accomplished this session:**
-- Added 50 real locations from TX, FL, CA (fetched from Supabase) as offline mock data
-- Implemented geolocation-based initial map view:
-  - Requests browser geolocation on mount
-  - If user location found + nearby listings within 50 miles → zoom to user (level 10)
-  - Otherwise → show US-level view (zoom 4)
-- Added helper functions in `locations.ts`: `getInitialMapView()`, `findNearbyLocations()`, `US_CENTER`, `US_ZOOM`
-- Updated `MapView.tsx` with geolocation request and initial view logic
+- Fixed merge conflicts from pulling main branch (duplicate declarations in LocationsList, SuggestLocationModal, locations.ts)
+- Merged `addcities` branch into main with:
+  - 50 real locations from TX, FL, CA as offline mock data
+  - Geolocation-based initial map view (zoom to user if nearby locations within 50mi)
+  - Helper functions: `getInitialMapView()`, `findNearbyLocations()`, `US_CENTER`, `US_ZOOM`
+- Deployed merged changes to Vercel
 
-**Previous session (main branch):**
-- Supabase Auth with magic link sign-in
-- Persistent votes (pp_votes table) with optimistic updates + rollback
-- Persistent suggestions (pp_locations table) with Mapbox geocoding
-- Offline/demo mode fallback when Supabase not configured
-- Deployed to Vercel via `npx vercel --prod`
+**Deployed:** https://parentpicker.vercel.app
+
+**Key commits:**
+- `bda90d6` - Fix merge conflicts from main branch pull
+- `95c36b3` - Merge addcities branch: geolocation + 50 real locations
 
 **Known state:**
-- `addcities` branch has uncommitted changes for geolocation feature
-- Dev server working at http://localhost:3000
-- Geolocation prompts user on page load, then flies to appropriate view
+- Production site live with geolocation feature
+- Running in demo mode on Vercel (Supabase env vars not configured)
+- Address autocomplete working in search and suggest modal
 
 **Next steps:**
-- Test geolocation in different scenarios (allow/deny, various locations)
-- Commit `addcities` branch changes
-- Merge to main and deploy to Vercel
 - Configure Supabase env vars on Vercel for production auth/persistence
+- Connect Vercel to GitHub for auto-deploy (optional)
+- Test auth flow end-to-end in production
 
 ## File Structure
 
