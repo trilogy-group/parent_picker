@@ -17,32 +17,77 @@ Database schema for persistent storage of locations, votes, and user-suggested l
 
 ### 1. `pp_locations`
 
-Pre-scored locations sourced by the real estate team, plus parent-suggested locations pending review.
+One row per physical property/address. This is the map-visible entity. A property may have multiple listings (available spaces) in `pp_listings`. The `score` on this table is the **best score** across all its listings — what the app displays.
 
 | Column | Type | Constraints | Description |
 |--------|------|-------------|-------------|
 | `id` | `uuid` | PK, default `gen_random_uuid()` | Unique identifier |
+| `property_source_key` | `text` | UNIQUE, NULL | Moody's property key (NULL for parent-suggested) |
 | `name` | `text` | NOT NULL | Display name (e.g., "Downtown Austin Campus") |
 | `address` | `text` | NOT NULL | Street address |
 | `city` | `text` | NOT NULL | City |
 | `state` | `text` | NOT NULL | 2-letter state code |
+| `zip` | `text` | NULL | 5-digit zip code |
+| `county` | `text` | NULL | County name |
 | `lat` | `numeric(10,7)` | NOT NULL | Latitude |
 | `lng` | `numeric(10,7)` | NOT NULL | Longitude |
+| `category` | `text` | NULL | `RETAIL`, `OFFICE`, `INDUSTRIAL` (from Moody's) |
+| `subcategory` | `text` | NULL | E.g., `STRIP_CENTER`, `NEIGHBORHOOD_CENTER` |
+| `building_sf` | `integer` | NULL | Gross building square footage |
+| `lot_acres` | `numeric(10,4)` | NULL | Total lot acreage |
+| `zoning` | `text` | NULL | Zoning designation |
+| `building_class` | `text` | NULL | A, B, C |
+| `num_floors` | `integer` | NULL | Number of floors |
 | `status` | `text` | NOT NULL, default `'active'` | `active`, `pending_review`, `rejected`, `archived` |
-| `source` | `text` | NOT NULL, default `'internal'` | `internal` (RE team) or `parent_suggested` |
-| `score` | `integer` | NULL | Location score (0-100), NULL if not yet scored |
+| `source` | `text` | NOT NULL, default `'internal'` | `moody`, `internal` (RE team), or `parent_suggested` |
+| `score` | `integer` | NULL | Best listing score (0-100), NULL if not yet scored |
 | `notes` | `text` | NULL | Internal notes or parent submission notes |
-| `suggested_by` | `uuid` | FK → auth.users, NULL | User who suggested (NULL for internal) |
+| `suggested_by` | `uuid` | FK → auth.users, NULL | User who suggested (NULL for Moody's/internal) |
 | `created_at` | `timestamptz` | NOT NULL, default `now()` | Creation timestamp |
 | `updated_at` | `timestamptz` | NOT NULL, default `now()` | Last update timestamp |
 
 **Indexes:**
 - `idx_pp_locations_status` on `(status)` — filter active locations
 - `idx_pp_locations_city_state` on `(city, state)` — geographic filtering
+- `idx_pp_locations_property_source_key` on `(property_source_key)` — Moody's dedup/join
+- `idx_pp_locations_score` on `(score DESC NULLS LAST)` — rank by score
 
 ---
 
-### 2. `pp_votes`
+### 2. `pp_listings`
+
+Individual available spaces within a property. One property can have multiple listings (different units/suites). Sourced from Moody's data. The app shows one location per property on the map — the listing with the best score determines the displayed score.
+
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| `id` | `uuid` | PK, default `gen_random_uuid()` | Unique identifier |
+| `location_id` | `uuid` | FK → pp_locations, NOT NULL | Parent property |
+| `listed_space_key` | `text` | UNIQUE, NULL | Moody's listing key (NULL for parent-suggested) |
+| `space_type` | `text` | NULL | `LEASE`, `SALE` |
+| `space_category` | `text` | NULL | `RETAIL`, `OFFICE`, `INDUSTRIAL` |
+| `availability_status` | `text` | NULL | `AVAILABLE`, `LEASED`, etc. |
+| `available_date` | `date` | NULL | When space becomes available |
+| `space_size_sf` | `integer` | NULL | Available square footage |
+| `space_size_min_sf` | `integer` | NULL | Minimum divisible SF |
+| `space_size_max_sf` | `integer` | NULL | Maximum contiguous SF |
+| `lease_type` | `text` | NULL | `NNN`, `MODIFIED_GROSS`, `FULL_SERVICE` |
+| `lease_rate_psf` | `numeric(10,2)` | NULL | Asking rent per SF |
+| `suite` | `text` | NULL | Suite/unit identifier |
+| `has_ac` | `boolean` | NULL | Air conditioning |
+| `restroom_count` | `integer` | NULL | Number of restrooms |
+| `has_sprinklers` | `boolean` | NULL | Sprinkler system present |
+| `score` | `integer` | NULL | Listing score (0-100), NULL if not yet scored |
+| `score_details` | `jsonb` | NULL | Breakdown of scoring factors |
+| `created_at` | `timestamptz` | NOT NULL, default `now()` | Creation timestamp |
+
+**Indexes:**
+- `idx_pp_listings_location` on `(location_id)` — get all listings for a property
+- `idx_pp_listings_availability` on `(availability_status)` — filter available spaces
+- `idx_pp_listings_score` on `(score DESC NULLS LAST)` — rank by score
+
+---
+
+### 3. `pp_votes`
 
 One row per user-location vote. Prevents duplicate votes and enables analytics.
 
@@ -62,7 +107,7 @@ One row per user-location vote. Prevents duplicate votes and enables analytics.
 
 ---
 
-### 3. `pp_profiles` (extends Supabase auth.users)
+### 4. `pp_profiles` (extends Supabase auth.users)
 
 Public user profile data for Parent Picker. Auto-created on signup via trigger.
 
@@ -79,17 +124,33 @@ Public user profile data for Parent Picker. Auto-created on signup via trigger.
 
 ### `pp_locations_with_votes`
 
-Computed view joining locations with vote counts. Used by the frontend.
+Computed view joining locations with vote counts and best listing info. Used by the frontend. Shows one row per property — the app never exposes individual listings to parents.
 
 ```sql
 CREATE VIEW pp_locations_with_votes AS
 SELECT
   l.*,
-  COALESCE(COUNT(v.id), 0)::integer AS votes
+  COALESCE(v.vote_count, 0)::integer AS votes,
+  best.listing_count,
+  best.best_listing_score,
+  best.best_listing_sf,
+  best.best_listing_rate_psf
 FROM pp_locations l
-LEFT JOIN pp_votes v ON v.location_id = l.id
+LEFT JOIN (
+  SELECT location_id, COUNT(*)::integer AS vote_count
+  FROM pp_votes GROUP BY location_id
+) v ON v.location_id = l.id
+LEFT JOIN LATERAL (
+  SELECT
+    COUNT(*)::integer AS listing_count,
+    MAX(li.score) AS best_listing_score,
+    (ARRAY_AGG(li.space_size_sf ORDER BY li.score DESC NULLS LAST))[1] AS best_listing_sf,
+    (ARRAY_AGG(li.lease_rate_psf ORDER BY li.score DESC NULLS LAST))[1] AS best_listing_rate_psf
+  FROM pp_listings li
+  WHERE li.location_id = l.id AND li.availability_status = 'AVAILABLE'
+) best ON true
 WHERE l.status = 'active'
-GROUP BY l.id;
+GROUP BY l.id, v.vote_count, best.listing_count, best.best_listing_score, best.best_listing_sf, best.best_listing_rate_psf;
 ```
 
 ---
@@ -180,15 +241,25 @@ No anonymous voting — auth required to:
 -- Enable UUID extension (likely already enabled)
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
--- Locations table
+-- Locations table (one row per property/address)
 CREATE TABLE pp_locations (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  property_source_key text UNIQUE,
   name text NOT NULL,
   address text NOT NULL,
   city text NOT NULL,
   state text NOT NULL,
+  zip text,
+  county text,
   lat numeric(10,7) NOT NULL,
   lng numeric(10,7) NOT NULL,
+  category text,
+  subcategory text,
+  building_sf integer,
+  lot_acres numeric(10,4),
+  zoning text,
+  building_class text,
+  num_floors integer,
   status text NOT NULL DEFAULT 'active',
   source text NOT NULL DEFAULT 'internal',
   score integer,
@@ -196,6 +267,29 @@ CREATE TABLE pp_locations (
   suggested_by uuid REFERENCES auth.users(id),
   created_at timestamptz NOT NULL DEFAULT now(),
   updated_at timestamptz NOT NULL DEFAULT now()
+);
+
+-- Listings table (multiple available spaces per property)
+CREATE TABLE pp_listings (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  location_id uuid NOT NULL REFERENCES pp_locations(id) ON DELETE CASCADE,
+  listed_space_key text UNIQUE,
+  space_type text,
+  space_category text,
+  availability_status text,
+  available_date date,
+  space_size_sf integer,
+  space_size_min_sf integer,
+  space_size_max_sf integer,
+  lease_type text,
+  lease_rate_psf numeric(10,2),
+  suite text,
+  has_ac boolean,
+  restroom_count integer,
+  has_sprinklers boolean,
+  score integer,
+  score_details jsonb,
+  created_at timestamptz NOT NULL DEFAULT now()
 );
 
 -- Votes table
@@ -218,18 +312,38 @@ CREATE TABLE pp_profiles (
 -- Indexes
 CREATE INDEX idx_pp_locations_status ON pp_locations(status);
 CREATE INDEX idx_pp_locations_city_state ON pp_locations(city, state);
+CREATE INDEX idx_pp_locations_property_source_key ON pp_locations(property_source_key);
+CREATE INDEX idx_pp_locations_score ON pp_locations(score DESC NULLS LAST);
+CREATE INDEX idx_pp_listings_location ON pp_listings(location_id);
+CREATE INDEX idx_pp_listings_availability ON pp_listings(availability_status);
+CREATE INDEX idx_pp_listings_score ON pp_listings(score DESC NULLS LAST);
 CREATE INDEX idx_pp_votes_location ON pp_votes(location_id);
 CREATE INDEX idx_pp_votes_user ON pp_votes(user_id);
 
--- View
+-- View (one row per property, best listing info rolled up)
 CREATE VIEW pp_locations_with_votes AS
 SELECT
   l.*,
-  COALESCE(COUNT(v.id), 0)::integer AS votes
+  COALESCE(v.vote_count, 0)::integer AS votes,
+  best.listing_count,
+  best.best_listing_score,
+  best.best_listing_sf,
+  best.best_listing_rate_psf
 FROM pp_locations l
-LEFT JOIN pp_votes v ON v.location_id = l.id
-WHERE l.status = 'active'
-GROUP BY l.id;
+LEFT JOIN (
+  SELECT location_id, COUNT(*)::integer AS vote_count
+  FROM pp_votes GROUP BY location_id
+) v ON v.location_id = l.id
+LEFT JOIN LATERAL (
+  SELECT
+    COUNT(*)::integer AS listing_count,
+    MAX(li.score) AS best_listing_score,
+    (ARRAY_AGG(li.space_size_sf ORDER BY li.score DESC NULLS LAST))[1] AS best_listing_sf,
+    (ARRAY_AGG(li.lease_rate_psf ORDER BY li.score DESC NULLS LAST))[1] AS best_listing_rate_psf
+  FROM pp_listings li
+  WHERE li.location_id = l.id AND li.availability_status = 'AVAILABLE'
+) best ON true
+WHERE l.status = 'active';
 
 -- Auto-create profile on signup (pp-specific trigger)
 CREATE OR REPLACE FUNCTION pp_handle_new_user()

@@ -237,7 +237,7 @@ export async function suggestLocation(
         .single();
 
       if (error) {
-        console.error("Error inserting location:", error);
+        console.error("Error inserting location:", error.message, error.code, error.details, error.hint);
         // Fall through to return local-only location
       } else if (data) {
         return {

@@ -36,6 +36,10 @@ yarn-error.log*
 # vercel
 .vercel
 
+# data files
+/data/
+*.zip
+
 # python
 .venv/
 

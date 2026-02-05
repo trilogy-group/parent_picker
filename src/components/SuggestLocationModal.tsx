@@ -105,71 +105,78 @@ export function SuggestLocationModal() {
             Know a great spot for a micro school? Share it with other parents.
           </DialogDescription>
         </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-4 mt-4">
-          <div className="space-y-2">
-            <label htmlFor="address" className="text-sm font-medium">
-              Street Address
-            </label>
-            <AddressAutocomplete
-              id="address"
-              placeholder="123 Main St"
-              value={address}
-              onChange={setAddress}
-              onSelect={handleAddressSelect}
-              required
-            />
-          </div>
-          <div className="grid grid-cols-2 gap-3">
+        {canSuggest ? (
+          <form onSubmit={handleSubmit} className="space-y-4 mt-4">
             <div className="space-y-2">
-              <label htmlFor="city" className="text-sm font-medium">
-                City
+              <label htmlFor="address" className="text-sm font-medium">
+                Street Address
               </label>
-              <Input
-                id="city"
-                placeholder="Austin"
-                value={city}
-                onChange={(e) => setCity(e.target.value)}
+              <AddressAutocomplete
+                id="address"
+                placeholder="123 Main St"
+                value={address}
+                onChange={setAddress}
+                onSelect={handleAddressSelect}
                 required
               />
             </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <label htmlFor="city" className="text-sm font-medium">
+                  City
+                </label>
+                <Input
+                  id="city"
+                  placeholder="Austin"
+                  value={city}
+                  onChange={(e) => setCity(e.target.value)}
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <label htmlFor="state" className="text-sm font-medium">
+                  State
+                </label>
+                <Input
+                  id="state"
+                  placeholder="TX"
+                  value={state}
+                  onChange={(e) => setState(e.target.value)}
+                  maxLength={2}
+                  required
+                />
+              </div>
+            </div>
             <div className="space-y-2">
-              <label htmlFor="state" className="text-sm font-medium">
-                State
+              <label htmlFor="notes" className="text-sm font-medium">
+                Notes (optional)
               </label>
               <Input
-                id="state"
-                placeholder="TX"
-                value={state}
-                onChange={(e) => setState(e.target.value)}
-                maxLength={2}
-                required
+                id="notes"
+                placeholder="Why this location would be great..."
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
               />
             </div>
-          </div>
-          <div className="space-y-2">
-            <label htmlFor="notes" className="text-sm font-medium">
-              Notes (optional)
-            </label>
-            <Input
-              id="notes"
-              placeholder="Why this location would be great..."
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-            />
-          </div>
-          <div className="flex justify-end gap-3 pt-2">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => handleOpenChange(false)}
-            >
-              Cancel
-            </Button>
-            <Button type="submit" disabled={isSubmitting}>
-              {isSubmitting ? "Submitting..." : "Submit"}
-            </Button>
-          </div>
-        </form>
+            <div className="flex justify-end gap-3 pt-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => handleOpenChange(false)}
+              >
+                Cancel
+              </Button>
+              <Button type="submit" disabled={isSubmitting}>
+                {isSubmitting ? "Submitting..." : "Submit"}
+              </Button>
+            </div>
+          </form>
+        ) : (
+          <SignInPrompt
+            title="Sign in to suggest"
+            description="Sign in with your email to suggest new locations for micro schools."
+          />
+        )}
       </DialogContent>
     </Dialog>
   );
