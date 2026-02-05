@@ -91,6 +91,14 @@ Duplicate the Sports Academy facilities map functionality:
 - **Hosting:** Vercel (https://parentpicker.vercel.app)
 - **Deploy:** `npx vercel --prod` (manual - not connected to GitHub auto-deploy)
 
+## Database Schema
+
+See [`docs/schema-design.md`](docs/schema-design.md) for complete Supabase schema including:
+- Tables: `pp_locations`, `pp_votes`, `pp_profiles`
+- View: `pp_locations_with_votes`
+- RLS policies
+- SQL setup script and seed data
+
 ## Current Features
 
 - Supabase database integration (with offline fallback)
