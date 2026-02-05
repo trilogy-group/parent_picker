@@ -58,27 +58,15 @@ Duplicate the Sports Academy facilities map functionality:
 **Current branch:** `main`
 **Deployed:** https://parentpicker.vercel.app
 
-### Workstream 1: Auth debugging
+### Workstream 1: Auth + suggest location
 
-**Status:** Magic link redirect still broken — needs Supabase dashboard fix.
+**Status:** DONE. Magic link auth working, suggest location persists to DB.
 
-**Problem:** Magic link emails contain `redirect_to=https://locator.alpha.school` instead of our origin. Our code is correct (`src/lib/auth.ts:11` sends `emailRedirectTo: window.location.origin`), but Supabase ignores it because our URLs aren't properly allowlisted.
-
-**Root cause:** Supabase project `mnxgkozrutvylzeogphh` is shared with `locator.alpha.school` (that's the Site URL). When our redirect URL isn't recognized in the allowlist, Supabase falls back to the Site URL.
-
-**What was tried:**
-- User says redirect URLs were added, but magic links still redirect to `locator.alpha.school`
-- Likely issue: URLs need wildcard glob (`http://localhost:3000/**` not just `http://localhost:3000`) or there's a caching/propagation delay
-
-**Fix needed (Supabase Dashboard → Auth → URL Configuration → Redirect URLs):**
-1. Confirm both are present WITH wildcards: `http://localhost:3000/**` and `https://parentpicker.vercel.app/**`
-2. If Site URL can't be changed (shared project), the redirect URLs allowlist is the only mechanism
-3. After confirming, send a NEW magic link (old links have the old redirect baked in)
-
-**After auth works:**
-- Add auth gate to SuggestLocationModal ✅ (already implemented — shows SignInPrompt when not signed in)
-- Configure Supabase env vars on Vercel for production
-- Deploy with auth working
+**Fixed:**
+- Magic link redirects fixed (Supabase dashboard redirect URLs with `/**` wildcards)
+- RLS policy fix: added `pp_users_can_view_own_suggestions` SELECT policy so INSERT RETURNING works for `pending_review` rows
+- Auth gate on SuggestLocationModal (shows SignInPrompt when not signed in)
+- Supabase env vars need configuring on Vercel for production auth
 
 ### Workstream 2: Moody's listing data integration
 
