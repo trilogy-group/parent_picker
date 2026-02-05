@@ -11,6 +11,7 @@ interface LocationCardProps {
   isSelected: boolean;
   hasVoted: boolean;
   isAuthenticated: boolean;
+  isInViewport: boolean;
   onSelect: () => void;
   onVote: () => void;
   onUnvote: () => void;
@@ -21,6 +22,7 @@ export function LocationCard({
   isSelected,
   hasVoted,
   isAuthenticated,
+  isInViewport,
   onSelect,
   onVote,
   onUnvote,
@@ -29,9 +31,11 @@ export function LocationCard({
     <Card
       onClick={onSelect}
       className={cn(
-        "p-4 cursor-pointer transition-all hover:shadow-md",
+        "p-4 cursor-pointer transition-all hover:shadow-md relative",
         isSelected && "ring-2 ring-primary shadow-md",
-        location.suggested && "border-dashed border-amber-400"
+        location.suggested && "border-dashed border-amber-400",
+        // Subtle left border to indicate viewport visibility
+        isInViewport ? "border-l-4 border-l-blue-500" : "border-l-4 border-l-gray-200"
       )}
     >
       <div className="flex items-start justify-between gap-3">

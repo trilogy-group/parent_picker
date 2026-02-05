@@ -4,6 +4,13 @@ import { create } from "zustand";
 import { Location } from "@/types";
 import { supabase, isSupabaseConfigured } from "./supabase";
 
+interface MapBounds {
+  north: number;
+  south: number;
+  east: number;
+  west: number;
+}
+
 interface VotesState {
   locations: Location[];
   votedLocationIds: Set<string>;
@@ -11,6 +18,9 @@ interface VotesState {
   searchQuery: string;
   flyToTarget: { lat: number; lng: number } | null;
   previewLocation: { lat: number; lng: number; address: string } | null;
+  mapCenter: { lat: number; lng: number } | null;
+  mapBounds: MapBounds | null;
+  referencePoint: { lat: number; lng: number } | null; // Initial location for sorting - doesn't change
   isLoading: boolean;
   userId: string | null;
   setLocations: (locations: Location[]) => void;
@@ -21,6 +31,9 @@ interface VotesState {
   setSearchQuery: (query: string) => void;
   setFlyToTarget: (coords: { lat: number; lng: number } | null) => void;
   setPreviewLocation: (preview: { lat: number; lng: number; address: string } | null) => void;
+  setMapCenter: (coords: { lat: number; lng: number } | null) => void;
+  setMapBounds: (bounds: MapBounds | null) => void;
+  setReferencePoint: (coords: { lat: number; lng: number } | null) => void;
   setLoading: (loading: boolean) => void;
   setUserId: (id: string | null) => void;
   loadUserVotes: (userId: string) => Promise<void>;
@@ -35,6 +48,9 @@ export const useVotesStore = create<VotesState>((set, get) => ({
   searchQuery: "",
   flyToTarget: null,
   previewLocation: null,
+  mapCenter: null,
+  mapBounds: null,
+  referencePoint: null,
   isLoading: true,
   userId: null,
 
@@ -153,6 +169,12 @@ export const useVotesStore = create<VotesState>((set, get) => ({
   setFlyToTarget: (coords) => set({ flyToTarget: coords }),
 
   setPreviewLocation: (preview) => set({ previewLocation: preview }),
+
+  setMapCenter: (coords) => set({ mapCenter: coords }),
+
+  setMapBounds: (bounds) => set({ mapBounds: bounds }),
+
+  setReferencePoint: (coords) => set({ referencePoint: coords }),
 
   filteredLocations: () => {
     const { locations, searchQuery } = get();

@@ -4,7 +4,7 @@ import { useEffect, useRef, useCallback, useState } from "react";
 import Map, { Marker, NavigationControl, Popup } from "react-map-gl/mapbox";
 import { MapPin } from "lucide-react";
 import { useVotesStore } from "@/lib/votes";
-import { getInitialMapView, US_CENTER, US_ZOOM } from "@/lib/locations";
+import { getInitialMapView, AUSTIN_CENTER, AUSTIN_ZOOM } from "@/lib/locations";
 import { Location } from "@/types";
 import "mapbox-gl/dist/mapbox-gl.css";
 
@@ -49,7 +49,7 @@ function LocationMarker({ location, isSelected, onClick }: LocationMarkerProps) 
 export function MapView() {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const mapRef = useRef<any>(null);
-  const { filteredLocations, selectedLocationId, setSelectedLocation, locations, flyToTarget, setFlyToTarget, previewLocation } =
+  const { filteredLocations, selectedLocationId, setSelectedLocation, locations, flyToTarget, setFlyToTarget, previewLocation, setMapCenter, setMapBounds, setReferencePoint } =
     useVotesStore();
 
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
@@ -99,6 +99,9 @@ export function MapView() {
       locations
     );
 
+    // Set reference point for list sorting (doesn't change after this)
+    setReferencePoint(center);
+
     mapRef.current?.flyTo({
       center: [center.lng, center.lat],
       zoom,
@@ -106,7 +109,7 @@ export function MapView() {
     });
 
     initialViewSetRef.current = true;
-  }, [userLocation, locations, geoResolved]);
+  }, [userLocation, locations, geoResolved, setReferencePoint]);
 
   const flyToLocation = useCallback((location: Location) => {
     mapRef.current?.flyTo({
@@ -162,14 +165,30 @@ export function MapView() {
     <Map
       ref={mapRef}
       initialViewState={{
-        latitude: US_CENTER.lat,
-        longitude: US_CENTER.lng,
-        zoom: US_ZOOM,
+        latitude: AUSTIN_CENTER.lat,
+        longitude: AUSTIN_CENTER.lng,
+        zoom: AUSTIN_ZOOM,
       }}
       style={{ width: "100%", height: "100%" }}
       mapStyle="mapbox://styles/mapbox/streets-v12"
       mapboxAccessToken={MAPBOX_TOKEN}
       onClick={() => setSelectedLocation(null)}
+      onMove={(evt) => {
+        const center = evt.viewState;
+        setMapCenter({ lat: center.latitude, lng: center.longitude });
+
+        // Update bounds for viewport-aware sorting
+        const map = mapRef.current?.getMap();
+        if (map) {
+          const bounds = map.getBounds();
+          setMapBounds({
+            north: bounds.getNorth(),
+            south: bounds.getSouth(),
+            east: bounds.getEast(),
+            west: bounds.getWest(),
+          });
+        }
+      }}
     >
       <NavigationControl position="top-right" />
 

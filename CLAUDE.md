@@ -2,6 +2,8 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+**IMPORTANT:** This file is maintained by the user and should remain clean and focused. Always ask permission before making changes to CLAUDE.md. For detailed architecture documentation, see [`architecture.md`](architecture.md).
+
 ## Project Overview
 
 An interactive, consumer-facing website where parents can vote on and express preferences for potential Alpha micro school locations. The application helps gather community input to inform site selection decisions.
@@ -113,33 +115,12 @@ See [`docs/schema-design.md`](docs/schema-design.md) for complete Supabase schem
 - Parent-suggested locations trigger scoring workflow
 - Low-scoring locations prompt parent assistance (zoning help, contacts)
 
-## Session State (2026-02-04)
+## Architecture
 
-**Current branch:** `main` (commit `95c36b3`)
+See [`architecture.md`](architecture.md) for detailed technical architecture including state management, data flow, and key integration points.
 
-**Accomplished this session:**
-- Fixed merge conflicts from pulling main branch (duplicate declarations in LocationsList, SuggestLocationModal, locations.ts)
-- Merged `addcities` branch into main with:
-  - 50 real locations from TX, FL, CA as offline mock data
-  - Geolocation-based initial map view (zoom to user if nearby locations within 50mi)
-  - Helper functions: `getInitialMapView()`, `findNearbyLocations()`, `US_CENTER`, `US_ZOOM`
-- Deployed merged changes to Vercel
 
 **Deployed:** https://parentpicker.vercel.app
-
-**Key commits:**
-- `bda90d6` - Fix merge conflicts from main branch pull
-- `95c36b3` - Merge addcities branch: geolocation + 50 real locations
-
-**Known state:**
-- Production site live with geolocation feature
-- Running in demo mode on Vercel (Supabase env vars not configured)
-- Address autocomplete working in search and suggest modal
-
-**Next steps:**
-- Configure Supabase env vars on Vercel for production auth/persistence
-- Connect Vercel to GitHub for auto-deploy (optional)
-- Test auth flow end-to-end in production
 
 ## File Structure
 

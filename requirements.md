@@ -183,6 +183,23 @@ Clicking a card selects that location.
 - [ ] `TC-4.4.3`: Selected card has elevated shadow
 - [ ] `TC-4.4.4`: Clicking card centers map on that location
 
+### REQ-4.5: Viewport-Aware Sorting
+The locations list sorts based on map viewport visibility.
+
+**Business Logic:**
+- Locations visible on the map viewport are sorted by votes (descending)
+- Locations outside the viewport are sorted by distance from map center (ascending)
+- Visible locations always appear first in the list, followed by non-visible locations
+- As users pan/zoom the map, the list reorders dynamically
+
+**Test Cases:**
+- [ ] `TC-4.5.1`: Locations visible in viewport appear at top of list
+- [ ] `TC-4.5.2`: Visible locations are sorted by vote count (highest first)
+- [ ] `TC-4.5.3`: Non-visible locations appear below visible ones
+- [ ] `TC-4.5.4`: Non-visible locations are sorted by distance to map center (closest first)
+- [ ] `TC-4.5.5`: List reorders when user pans map to show different locations
+- [ ] `TC-4.5.6`: List reorders when user zooms map to change viewport bounds
+
 ---
 
 ## 5. Voting System

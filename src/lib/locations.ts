@@ -75,9 +75,9 @@ export const mockLocations: Location[] = [
   { id: "01e6bac0-3285-4baf-a6f2-5c84af035cef", name: "260 S Raymond Ave", address: "260 S Raymond Ave", city: "Pasadena", state: "CA", lat: 34.141479, lng: -118.1485645, votes: 41 },
 ];
 
-// US center coordinates for initial view when no nearby locations
-export const US_CENTER = { lat: 39.8283, lng: -98.5795 };
-export const US_ZOOM = 4;
+// Austin TX - default location when user location unavailable
+export const AUSTIN_CENTER = { lat: 30.2672, lng: -97.7431 };
+export const AUSTIN_ZOOM = 10;
 
 // Threshold distance in miles to consider "nearby"
 const NEARBY_THRESHOLD_MILES = 50;
@@ -113,9 +113,9 @@ export function getInitialMapView(
   userLng: number | null,
   locations: Location[]
 ): { center: { lat: number; lng: number }; zoom: number } {
-  // If no user location, show US view
+  // If no user location, default to Austin TX
   if (userLat === null || userLng === null) {
-    return { center: US_CENTER, zoom: US_ZOOM };
+    return { center: AUSTIN_CENTER, zoom: AUSTIN_ZOOM };
   }
 
   // Check if there are nearby locations
@@ -126,8 +126,8 @@ export function getInitialMapView(
     return { center: { lat: userLat, lng: userLng }, zoom: 10 };
   }
 
-  // No nearby locations, show US view
-  return { center: US_CENTER, zoom: US_ZOOM };
+  // No nearby locations, default to Austin TX
+  return { center: AUSTIN_CENTER, zoom: AUSTIN_ZOOM };
 }
 
 export async function getLocations(): Promise<Location[]> {
