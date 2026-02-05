@@ -43,6 +43,12 @@ Duplicate the Sports Academy facilities map functionality:
 
 **Key Invariant:** Ship MVP before adding any v2 complexity.
 
+## Deployment
+
+**Vercel auto-deploy is broken** — Git integration has had issues connecting. Always deploy manually:
+1. Build and test locally first (`npm run dev`)
+2. When ready, deploy with `vercel --prod`
+
 
 **Key files:**
 - `requirements.md` - Complete requirements specification (137 test cases)
@@ -55,44 +61,38 @@ Duplicate the Sports Academy facilities map functionality:
 
 **Current branch:** `main`
 **Deployed:** https://parentpicker.vercel.app
+**Last commit:** `4f4b31d` — Add score display on location cards and map markers
+**Needs Vercel deploy:** Yes — run `vercel --prod`
 
-### Workstream 1: Auth + suggest location
+### Workstream 1: Auth + suggest location — DONE
 
-**Status:** DONE and deployed.
+### Workstream 2: Moody's listing data — DONE (ETL + scoring by separate agent)
 
-**Fixed this session:**
-- Magic link redirects fixed (Supabase dashboard redirect URLs with `/**` wildcards)
-- RLS policy fix: added `pp_users_can_view_own_suggestions` SELECT policy so INSERT RETURNING works for `pending_review` rows (the INSERT WITH CHECK passed but `.select().single()` failed because SELECT policy only allowed `status='active'`)
-- Auth gate on SuggestLocationModal (shows SignInPrompt when not signed in)
-- Supabase env vars (`NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`) configured on Vercel
-- Added `.vercelignore` to exclude `data/` and `*.zip` from deploys
+### Workstream 3: Score display — DONE
 
-### Workstream 2: Moody's listing data integration
+**What was built:**
+- `pp_location_scores` table (1:1 with `pp_locations`, FK cascade delete)
+- `sync_scores_from_listings()` SQL function — picks best overall_score per address from `real_estate_listings`, UPSERTs into `pp_location_scores`. Re-runnable.
+- 681 locations synced, 14 active locations have no scores
+- `pp_locations_with_votes` view updated to LEFT JOIN scores (18 score columns)
+- Old `score` column dropped from `pp_locations`
+- `ScoreBadge` component: overall score circle + 5 sub-score pills (Demographics, Price, Zoning, Neighborhood, Building) with external-link icons for report URLs
+- Score badges shown on LocationCard and map popup
+- Map markers colored by overall score (green/yellow/amber/red)
+- Mock data (50 locations) gets deterministic dummy scores via seeded PRNG
 
-**Status:** Data extracted, schema understood. Not yet integrated.
+**Known gaps (TODO in requirements.md):**
+- Price: 114 missing scores, 196 missing report URLs
+- Neighborhood: 49 missing scores, 112 missing URLs
+- Building: 30 missing scores, 66 missing URLs
+- 8 zoning URLs are empty strings in source data
+- These need to be filled by the scoring agent, then re-sync via `SELECT sync_scores_from_listings();`
 
-**Data location:** `data/Moody_s Data/` (gitignored, ~1.3GB total)
-
-| File | Records | Key Fields |
-|------|---------|------------|
-| `trilogy_property.csv` | 2.9M | lat/lng, address, city, state, zip, category (Retail/Office/Industrial), subcategory, building SF, lot acres, zoning, building class/floors |
-| `trilogy_listings.csv` | 1.3M | Joins via `property_source_key` — space type, availability status, available date, space size SF, lease terms/pricing |
-| `trilogy_property_performance_trend.csv` | 2.3M | Asking rent time series (monthly, per sqft by sector) |
-| `trilogy_property_contacts.csv` | 444K | Broker name, role, company per listing |
-| `trilogy_property_amenities.csv` | 10K | Property amenities |
-
-**Key join:** `property_source_key` links property → listings → contacts. `property_source_id` is an alternate key.
-
-**Schema updated:** `docs/schema-design.md` now has:
-- `pp_locations` — one row per property/address (map-visible entity). Added `property_source_key`, `category`, `subcategory`, `building_sf`, `lot_acres`, `zoning`, `building_class`, `num_floors`, `zip`, `county`. `score` = best listing score.
-- `pp_listings` (NEW) — multiple available spaces per property. Has `listed_space_key`, `space_size_sf`, `lease_rate_psf`, `availability_status`, `score`, `score_details`. Each listing scored independently; property shows best.
-- `pp_locations_with_votes` view — rolls up vote count + best listing info (count, score, SF, rate) per property.
-
-**Next steps for this workstream:**
-- Define filtering criteria for micro school candidates (category, size, availability, etc.)
-- Build ETL pipeline: filter Moody's CSVs → load into `pp_locations` + `pp_listings`
-- Design scoring model (zoning, size, proximity to families, rent)
-- Update app frontend types to include listing-derived fields
+### Pending / Next steps
+- Deploy to Vercel (need `vercel --prod` or set up auto-deploy)
+- Set up Vercel Git integration for auto-deploy on push
+- Fill missing scores in `real_estate_listings` (scoring agent, out of scope)
+- See `requirements.md` "Out of Scope (v2)" for remaining backlog
 
 ## File Structure
 
