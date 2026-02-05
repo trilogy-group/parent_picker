@@ -16,6 +16,11 @@ An interactive, consumer-facing website where parents can vote on and express pr
 - Reference implementation: https://sportsacademy.school/map/facilities (used by 30k parents for facility voting)
 - No humans on central team in the processing loop — design accordingly.
 
+## Terminology
+
+- **App tables** (`pp_*`): Tables owned by this app — `pp_locations`, `pp_votes`, `pp_location_scores`, etc. We control the schema and write to them.
+- **Upstream tables**: Tables populated by other agents/pipelines outside this repo — `real_estate_listings`, etc. We read from them but never write to them. Scores and report URLs originate here and get synced into app tables via `sync_scores_from_listings()`.
+
 ## Test-Driven Development
 
 - This project uses TDD. All requirements are documented in `requirements.md` with corresponding test cases.  
@@ -51,48 +56,105 @@ Duplicate the Sports Academy facilities map functionality:
 
 
 **Key files:**
-- `requirements.md` - Complete requirements specification (137 test cases)
+- `requirements.md` - Complete requirements specification (184 test cases)
 - `tests/requirements.test.py` - Automated Playwright test suite (45 implemented tests)
 - `feedback.md` - User feedback log with root cause analysis and corrective actions
 - `architecture.md` - Technical architecture, commands, tech stack, and file structure
 - `docs/brainlift-location-selection.md` - Location selection brainlift (scoring, zoning, parent override)
+- `sql/import_locations_from_upstream.sql` - SQL function to import from upstream
 
 ## Session State (2026-02-05)
 
 **Current branch:** `main`
 **Deployed:** https://parentpicker.vercel.app
-**Last commit:** `4f4b31d` — Add score display on location cards and map markers
-**Needs Vercel deploy:** Yes — run `vercel --prod`
+**Last deploy:** 2026-02-05 — includes admin workflow + pagination fix
+**Last commit:** `23fe488` (uncommitted: admin workflow + pagination fix)
 
 ### Workstream 1: Auth + suggest location — DONE
-
 ### Workstream 2: Moody's listing data — DONE (ETL + scoring by separate agent)
-
 ### Workstream 3: Score display — DONE
+### Workstream 4: Admin review workflow — DONE
 
 **What was built:**
-- `pp_location_scores` table (1:1 with `pp_locations`, FK cascade delete)
-- `sync_scores_from_listings()` SQL function — picks best overall_score per address from `real_estate_listings`, UPSERTs into `pp_location_scores`. Re-runnable.
-- 681 locations synced, 14 active locations have no scores
-- `pp_locations_with_votes` view updated to LEFT JOIN scores (18 score columns)
-- Old `score` column dropped from `pp_locations`
-- `ScoreBadge` component: overall score circle + 5 sub-score pills (Demographics, Price, Zoning, Neighborhood, Building) with external-link icons for report URLs
-- Score badges shown on LocationCard and map popup
-- Map markers colored by overall score (green/yellow/amber/red)
-- Mock data (50 locations) gets deterministic dummy scores via seeded PRNG
+- `/admin` page — review queue for parent-suggested locations
+- API routes: GET/approve/reject/sync-scores at `/api/admin/locations`
+- Server-side admin auth via `ADMIN_EMAILS` allowlist + service role client
+- Email notifications via Resend (approval + rejection with score tables)
+- Client-side email preview before sending (toggle approve/reject, show/hide)
+- `sync_scores_for_address()` SQL function with pg_trgm fuzzy matching
+- Admin emails: `andy.price@trilogy.com`, `neeraj.gupta@trilogy.com`
+- Requirements Section 17 (23 test cases)
 
-**Known gaps (TODO in requirements.md):**
-- Price: 114 missing scores, 196 missing report URLs
-- Neighborhood: 49 missing scores, 112 missing URLs
-- Building: 30 missing scores, 66 missing URLs
-- 8 zoning URLs are empty strings in source data
-- These need to be filled by the scoring agent, then re-sync via `SELECT sync_scores_from_listings();`
+**Key files:**
+- `src/app/admin/page.tsx` — admin review queue page
+- `src/components/AdminLocationCard.tsx` — card with pull-scores/approve/reject workflow
+- `src/app/api/admin/locations/` — API routes (GET, approve, reject, sync-scores)
+- `src/lib/supabase-admin.ts` — service role client
+- `src/lib/admin.ts` — admin auth verification
+- `src/lib/email.ts` — Resend email service
+- `docs/sql/sync_scores_for_address.sql` — SQL function source
+
+### Workstream 5: Upstream import fix — DONE
+
+**What was fixed:**
+- `import_locations_from_upstream()` was using `property_standardized_address` (~11% populated) instead of `address` (100% populated)
+- Fixed function now uses `address` column — matches `sync_scores_from_listings()` behavior
+- `/import-upstream` skill created (supports address, city, and "all" modes)
+
+### Workstream 6: Pagination fix — DONE
+
+**What was fixed:**
+- Supabase PostgREST enforces 1000-row max per request (ignores client `.limit()`)
+- `getLocations()` now paginates with `.range()` to fetch all 1900 locations
+- Without this, parent-suggested locations with 0 votes were cut off past row 1000
+
+### Location counts (1,900 active)
+
+| Metro | Locations |
+|-------|-----------|
+| New York, NY | 760 |
+| Brooklyn, NY | 218 |
+| Boca Raton, FL | 105 |
+| West Palm Beach, FL | 100 |
+| Austin, TX | 49 |
+| Dallas, TX | 33 |
+| All others | 635 |
+
+### Score coverage (734 of 1,900 scored — 39%)
+
+1,166 locations have no scores at all (all newly imported `upstream` source — `overall_score` is NULL in `real_estate_listings` for these). Scoring agent needs to run on them.
+
+**Among the 734 scored locations:**
+
+| Sub-score | Missing Score | Missing Report URL |
+|-----------|--------------|-------------------|
+| Overall | 0 | 70 |
+| Demographics | 6 | 17 |
+| Price | **140** | **222** |
+| Zoning | 3 | 59 |
+| Neighborhood | 50 | 114 |
+| Building | 33 | 69 |
+
+To re-sync after scoring agent fills gaps: `SELECT sync_scores_from_listings();`
+
+### Uncommitted changes
+
+All admin workflow files + pagination fix are deployed to Vercel but **not committed to git**. Files:
+- New: `src/app/admin/`, `src/app/api/`, `src/components/AdminLocationCard.tsx`, `src/lib/admin.ts`, `src/lib/email.ts`, `src/lib/supabase-admin.ts`, `docs/sql/`, `sql/`
+- Modified: `src/lib/locations.ts` (pagination), `src/types/index.ts` (AdminLocation), `requirements.md` (Section 17), `package.json` (resend dep)
 
 ### Pending / Next steps
-- Deploy to Vercel (need `vercel --prod` or set up auto-deploy)
-- Set up Vercel Git integration for auto-deploy on push
-- Fill missing scores in `real_estate_listings` (scoring agent, out of scope)
+- Commit all uncommitted changes to git
+- Scoring agent needs to score 1,166 unscored locations in `real_estate_listings`
+- Fill sub-score gaps (especially Price: 140 missing) for the 734 already-scored locations
+- Vercel env vars already set: `SUPABASE_SERVICE_ROLE_KEY`, `RESEND_API_KEY`, `ADMIN_EMAILS`, `NEXT_PUBLIC_ADMIN_EMAILS`
 - See `requirements.md` "Out of Scope (v2)" for remaining backlog
+
+## SQL Functions (in Supabase)
+
+- `sync_scores_from_listings()` — bulk sync all scores from upstream
+- `sync_scores_for_address(target_address)` — single-address score sync (used by admin pull-scores)
+- `import_locations_from_upstream(city_names[], state_code)` — import locations from upstream by city/state
 
 ## File Structure
 
