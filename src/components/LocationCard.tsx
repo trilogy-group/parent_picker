@@ -3,6 +3,7 @@
 import { MapPin } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { VoteButton } from "./VoteButton";
+import { ScoreBadge } from "./ScoreBadge";
 import { Location } from "@/types";
 import { cn } from "@/lib/utils";
 
@@ -53,6 +54,7 @@ export function LocationCard({
               Parent Suggested
             </span>
           )}
+          <ScoreBadge scores={location.scores} />
         </div>
         <VoteButton
           votes={location.votes}

@@ -1,5 +1,94 @@
-import { Location } from "@/types";
+import { Location, LocationScores } from "@/types";
 import { supabase, isSupabaseConfigured } from "./supabase";
+
+// Generate a color from a 0-1 sub-score
+function colorFromScore(score: number | null): string | null {
+  if (score === null) return null;
+  if (score >= 0.75) return "GREEN";
+  if (score >= 0.5) return "YELLOW";
+  if (score >= 0.25) return "AMBER";
+  return "RED";
+}
+
+// Generate a color from a 0-100 overall score
+function colorFromOverall(score: number | null): string | null {
+  if (score === null) return null;
+  if (score >= 75) return "GREEN";
+  if (score >= 50) return "YELLOW";
+  if (score >= 25) return "AMBER";
+  return "RED";
+}
+
+// Seeded pseudo-random for deterministic mock scores
+function seededRandom(seed: number): () => number {
+  let s = seed;
+  return () => {
+    s = (s * 16807 + 0) % 2147483647;
+    return s / 2147483647;
+  };
+}
+
+// Generate deterministic mock scores from a location index
+function mockScores(index: number): LocationScores {
+  const rand = seededRandom(index * 7919 + 42);
+  const demo = Math.round(rand() * 100) / 100;
+  const price = Math.round(rand() * 100) / 100;
+  const zoning = Math.round(rand() * 100) / 100;
+  const nbhd = Math.round(rand() * 100) / 100;
+  const bldg = Math.round(rand() * 100) / 100;
+  const overall = Math.round((demo * 20 + price * 20 + zoning * 20 + nbhd * 20 + bldg * 20) * 100) / 100;
+  return {
+    overall,
+    overallColor: colorFromOverall(overall),
+    overallDetailsUrl: null,
+    demographics: { score: demo, color: colorFromScore(demo), detailsUrl: null },
+    price: { score: price, color: colorFromScore(price), detailsUrl: null },
+    zoning: { score: zoning, color: colorFromScore(zoning), detailsUrl: null },
+    neighborhood: { score: nbhd, color: colorFromScore(nbhd), detailsUrl: null },
+    building: { score: bldg, color: colorFromScore(bldg), detailsUrl: null },
+  };
+}
+
+// Map Supabase view row to LocationScores
+function mapRowToScores(row: Record<string, unknown>): LocationScores | undefined {
+  if (row.overall_score == null) return undefined;
+  const overall = Number(row.overall_score);
+  const demo = row.demographics_score != null ? Number(row.demographics_score) : null;
+  const price = row.price_score != null ? Number(row.price_score) : null;
+  const zoning = row.zoning_score != null ? Number(row.zoning_score) : null;
+  const nbhd = row.neighborhood_score != null ? Number(row.neighborhood_score) : null;
+  const bldg = row.building_score != null ? Number(row.building_score) : null;
+  return {
+    overall,
+    overallColor: (row.overall_color as string) || colorFromOverall(overall),
+    overallDetailsUrl: (row.overall_details_url as string) || null,
+    demographics: {
+      score: demo,
+      color: (row.demographics_color as string) || colorFromScore(demo),
+      detailsUrl: (row.demographics_details_url as string) || null,
+    },
+    price: {
+      score: price,
+      color: (row.price_color as string) || colorFromScore(price),
+      detailsUrl: (row.price_details_url as string) || null,
+    },
+    zoning: {
+      score: zoning,
+      color: (row.zoning_color as string) || colorFromScore(zoning),
+      detailsUrl: (row.zoning_details_url as string) || null,
+    },
+    neighborhood: {
+      score: nbhd,
+      color: (row.neighborhood_color as string) || colorFromScore(nbhd),
+      detailsUrl: (row.neighborhood_details_url as string) || null,
+    },
+    building: {
+      score: bldg,
+      color: (row.building_color as string) || colorFromScore(bldg),
+      detailsUrl: (row.building_details_url as string) || null,
+    },
+  };
+}
 
 // Mock data for testing when Supabase is not configured
 // 50 real locations from TX, FL, and CA
@@ -73,7 +162,7 @@ export const mockLocations: Location[] = [
 
   // California - LA/Pasadena
   { id: "01e6bac0-3285-4baf-a6f2-5c84af035cef", name: "260 S Raymond Ave", address: "260 S Raymond Ave", city: "Pasadena", state: "CA", lat: 34.141479, lng: -118.1485645, votes: 41 },
-];
+].map((loc, i) => ({ ...loc, scores: mockScores(i) }));
 
 // Austin TX - default location when user location unavailable
 export const AUSTIN_CENTER = { lat: 30.2672, lng: -97.7431 };
@@ -158,6 +247,7 @@ export async function getLocations(): Promise<Location[]> {
       lng: Number(row.lng),
       votes: row.votes,
       suggested: row.source === "parent_suggested",
+      scores: mapRowToScores(row),
     }));
   } catch (error) {
     console.error("Failed to fetch locations:", error);

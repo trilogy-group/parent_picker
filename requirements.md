@@ -340,13 +340,13 @@ Locations have a defined data structure.
 - [ ] `TC-9.1.8`: Location has votes (number, ≥0)
 - [ ] `TC-9.1.9`: Location has suggested (boolean, optional)
 
-### REQ-9.2: Mock Data (MVP)
-MVP uses mock data; Supabase integration is deferred to v2.
+### REQ-9.2: Supabase Data Layer
+Primary data source is Supabase (pp_locations, pp_votes, pp_listings tables). Mock data provides offline fallback when Supabase env vars are not configured.
 
 **Test Cases:**
-- [ ] `TC-9.2.1`: App loads with at least 5 mock locations
-- [ ] `TC-9.2.2`: Mock locations are in Austin, TX area
-- [ ] `TC-9.2.3`: Mock locations have varied vote counts
+- [ ] `TC-9.2.1`: App loads locations from Supabase pp_locations_with_votes view
+- [ ] `TC-9.2.2`: App falls back to mock data when Supabase is not configured
+- [ ] `TC-9.2.3`: Mock fallback loads with at least 5 locations with varied vote counts
 
 ### REQ-9.3: State Management
 Application state is managed with Zustand.
@@ -510,6 +510,35 @@ All mock location coordinates are accurate to their addresses.
 
 ---
 
+## 16. Authentication
+
+### REQ-16.1: Magic Link Sign-In
+Users authenticate via Supabase magic link (passwordless email).
+
+**Test Cases:**
+- [ ] `TC-16.1.1`: Sign-in prompt appears when unauthenticated user attempts a gated action
+- [ ] `TC-16.1.2`: User can enter email and receive a magic link
+- [ ] `TC-16.1.3`: Clicking magic link signs user in and redirects back to app
+- [ ] `TC-16.1.4`: Auth state persists across page refreshes (session cookie)
+
+### REQ-16.2: Auth-Gated Actions
+Certain actions require authentication.
+
+**Test Cases:**
+- [ ] `TC-16.2.1`: Voting requires sign-in
+- [ ] `TC-16.2.2`: Suggesting a location requires sign-in
+- [ ] `TC-16.2.3`: Unauthenticated users can browse locations and map freely
+
+### REQ-16.3: Persistent Votes
+Votes are stored per-user in Supabase with row-level security.
+
+**Test Cases:**
+- [ ] `TC-16.3.1`: Votes persist across sessions for authenticated users
+- [ ] `TC-16.3.2`: Users can only modify their own votes (RLS enforced)
+- [ ] `TC-16.3.3`: Vote counts aggregate across all users
+
+---
+
 ## Test Execution Summary
 
 | Category | Total Tests | Passing | Failing |
@@ -529,7 +558,8 @@ All mock location coordinates are accurate to their addresses.
 | Environment | 3 | - | - |
 | Tech Stack | 8 | - | - |
 | Address Autocomplete & Geocoding | 14 | - | - |
-| **TOTAL** | **151** | - | - |
+| Authentication | 10 | - | - |
+| **TOTAL** | **161** | - | - |
 
 ---
 
@@ -538,13 +568,30 @@ All mock location coordinates are accurate to their addresses.
 | Version | Date | Changes |
 |---------|------|---------|
 | 1.0.0 | 2024-02-04 | Initial MVP requirements |
+| 1.1.0 | 2026-02-05 | Added auth requirements (Section 16), updated data layer to reflect Supabase integration, aligned v2 scope with location selection brainlift |
 
 ---
 
 ## Out of Scope (v2 - Future)
 
-- Supabase database integration
-- User authentication
-- Location scoring workflow
-- Parent assistance solicitation for low-scoring locations
-- Persistent vote storage (currently session-only)
+See `docs/brainlift-location-selection.md` for full strategic context.
+
+- **Moody's data ETL:** Filter commercial RE listings by size tier (Micro 2.5-7.5K SF, Growth 15-50K SF, Flagship 50-150K SF) and load into pp_locations + pp_listings
+- **Location and Zoning scoring:** Enrollment Score (ES), Wealth Score (WS), and Relative Scores per brainlift thresholds (>2,500 ideal, <1,250 exclude); Microschools require zoned-by-right; larger schools accept CUP/SUP; reject if school use prohibited
+- **Score display:** ~~Show consumer-level scoring on location cards~~ DONE — synced from `real_estate_listings` into `pp_location_scores`, displayed on cards and map popups
+- **TODO: Fill missing scores in source data.** Current gaps across 681 scored locations (14 active locations have no scores at all):
+
+  | Sub-score | Missing Score | Missing Report URL |
+  |-----------|--------------|-------------------|
+  | Overall | 0 | 70 |
+  | Demographics | 3 | 14 |
+  | Price | **114** | **196** |
+  | Zoning | 0 | 56 |
+  | Neighborhood | 49 | 112 |
+  | Building | 30 | 66 |
+
+  Price is the biggest gap (114 missing scores, 196 missing report links). Neighborhood and Building are next. These need to be filled by the scoring agent in `real_estate_listings`, then re-synced via `SELECT sync_scores_from_listings();`.
+- **Scoring trigger:** Auto-score when parent suggests a location (separate agent)
+- **Parent assistance solicitation:** Low-scoring locations prompt parents for help (zoning contacts, local knowledge, capacity commitments)
+- **Admin review workflow:** UI to review/approve parent-suggested locations (RLS and status field already in place)
+- **Dealing with listings:** Right now we are only showing the best score per listing, and our scheme only supports having one. This should be addressed eventually, though scores don't vary much at the same location so we punted for now.

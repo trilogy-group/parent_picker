@@ -3,6 +3,7 @@
 import { useEffect, useRef, useCallback, useState } from "react";
 import Map, { Marker, NavigationControl, Popup } from "react-map-gl/mapbox";
 import { MapPin } from "lucide-react";
+import { ScoreBadge } from "./ScoreBadge";
 import { useVotesStore } from "@/lib/votes";
 import { getInitialMapView, AUSTIN_CENTER, AUSTIN_ZOOM } from "@/lib/locations";
 import { Location } from "@/types";
@@ -36,6 +37,14 @@ function LocationMarker({ location, isSelected, onClick }: LocationMarkerProps) 
           className={`w-4 h-4 rounded-full border-2 border-white shadow-md ${
             isSelected
               ? "bg-blue-600"
+              : location.scores?.overallColor === "GREEN"
+              ? "bg-green-500"
+              : location.scores?.overallColor === "YELLOW"
+              ? "bg-yellow-400"
+              : location.scores?.overallColor === "AMBER"
+              ? "bg-amber-500"
+              : location.scores?.overallColor === "RED"
+              ? "bg-red-500"
               : location.suggested
               ? "bg-amber-500"
               : "bg-slate-600"
@@ -230,6 +239,7 @@ export function MapView() {
             <p className="text-xs text-muted-foreground">
               {selectedLocation.address}
             </p>
+            <ScoreBadge scores={selectedLocation.scores} />
           </div>
         </Popup>
       )}

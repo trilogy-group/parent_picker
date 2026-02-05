@@ -11,13 +11,10 @@ An interactive, consumer-facing website where parents can vote on and express pr
 
 ## Key Context
 
-- Scaling Alpha School (Stanford of K-12, www.alpha.school) and affiliates to hundreds/thousands of locations
-  - Scale requires humans in the loop (other than distributed parents as described). 
-  - Humans on central team and feedback / processing loops will not be allowed, design accordingly.
-- Real estate expertise (sourcing, zoning, permitting) is hyper-local
-- Excited prospective Alpha parents have most local expertise, network, and capability and this site should leverage this.
-- Reference implementation: https://sportsacademy.school/map/facilities (used by 30k parents for facility voting)
+**Read `docs/brainlift-location-selection.md` — it is critical context** for understanding Alpha's location strategy, scoring criteria (Enrollment Score, Wealth Score), zoning rules, size tiers, and parent override logic.
 
+- Reference implementation: https://sportsacademy.school/map/facilities (used by 30k parents for facility voting)
+- No humans on central team in the processing loop — design accordingly.
 
 ## Test-Driven Development
 
@@ -52,6 +49,7 @@ Duplicate the Sports Academy facilities map functionality:
 - `tests/requirements.test.py` - Automated Playwright test suite (45 implemented tests)
 - `feedback.md` - User feedback log with root cause analysis and corrective actions
 - `architecture.md` - Technical architecture, commands, tech stack, and file structure
+- `docs/brainlift-location-selection.md` - Location selection brainlift (scoring, zoning, parent override)
 
 ## Session State (2026-02-05)
 
