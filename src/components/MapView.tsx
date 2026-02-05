@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useRef, useCallback, useState } from "react";
+import React, { useEffect, useRef, useCallback, useState } from "react";
 import Map, { Marker, NavigationControl, Popup } from "react-map-gl/mapbox";
 import { MapPin } from "lucide-react";
 import { ScoreBadge } from "./ScoreBadge";
 import { useVotesStore } from "@/lib/votes";
+import { useShallow } from "zustand/react/shallow";
 import { getInitialMapView, AUSTIN_CENTER, AUSTIN_ZOOM } from "@/lib/locations";
 import { Location } from "@/types";
 import "mapbox-gl/dist/mapbox-gl.css";
@@ -17,7 +18,7 @@ interface LocationMarkerProps {
   onClick: () => void;
 }
 
-function LocationMarker({ location, isSelected, onClick }: LocationMarkerProps) {
+const LocationMarker = React.memo(function LocationMarker({ location, isSelected, onClick }: LocationMarkerProps) {
   return (
     <Marker
       latitude={location.lat}
@@ -53,13 +54,24 @@ function LocationMarker({ location, isSelected, onClick }: LocationMarkerProps) 
       </div>
     </Marker>
   );
-}
+});
 
 export function MapView() {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const mapRef = useRef<any>(null);
   const { filteredLocations, selectedLocationId, setSelectedLocation, locations, flyToTarget, setFlyToTarget, previewLocation, setMapCenter, setMapBounds, setReferencePoint } =
-    useVotesStore();
+    useVotesStore(useShallow((s) => ({
+      filteredLocations: s.filteredLocations,
+      selectedLocationId: s.selectedLocationId,
+      setSelectedLocation: s.setSelectedLocation,
+      locations: s.locations,
+      flyToTarget: s.flyToTarget,
+      setFlyToTarget: s.setFlyToTarget,
+      previewLocation: s.previewLocation,
+      setMapCenter: s.setMapCenter,
+      setMapBounds: s.setMapBounds,
+      setReferencePoint: s.setReferencePoint,
+    })));
 
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [geoResolved, setGeoResolved] = useState(() => {
@@ -197,7 +209,7 @@ export function MapView() {
       mapStyle="mapbox://styles/mapbox/streets-v12"
       mapboxAccessToken={MAPBOX_TOKEN}
       onClick={() => setSelectedLocation(null)}
-      onMove={(evt) => {
+      onMoveEnd={(evt) => {
         const center = evt.viewState;
         setMapCenter({ lat: center.latitude, lng: center.longitude });
 
