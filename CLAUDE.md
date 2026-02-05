@@ -115,24 +115,34 @@ See [`docs/schema-design.md`](docs/schema-design.md) for complete Supabase schem
 
 ## Session State (2026-02-04)
 
+**Current branch:** `addcities`
+
 **Accomplished this session:**
-- Implemented Supabase Auth with magic link sign-in
-- Added persistent votes (pp_votes table) with optimistic updates + rollback
-- Added persistent suggestions (pp_locations table) with Mapbox geocoding
-- Added offline/demo mode fallback when Supabase not configured
+- Added 50 real locations from TX, FL, CA (fetched from Supabase) as offline mock data
+- Implemented geolocation-based initial map view:
+  - Requests browser geolocation on mount
+  - If user location found + nearby listings within 50 miles → zoom to user (level 10)
+  - Otherwise → show US-level view (zoom 4)
+- Added helper functions in `locations.ts`: `getInitialMapView()`, `findNearbyLocations()`, `US_CENTER`, `US_ZOOM`
+- Updated `MapView.tsx` with geolocation request and initial view logic
+
+**Previous session (main branch):**
+- Supabase Auth with magic link sign-in
+- Persistent votes (pp_votes table) with optimistic updates + rollback
+- Persistent suggestions (pp_locations table) with Mapbox geocoding
+- Offline/demo mode fallback when Supabase not configured
 - Deployed to Vercel via `npx vercel --prod`
 
-**Committed:** `d1238b5` - "Add Supabase auth with magic link + persistent votes"
-
 **Known state:**
-- Vercel deployment working (https://parentpicker.vercel.app)
-- If Supabase env vars not set on Vercel, shows "Demo Mode" with 8 mock Austin locations
-- Need to configure Supabase env vars on Vercel for production auth/persistence
+- `addcities` branch has uncommitted changes for geolocation feature
+- Dev server working at http://localhost:3000
+- Geolocation prompts user on page load, then flies to appropriate view
 
 **Next steps:**
-- Configure NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY on Vercel
-- Verify auth flow works end-to-end in production
-- Consider connecting Vercel to GitHub for auto-deploy
+- Test geolocation in different scenarios (allow/deny, various locations)
+- Commit `addcities` branch changes
+- Merge to main and deploy to Vercel
+- Configure Supabase env vars on Vercel for production auth/persistence
 
 ## File Structure
 
