@@ -60,13 +60,14 @@ Duplicate the Sports Academy facilities map functionality:
 
 ### Workstream 1: Auth + suggest location
 
-**Status:** DONE. Magic link auth working, suggest location persists to DB.
+**Status:** DONE and deployed.
 
-**Fixed:**
+**Fixed this session:**
 - Magic link redirects fixed (Supabase dashboard redirect URLs with `/**` wildcards)
-- RLS policy fix: added `pp_users_can_view_own_suggestions` SELECT policy so INSERT RETURNING works for `pending_review` rows
+- RLS policy fix: added `pp_users_can_view_own_suggestions` SELECT policy so INSERT RETURNING works for `pending_review` rows (the INSERT WITH CHECK passed but `.select().single()` failed because SELECT policy only allowed `status='active'`)
 - Auth gate on SuggestLocationModal (shows SignInPrompt when not signed in)
-- Supabase env vars need configuring on Vercel for production auth
+- Supabase env vars (`NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`) configured on Vercel
+- Added `.vercelignore` to exclude `data/` and `*.zip` from deploys
 
 ### Workstream 2: Moody's listing data integration
 
