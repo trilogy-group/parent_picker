@@ -16,6 +16,8 @@ import { useVotesStore } from "@/lib/votes";
 import { suggestLocation } from "@/lib/locations";
 import { AddressAutocomplete } from "./AddressAutocomplete";
 import { GeocodingResult, geocodeAddress } from "@/lib/geocoding";
+import { useAuth } from "./AuthProvider";
+import { SignInPrompt } from "./SignInPrompt";
 
 export function SuggestLocationModal() {
   const [open, setOpen] = useState(false);
@@ -37,6 +39,11 @@ export function SuggestLocationModal() {
     setCoordinates({ lat: result.lat, lng: result.lng });
     setPreviewLocation({ lat: result.lat, lng: result.lng, address: result.address });
   };
+  const { addLocation, setSelectedLocation, userId } = useVotesStore();
+  const { user, isOfflineMode } = useAuth();
+
+  // In offline mode, allow suggestions without auth (local-only)
+  const canSuggest = isOfflineMode || !!user;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

@@ -10,6 +10,7 @@ interface LocationCardProps {
   location: Location;
   isSelected: boolean;
   hasVoted: boolean;
+  isAuthenticated: boolean;
   onSelect: () => void;
   onVote: () => void;
   onUnvote: () => void;
@@ -19,6 +20,7 @@ export function LocationCard({
   location,
   isSelected,
   hasVoted,
+  isAuthenticated,
   onSelect,
   onVote,
   onUnvote,
@@ -51,6 +53,7 @@ export function LocationCard({
         <VoteButton
           votes={location.votes}
           hasVoted={hasVoted}
+          isAuthenticated={isAuthenticated}
           onVote={onVote}
           onUnvote={onUnvote}
         />

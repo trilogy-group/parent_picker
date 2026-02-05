@@ -2,7 +2,7 @@
 
 import { create } from "zustand";
 import { Location } from "@/types";
-import { mockLocations } from "./locations";
+import { supabase, isSupabaseConfigured } from "./supabase";
 
 interface VotesState {
   locations: Location[];
@@ -11,6 +11,8 @@ interface VotesState {
   searchQuery: string;
   flyToTarget: { lat: number; lng: number } | null;
   previewLocation: { lat: number; lng: number; address: string } | null;
+  isLoading: boolean;
+  userId: string | null;
   setLocations: (locations: Location[]) => void;
   addLocation: (location: Location) => void;
   vote: (locationId: string) => void;
@@ -19,47 +21,130 @@ interface VotesState {
   setSearchQuery: (query: string) => void;
   setFlyToTarget: (coords: { lat: number; lng: number } | null) => void;
   setPreviewLocation: (preview: { lat: number; lng: number; address: string } | null) => void;
+  setLoading: (loading: boolean) => void;
+  setUserId: (id: string | null) => void;
+  loadUserVotes: (userId: string) => Promise<void>;
+  clearUserVotes: () => void;
   filteredLocations: () => Location[];
 }
 
 export const useVotesStore = create<VotesState>((set, get) => ({
-  locations: mockLocations,
+  locations: [],
   votedLocationIds: new Set<string>(),
   selectedLocationId: null,
   searchQuery: "",
   flyToTarget: null,
   previewLocation: null,
+  isLoading: true,
+  userId: null,
 
-  setLocations: (locations) => set({ locations }),
+  setLocations: (locations) => set({ locations, isLoading: false }),
+
+  setLoading: (isLoading) => set({ isLoading }),
+
+  setUserId: (userId) => set({ userId }),
+
+  loadUserVotes: async (userId: string) => {
+    // Skip if Supabase is not configured
+    if (!isSupabaseConfigured || !supabase) {
+      return;
+    }
+
+    try {
+      const { data, error } = await supabase
+        .from("pp_votes")
+        .select("location_id")
+        .eq("user_id", userId);
+
+      if (error) {
+        console.error("Error loading user votes:", error);
+        return;
+      }
+
+      const votedIds = new Set(data.map((v) => v.location_id));
+      set({ votedLocationIds: votedIds });
+    } catch (error) {
+      console.error("Failed to load user votes:", error);
+    }
+  },
+
+  clearUserVotes: () => set({ votedLocationIds: new Set<string>() }),
 
   addLocation: (location) =>
     set((state) => ({
       locations: [...state.locations, location],
     })),
 
-  vote: (locationId) =>
-    set((state) => {
-      if (state.votedLocationIds.has(locationId)) return state;
-      return {
-        locations: state.locations.map((loc) =>
-          loc.id === locationId ? { ...loc, votes: loc.votes + 1 } : loc
-        ),
-        votedLocationIds: new Set([...state.votedLocationIds, locationId]),
-      };
-    }),
+  vote: (locationId) => {
+    const state = get();
+    if (state.votedLocationIds.has(locationId)) return;
 
-  unvote: (locationId) =>
-    set((state) => {
-      if (!state.votedLocationIds.has(locationId)) return state;
-      const newVotedIds = new Set(state.votedLocationIds);
-      newVotedIds.delete(locationId);
-      return {
-        locations: state.locations.map((loc) =>
-          loc.id === locationId ? { ...loc, votes: Math.max(0, loc.votes - 1) } : loc
-        ),
-        votedLocationIds: newVotedIds,
-      };
-    }),
+    // Optimistic update
+    set({
+      locations: state.locations.map((loc) =>
+        loc.id === locationId ? { ...loc, votes: loc.votes + 1 } : loc
+      ),
+      votedLocationIds: new Set([...state.votedLocationIds, locationId]),
+    });
+
+    // Persist to database if logged in and Supabase is configured
+    if (state.userId && isSupabaseConfigured && supabase) {
+      supabase
+        .from("pp_votes")
+        .insert({ location_id: locationId, user_id: state.userId })
+        .then(({ error }) => {
+          if (error) {
+            console.error("Error persisting vote:", error);
+            // Rollback on error
+            set({
+              locations: get().locations.map((loc) =>
+                loc.id === locationId ? { ...loc, votes: loc.votes - 1 } : loc
+              ),
+              votedLocationIds: new Set(
+                [...get().votedLocationIds].filter((id) => id !== locationId)
+              ),
+            });
+          }
+        });
+    }
+  },
+
+  unvote: (locationId) => {
+    const state = get();
+    if (!state.votedLocationIds.has(locationId)) return;
+
+    const newVotedIds = new Set(state.votedLocationIds);
+    newVotedIds.delete(locationId);
+
+    // Optimistic update
+    set({
+      locations: state.locations.map((loc) =>
+        loc.id === locationId ? { ...loc, votes: Math.max(0, loc.votes - 1) } : loc
+      ),
+      votedLocationIds: newVotedIds,
+    });
+
+    // Persist to database if logged in and Supabase is configured
+    if (state.userId && isSupabaseConfigured && supabase) {
+      supabase
+        .from("pp_votes")
+        .delete()
+        .eq("location_id", locationId)
+        .eq("user_id", state.userId)
+        .then(({ error }) => {
+          if (error) {
+            console.error("Error removing vote:", error);
+            // Rollback on error
+            set({
+              locations: get().locations.map((loc) =>
+                loc.id === locationId ? { ...loc, votes: loc.votes + 1 } : loc
+              ),
+              votedLocationIds: new Set([...get().votedLocationIds, locationId]),
+            });
+          }
+        });
+    }
+  },
 
   setSelectedLocation: (id) => set({ selectedLocationId: id }),
 

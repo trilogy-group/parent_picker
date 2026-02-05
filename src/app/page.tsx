@@ -1,16 +1,22 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { ChevronUp, ChevronDown } from "lucide-react";
 import { Map } from "@/components/Map";
 import { LocationsList } from "@/components/LocationsList";
 import { SuggestLocationModal } from "@/components/SuggestLocationModal";
+import { AuthButton } from "@/components/AuthButton";
 import { useVotesStore } from "@/lib/votes";
+import { getLocations } from "@/lib/locations";
 
 export default function Home() {
   const [panelExpanded, setPanelExpanded] = useState(false);
-  const { locations } = useVotesStore();
+  const { locations, setLocations } = useVotesStore();
   const totalVotes = locations.reduce((sum, loc) => sum + loc.votes, 0);
+
+  useEffect(() => {
+    getLocations().then(setLocations);
+  }, [setLocations]);
 
   return (
     <div className="relative h-screen w-screen overflow-hidden">
@@ -23,11 +29,14 @@ export default function Home() {
       <div className="hidden lg:flex flex-col absolute top-4 left-4 bottom-4 w-[380px] bg-blue-600 rounded-xl shadow-2xl overflow-hidden">
         {/* Panel Header */}
         <div className="p-5 text-white">
-          <div className="flex items-center gap-2 mb-1">
-            <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
-              <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
-            </svg>
-            <h1 className="text-xl font-bold">Alpha School Locations</h1>
+          <div className="flex items-center justify-between mb-1">
+            <div className="flex items-center gap-2">
+              <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
+              </svg>
+              <h1 className="text-xl font-bold">Alpha School Locations</h1>
+            </div>
+            <AuthButton />
           </div>
           <p className="text-blue-100 text-sm">
             Help us find the best locations for new micro schools
