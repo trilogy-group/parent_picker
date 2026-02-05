@@ -9,8 +9,8 @@ export const mockLocations: Location[] = [
     address: "401 Congress Ave",
     city: "Austin",
     state: "TX",
-    lat: 30.2672,
-    lng: -97.7431,
+    lat: 30.266595,
+    lng: -97.74291,
     votes: 42,
   },
   {
@@ -19,9 +19,9 @@ export const mockLocations: Location[] = [
     address: "2110 S Lamar Blvd",
     city: "Austin",
     state: "TX",
-    lat: 30.2465,
-    lng: -97.7729,
-    votes: 38,
+    lat: 30.276329,
+    lng: -97.803671,
+    votes: 28,
   },
   {
     id: "3",
@@ -29,8 +29,8 @@ export const mockLocations: Location[] = [
     address: "4550 Mueller Blvd",
     city: "Austin",
     state: "TX",
-    lat: 30.2986,
-    lng: -97.7025,
+    lat: 30.508723,
+    lng: -97.677449,
     votes: 35,
   },
   {
@@ -39,9 +39,9 @@ export const mockLocations: Location[] = [
     address: "1 Dell Way",
     city: "Round Rock",
     state: "TX",
-    lat: 30.5083,
-    lng: -97.6789,
-    votes: 29,
+    lat: 30.519457,
+    lng: -97.823892,
+    votes: 19,
   },
   {
     id: "5",
@@ -49,9 +49,9 @@ export const mockLocations: Location[] = [
     address: "1890 Ranch Shopping Center",
     city: "Cedar Park",
     state: "TX",
-    lat: 30.5217,
-    lng: -97.8200,
-    votes: 24,
+    lat: 30.247488,
+    lng: -97.750453,
+    votes: 56,
   },
   {
     id: "6",
@@ -59,8 +59,8 @@ export const mockLocations: Location[] = [
     address: "11410 Century Oaks Terrace",
     city: "Austin",
     state: "TX",
-    lat: 30.4021,
-    lng: -97.7253,
+    lat: 30.297248,
+    lng: -97.707322,
     votes: 31,
   },
   {
@@ -69,9 +69,9 @@ export const mockLocations: Location[] = [
     address: "4000 Galleria Pkwy",
     city: "Bee Cave",
     state: "TX",
-    lat: 30.3080,
-    lng: -97.9420,
-    votes: 18,
+    lat: 30.347183,
+    lng: -97.968561,
+    votes: 23,
   },
   {
     id: "8",
@@ -79,10 +79,9 @@ export const mockLocations: Location[] = [
     address: "1200 E Pecan St",
     city: "Pflugerville",
     state: "TX",
-    lat: 30.4393,
-    lng: -97.6200,
-    votes: 22,
-    suggested: true,
+    lat: 30.43919,
+    lng: -97.61993,
+    votes: 17,
   },
 ];
 
@@ -159,8 +158,8 @@ export async function suggestLocation(
   address: string,
   city: string,
   state: string,
-  notes?: string,
-  userId?: string
+  _notes?: string,
+  coordinates?: { lat: number; lng: number } | null
 ): Promise<Location> {
   // Geocode the address
   const coords = await geocodeAddress(address, city, state);
@@ -219,8 +218,8 @@ export async function suggestLocation(
     address,
     city,
     state,
-    lat,
-    lng,
+    lat: coordinates?.lat ?? 30.2672, // Fallback to Austin center if no coordinates
+    lng: coordinates?.lng ?? -97.7431,
     votes: 0,
     suggested: true,
   };

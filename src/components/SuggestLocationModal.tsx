@@ -14,6 +14,8 @@ import {
 import { Input } from "@/components/ui/input";
 import { useVotesStore } from "@/lib/votes";
 import { suggestLocation } from "@/lib/locations";
+import { AddressAutocomplete } from "./AddressAutocomplete";
+import { GeocodingResult, geocodeAddress } from "@/lib/geocoding";
 import { useAuth } from "./AuthProvider";
 import { SignInPrompt } from "./SignInPrompt";
 
@@ -23,8 +25,20 @@ export function SuggestLocationModal() {
   const [city, setCity] = useState("");
   const [state, setState] = useState("");
   const [notes, setNotes] = useState("");
+  const [coordinates, setCoordinates] = useState<{
+    lat: number;
+    lng: number;
+  } | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  const { addLocation, setSelectedLocation, setPreviewLocation } = useVotesStore();
+
+  const handleAddressSelect = (result: GeocodingResult) => {
+    setCity(result.city);
+    setState(result.state);
+    setCoordinates({ lat: result.lat, lng: result.lng });
+    setPreviewLocation({ lat: result.lat, lng: result.lng, address: result.address });
+  };
   const { addLocation, setSelectedLocation, userId } = useVotesStore();
   const { user, isOfflineMode } = useAuth();
 
@@ -37,120 +51,125 @@ export function SuggestLocationModal() {
 
     setIsSubmitting(true);
     try {
-      const newLocation = await suggestLocation(address, city, state, notes, userId ?? undefined);
+      let coords = coordinates;
+
+      // If no coordinates from autocomplete, try to geocode the address
+      if (!coords) {
+        coords = await geocodeAddress(address, city, state);
+      }
+
+      const newLocation = await suggestLocation(
+        address,
+        city,
+        state,
+        notes,
+        coords
+      );
       addLocation(newLocation);
       setSelectedLocation(newLocation.id);
       setOpen(false);
-      setAddress("");
-      setCity("");
-      setState("");
-      setNotes("");
+      resetForm();
     } finally {
       setIsSubmitting(false);
     }
   };
 
+  const resetForm = () => {
+    setAddress("");
+    setCity("");
+    setState("");
+    setNotes("");
+    setCoordinates(null);
+    setPreviewLocation(null);
+  };
+
+  const handleOpenChange = (isOpen: boolean) => {
+    setOpen(isOpen);
+    if (!isOpen) {
+      setPreviewLocation(null);
+    }
+  };
+
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
         <Button className="gap-2 bg-amber-400 hover:bg-amber-500 text-amber-950 font-semibold">
           <Plus className="h-4 w-4" />
           Suggest a Location
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-md">
-        {!canSuggest ? (
-          <>
-            <DialogHeader>
-              <DialogTitle>Sign In Required</DialogTitle>
-              <DialogDescription>
-                Sign in to suggest a new school location.
-              </DialogDescription>
-            </DialogHeader>
-            <SignInPrompt
-              title="Sign in to suggest"
-              description="Enter your email to receive a magic link. No password needed."
+      <DialogContent className="sm:max-w-md" draggable position="top-right">
+        <DialogHeader draggable>
+          <DialogTitle>Suggest a New Location</DialogTitle>
+          <DialogDescription>
+            Know a great spot for a micro school? Share it with other parents.
+          </DialogDescription>
+        </DialogHeader>
+        <form onSubmit={handleSubmit} className="space-y-4 mt-4">
+          <div className="space-y-2">
+            <label htmlFor="address" className="text-sm font-medium">
+              Street Address
+            </label>
+            <AddressAutocomplete
+              id="address"
+              placeholder="123 Main St"
+              value={address}
+              onChange={setAddress}
+              onSelect={handleAddressSelect}
+              required
             />
-          </>
-        ) : (
-          <>
-            <DialogHeader>
-              <DialogTitle>Suggest a New Location</DialogTitle>
-              <DialogDescription>
-                Know a great spot for a micro school? Share it with other parents.
-                {isOfflineMode && (
-                  <span className="block mt-1 text-amber-600">
-                    Demo mode: suggestions won&apos;t be saved permanently.
-                  </span>
-                )}
-              </DialogDescription>
-            </DialogHeader>
-            <form onSubmit={handleSubmit} className="space-y-4 mt-4">
-              <div className="space-y-2">
-                <label htmlFor="address" className="text-sm font-medium">
-                  Street Address
-                </label>
-                <Input
-                  id="address"
-                  placeholder="123 Main St"
-                  value={address}
-                  onChange={(e) => setAddress(e.target.value)}
-                  required
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-2">
-                  <label htmlFor="city" className="text-sm font-medium">
-                    City
-                  </label>
-                  <Input
-                    id="city"
-                    placeholder="Austin"
-                    value={city}
-                    onChange={(e) => setCity(e.target.value)}
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <label htmlFor="state" className="text-sm font-medium">
-                    State
-                  </label>
-                  <Input
-                    id="state"
-                    placeholder="TX"
-                    value={state}
-                    onChange={(e) => setState(e.target.value)}
-                    maxLength={2}
-                    required
-                  />
-                </div>
-              </div>
-              <div className="space-y-2">
-                <label htmlFor="notes" className="text-sm font-medium">
-                  Notes (optional)
-                </label>
-                <Input
-                  id="notes"
-                  placeholder="Why this location would be great..."
-                  value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
-                />
-              </div>
-              <div className="flex justify-end gap-3 pt-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setOpen(false)}
-                >
-                  Cancel
-                </Button>
-                <Button type="submit" disabled={isSubmitting}>
-                  {isSubmitting ? "Submitting..." : "Submit"}
-                </Button>
-              </div>
-            </form>
-          </>
-        )}
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-2">
+              <label htmlFor="city" className="text-sm font-medium">
+                City
+              </label>
+              <Input
+                id="city"
+                placeholder="Austin"
+                value={city}
+                onChange={(e) => setCity(e.target.value)}
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <label htmlFor="state" className="text-sm font-medium">
+                State
+              </label>
+              <Input
+                id="state"
+                placeholder="TX"
+                value={state}
+                onChange={(e) => setState(e.target.value)}
+                maxLength={2}
+                required
+              />
+            </div>
+          </div>
+          <div className="space-y-2">
+            <label htmlFor="notes" className="text-sm font-medium">
+              Notes (optional)
+            </label>
+            <Input
+              id="notes"
+              placeholder="Why this location would be great..."
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+            />
+          </div>
+          <div className="flex justify-end gap-3 pt-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => handleOpenChange(false)}
+            >
+              Cancel
+            </Button>
+            <Button type="submit" disabled={isSubmitting}>
+              {isSubmitting ? "Submitting..." : "Submit"}
+            </Button>
+          </div>
+        </form>
       </DialogContent>
     </Dialog>
   );

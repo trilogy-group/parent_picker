@@ -9,6 +9,8 @@ interface VotesState {
   votedLocationIds: Set<string>;
   selectedLocationId: string | null;
   searchQuery: string;
+  flyToTarget: { lat: number; lng: number } | null;
+  previewLocation: { lat: number; lng: number; address: string } | null;
   isLoading: boolean;
   userId: string | null;
   setLocations: (locations: Location[]) => void;
@@ -17,6 +19,8 @@ interface VotesState {
   unvote: (locationId: string) => void;
   setSelectedLocation: (id: string | null) => void;
   setSearchQuery: (query: string) => void;
+  setFlyToTarget: (coords: { lat: number; lng: number } | null) => void;
+  setPreviewLocation: (preview: { lat: number; lng: number; address: string } | null) => void;
   setLoading: (loading: boolean) => void;
   setUserId: (id: string | null) => void;
   loadUserVotes: (userId: string) => Promise<void>;
@@ -29,6 +33,8 @@ export const useVotesStore = create<VotesState>((set, get) => ({
   votedLocationIds: new Set<string>(),
   selectedLocationId: null,
   searchQuery: "",
+  flyToTarget: null,
+  previewLocation: null,
   isLoading: true,
   userId: null,
 
@@ -143,6 +149,10 @@ export const useVotesStore = create<VotesState>((set, get) => ({
   setSelectedLocation: (id) => set({ selectedLocationId: id }),
 
   setSearchQuery: (query) => set({ searchQuery: query }),
+
+  setFlyToTarget: (coords) => set({ flyToTarget: coords }),
+
+  setPreviewLocation: (preview) => set({ previewLocation: preview }),
 
   filteredLocations: () => {
     const { locations, searchQuery } = get();

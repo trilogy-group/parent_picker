@@ -58,6 +58,7 @@ This project uses TDD. All requirements are documented in `requirements.md` with
 3. Run the test suite to verify current state
 4. Make changes
 5. Run tests again to verify
+6. If fails, go back to #4 until you get it right
 
 **Adding new features:**
 1. Add requirement to `requirements.md` with test cases
