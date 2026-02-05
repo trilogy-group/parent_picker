@@ -8,6 +8,28 @@ import { useVotesStore } from "@/lib/votes";
 import { searchAddresses, GeocodingResult } from "@/lib/geocoding";
 import { useAuth } from "./AuthProvider";
 
+// Calculate distance between two points using Haversine formula
+function getDistanceMiles(lat1: number, lng1: number, lat2: number, lng2: number): number {
+  const R = 3959; // Earth's radius in miles
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLng = (lng2 - lng1) * Math.PI / 180;
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+    Math.sin(dLng / 2) * Math.sin(dLng / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+}
+
+// Check if a location is within viewport bounds
+function isInViewport(
+  lat: number,
+  lng: number,
+  bounds: { north: number; south: number; east: number; west: number }
+): boolean {
+  return lat <= bounds.north && lat >= bounds.south && lng <= bounds.east && lng >= bounds.west;
+}
+
 export function LocationsList() {
   const {
     filteredLocations,
@@ -19,6 +41,8 @@ export function LocationsList() {
     searchQuery,
     setSearchQuery,
     setFlyToTarget,
+    referencePoint,
+    mapBounds,
   } = useVotesStore();
 
   const [addressSuggestions, setAddressSuggestions] = useState<
@@ -175,20 +199,49 @@ export function LocationsList() {
             No locations found matching your search.
           </p>
         ) : (
-          locations
-            .sort((a, b) => b.votes - a.votes)
-            .map((location) => (
-              <LocationCard
-                key={location.id}
-                location={location}
-                isSelected={selectedLocationId === location.id}
-                hasVoted={votedLocationIds.has(location.id)}
-                isAuthenticated={canVote}
-                onSelect={() => setSelectedLocation(location.id)}
-                onVote={() => vote(location.id)}
-                onUnvote={() => unvote(location.id)}
-              />
-            ))
+          (() => {
+            // Viewport-aware sorting logic:
+            // 1. Locations visible on screen: sorted by votes (descending)
+            // 2. Locations off-screen: sorted by distance from reference point (ascending)
+
+            if (!mapBounds || !referencePoint) {
+              // Fallback: sort by votes if no map bounds available
+              return locations.sort((a, b) => b.votes - a.votes);
+            }
+
+            // Separate visible from non-visible locations
+            const visible = locations.filter(loc => isInViewport(loc.lat, loc.lng, mapBounds));
+            const nonVisible = locations.filter(loc => !isInViewport(loc.lat, loc.lng, mapBounds));
+
+            // Sort visible by votes (descending)
+            visible.sort((a, b) => b.votes - a.votes);
+
+            // Sort non-visible by distance from reference point (ascending)
+            nonVisible.sort((a, b) => {
+              const distA = getDistanceMiles(referencePoint.lat, referencePoint.lng, a.lat, a.lng);
+              const distB = getDistanceMiles(referencePoint.lat, referencePoint.lng, b.lat, b.lng);
+              return distA - distB;
+            });
+
+            // Return visible first, then non-visible
+            return [...visible, ...nonVisible];
+          })()
+            .map((location) => {
+              const isVisible = mapBounds ? isInViewport(location.lat, location.lng, mapBounds) : false;
+              return (
+                <LocationCard
+                  key={location.id}
+                  location={location}
+                  isSelected={selectedLocationId === location.id}
+                  hasVoted={votedLocationIds.has(location.id)}
+                  isAuthenticated={canVote}
+                  isInViewport={isVisible}
+                  onSelect={() => setSelectedLocation(location.id)}
+                  onVote={() => vote(location.id)}
+                  onUnvote={() => unvote(location.id)}
+                />
+              );
+            })
         )}
       </div>
     </div>
