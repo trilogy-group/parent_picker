@@ -7,16 +7,19 @@ import { LocationsList } from "@/components/LocationsList";
 import { SuggestLocationModal } from "@/components/SuggestLocationModal";
 import { AuthButton } from "@/components/AuthButton";
 import { useVotesStore } from "@/lib/votes";
-import { getLocations } from "@/lib/locations";
+import { getLocations, AUSTIN_CENTER } from "@/lib/locations";
 
 export default function Home() {
   const [panelExpanded, setPanelExpanded] = useState(false);
-  const { locations, setLocations } = useVotesStore();
+  const { locations, setLocations, setReferencePoint } = useVotesStore();
   const totalVotes = locations.reduce((sum, loc) => sum + loc.votes, 0);
 
   useEffect(() => {
+    // Set initial reference point to Austin immediately
+    setReferencePoint(AUSTIN_CENTER);
+
     getLocations().then(setLocations);
-  }, [setLocations]);
+  }, [setLocations, setReferencePoint]);
 
   return (
     <div className="relative h-screen w-screen overflow-hidden">

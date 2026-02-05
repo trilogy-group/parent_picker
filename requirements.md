@@ -196,9 +196,10 @@ The locations list sorts based on map viewport visibility.
 - [ ] `TC-4.5.1`: Locations visible in viewport appear at top of list
 - [ ] `TC-4.5.2`: Visible locations are sorted by vote count (highest first)
 - [ ] `TC-4.5.3`: Non-visible locations appear below visible ones
-- [ ] `TC-4.5.4`: Non-visible locations are sorted by distance to map center (closest first)
+- [ ] `TC-4.5.4`: Non-visible locations are sorted by distance to reference point (closest first)
 - [ ] `TC-4.5.5`: List reorders when user pans map to show different locations
 - [ ] `TC-4.5.6`: List reorders when user zooms map to change viewport bounds
+- [ ] `TC-4.5.7`: List is sorted by distance from map center on initial load (before geolocation resolves)
 
 ---
 

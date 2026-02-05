@@ -204,27 +204,37 @@ export function LocationsList() {
             // 1. Locations visible on screen: sorted by votes (descending)
             // 2. Locations off-screen: sorted by distance from reference point (ascending)
 
-            if (!mapBounds || !referencePoint) {
-              // Fallback: sort by votes if no map bounds available
+            if (!referencePoint) {
+              // Absolute fallback: sort by votes if no reference point
               return locations.sort((a, b) => b.votes - a.votes);
             }
 
-            // Separate visible from non-visible locations
-            const visible = locations.filter(loc => isInViewport(loc.lat, loc.lng, mapBounds));
-            const nonVisible = locations.filter(loc => !isInViewport(loc.lat, loc.lng, mapBounds));
+            // If we have mapBounds, use viewport-aware sorting
+            if (mapBounds) {
+              // Separate visible from non-visible locations
+              const visible = locations.filter(loc => isInViewport(loc.lat, loc.lng, mapBounds));
+              const nonVisible = locations.filter(loc => !isInViewport(loc.lat, loc.lng, mapBounds));
 
-            // Sort visible by votes (descending)
-            visible.sort((a, b) => b.votes - a.votes);
+              // Sort visible by votes (descending)
+              visible.sort((a, b) => b.votes - a.votes);
 
-            // Sort non-visible by distance from reference point (ascending)
-            nonVisible.sort((a, b) => {
+              // Sort non-visible by distance from reference point (ascending)
+              nonVisible.sort((a, b) => {
+                const distA = getDistanceMiles(referencePoint.lat, referencePoint.lng, a.lat, a.lng);
+                const distB = getDistanceMiles(referencePoint.lat, referencePoint.lng, b.lat, b.lng);
+                return distA - distB;
+              });
+
+              // Return visible first, then non-visible
+              return [...visible, ...nonVisible];
+            }
+
+            // No mapBounds yet (initial load): sort all by distance from reference point
+            return locations.sort((a, b) => {
               const distA = getDistanceMiles(referencePoint.lat, referencePoint.lng, a.lat, a.lng);
               const distB = getDistanceMiles(referencePoint.lat, referencePoint.lng, b.lat, b.lng);
               return distA - distB;
             });
-
-            // Return visible first, then non-visible
-            return [...visible, ...nonVisible];
           })()
             .map((location) => {
               const isVisible = mapBounds ? isInViewport(location.lat, location.lng, mapBounds) : false;

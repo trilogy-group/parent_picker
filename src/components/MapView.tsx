@@ -108,8 +108,23 @@ export function MapView() {
       duration: 1500,
     });
 
+    // Set initial map bounds immediately after positioning
+    setTimeout(() => {
+      const map = mapRef.current?.getMap();
+      if (map) {
+        const bounds = map.getBounds();
+        setMapBounds({
+          north: bounds.getNorth(),
+          south: bounds.getSouth(),
+          east: bounds.getEast(),
+          west: bounds.getWest(),
+        });
+        setMapCenter(center);
+      }
+    }, 100);
+
     initialViewSetRef.current = true;
-  }, [userLocation, locations, geoResolved, setReferencePoint]);
+  }, [userLocation, locations, geoResolved, setReferencePoint, setMapBounds, setMapCenter]);
 
   const flyToLocation = useCallback((location: Location) => {
     mapRef.current?.flyTo({
