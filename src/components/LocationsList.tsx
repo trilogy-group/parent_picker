@@ -30,6 +30,10 @@ export function LocationsList() {
   const debounceRef = useRef<NodeJS.Timeout | null>(null);
 
   const locations = filteredLocations();
+  const { user, isOfflineMode } = useAuth();
+
+  // In offline mode, allow voting without auth (local-only)
+  const canVote = isOfflineMode || !!user;
 
   const fetchAddressSuggestions = useCallback(async (query: string) => {
     if (query.length < 3) {
@@ -124,11 +128,6 @@ export function LocationsList() {
       }
     };
   }, []);
-  const { user, isOfflineMode } = useAuth();
-  const locations = filteredLocations();
-
-  // In offline mode, allow voting without auth (local-only)
-  const canVote = isOfflineMode || !!user;
 
   return (
     <div className="flex flex-col h-full">

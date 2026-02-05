@@ -31,7 +31,8 @@ export function SuggestLocationModal() {
   } | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const { addLocation, setSelectedLocation, setPreviewLocation } = useVotesStore();
+  const { addLocation, setSelectedLocation, setPreviewLocation, userId } = useVotesStore();
+  const { user, isOfflineMode } = useAuth();
 
   const handleAddressSelect = (result: GeocodingResult) => {
     setCity(result.city);
@@ -39,8 +40,6 @@ export function SuggestLocationModal() {
     setCoordinates({ lat: result.lat, lng: result.lng });
     setPreviewLocation({ lat: result.lat, lng: result.lng, address: result.address });
   };
-  const { addLocation, setSelectedLocation, userId } = useVotesStore();
-  const { user, isOfflineMode } = useAuth();
 
   // In offline mode, allow suggestions without auth (local-only)
   const canSuggest = isOfflineMode || !!user;
@@ -63,7 +62,8 @@ export function SuggestLocationModal() {
         city,
         state,
         notes,
-        coords
+        coords,
+        userId ?? undefined
       );
       addLocation(newLocation);
       setSelectedLocation(newLocation.id);

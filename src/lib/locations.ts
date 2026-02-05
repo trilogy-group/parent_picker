@@ -158,8 +158,9 @@ export async function suggestLocation(
   address: string,
   city: string,
   state: string,
-  _notes?: string,
-  coordinates?: { lat: number; lng: number } | null
+  notes?: string,
+  coordinates?: { lat: number; lng: number } | null,
+  userId?: string
 ): Promise<Location> {
   // Geocode the address
   const coords = await geocodeAddress(address, city, state);
