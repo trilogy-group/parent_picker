@@ -12,7 +12,7 @@ An interactive, consumer-facing website where parents can vote on and express pr
 ## Key Context
 
 - Scaling Alpha School (Stanford of K-12, www.alpha.school) and affiliates to hundreds/thousands of locations
-  - No humans in the loop (other than distributed parents as described). 
+  - Scale requires humans in the loop (other than distributed parents as described). 
   - Humans on central team and feedback / processing loops will not be allowed, design accordingly.
 - Real estate expertise (sourcing, zoning, permitting) is hyper-local
 - Excited prospective Alpha parents have most local expertise, network, and capability and this site should leverage this.
@@ -37,6 +37,7 @@ Duplicate the Sports Academy facilities map functionality:
 
 - Pre-scored locations database in Supabase
 - Low-scoring locations prompt parent assistance (zoning help, contacts)
+  - "I know you all voted for this property, but we can't get it zoned, do you anyone who can get it zoned. city hall? lawyer who has gotten approvals in the past?"
 - Parent-suggested locations trigger scoring workflow (separate agent)
 - Lease outreach, negotiation, and execution (separate agent)
 
