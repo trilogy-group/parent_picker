@@ -1,20 +1,14 @@
 "use client";
 
-import { useEffect, useRef, useCallback } from "react";
+import { useEffect, useRef, useCallback, useState } from "react";
 import Map, { Marker, NavigationControl, Popup } from "react-map-gl/mapbox";
 import { MapPin } from "lucide-react";
 import { useVotesStore } from "@/lib/votes";
+import { getInitialMapView, US_CENTER, US_ZOOM } from "@/lib/locations";
 import { Location } from "@/types";
 import "mapbox-gl/dist/mapbox-gl.css";
 
 const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
-
-// Austin, TX default center
-const DEFAULT_CENTER = {
-  latitude: 30.2672,
-  longitude: -97.7431,
-  zoom: 10,
-};
 
 interface LocationMarkerProps {
   location: Location;
@@ -55,11 +49,64 @@ function LocationMarker({ location, isSelected, onClick }: LocationMarkerProps) 
 export function MapView() {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const mapRef = useRef<any>(null);
-  const { filteredLocations, selectedLocationId, setSelectedLocation } =
+  const { filteredLocations, selectedLocationId, setSelectedLocation, locations } =
     useVotesStore();
 
-  const locations = filteredLocations();
-  const selectedLocation = locations.find((l) => l.id === selectedLocationId);
+  const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
+  const [geoResolved, setGeoResolved] = useState(() => {
+    // Initialize based on whether geolocation is available
+    if (typeof navigator === "undefined" || !navigator.geolocation) {
+      return true;
+    }
+    return false;
+  });
+  const initialViewSetRef = useRef(false);
+
+  const displayLocations = filteredLocations();
+  const selectedLocation = displayLocations.find((l) => l.id === selectedLocationId);
+
+  // Request user's geolocation on mount
+  useEffect(() => {
+    // If geolocation not available, geoResolved is already true from initial state
+    if (!navigator.geolocation) {
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        setUserLocation({
+          lat: position.coords.latitude,
+          lng: position.coords.longitude,
+        });
+        setGeoResolved(true);
+      },
+      (error) => {
+        console.log("Geolocation error or denied:", error.message);
+        setGeoResolved(true);
+      },
+      { timeout: 5000, enableHighAccuracy: false }
+    );
+  }, []);
+
+  // Set initial map view based on user location and nearby listings
+  useEffect(() => {
+    // Wait for both geolocation to resolve AND locations to load
+    if (initialViewSetRef.current || !geoResolved || locations.length === 0) return;
+
+    const { center, zoom } = getInitialMapView(
+      userLocation?.lat ?? null,
+      userLocation?.lng ?? null,
+      locations
+    );
+
+    mapRef.current?.flyTo({
+      center: [center.lng, center.lat],
+      zoom,
+      duration: 1500,
+    });
+
+    initialViewSetRef.current = true;
+  }, [userLocation, locations, geoResolved]);
 
   const flyToLocation = useCallback((location: Location) => {
     mapRef.current?.flyTo({
@@ -93,7 +140,11 @@ export function MapView() {
   return (
     <Map
       ref={mapRef}
-      initialViewState={DEFAULT_CENTER}
+      initialViewState={{
+        latitude: US_CENTER.lat,
+        longitude: US_CENTER.lng,
+        zoom: US_ZOOM,
+      }}
       style={{ width: "100%", height: "100%" }}
       mapStyle="mapbox://styles/mapbox/streets-v12"
       mapboxAccessToken={MAPBOX_TOKEN}
@@ -101,7 +152,7 @@ export function MapView() {
     >
       <NavigationControl position="top-right" />
 
-      {locations.map((location) => (
+      {displayLocations.map((location) => (
         <LocationMarker
           key={location.id}
           location={location}
