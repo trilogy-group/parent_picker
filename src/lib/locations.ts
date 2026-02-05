@@ -1,5 +1,7 @@
 import { Location } from "@/types";
+import { supabase, isSupabaseConfigured } from "./supabase";
 
+// Mock data for testing when Supabase is not configured
 export const mockLocations: Location[] = [
   {
     id: "1",
@@ -13,99 +15,213 @@ export const mockLocations: Location[] = [
   },
   {
     id: "2",
-    name: "Westlake Hills Location",
-    address: "3425 Bee Cave Rd",
+    name: "South Austin Learning Center",
+    address: "2110 S Lamar Blvd",
     city: "Austin",
     state: "TX",
-    lat: 30.2969,
-    lng: -97.8014,
-    votes: 28,
+    lat: 30.2465,
+    lng: -97.7729,
+    votes: 38,
   },
   {
     id: "3",
-    name: "Round Rock Site",
-    address: "201 E Main St",
-    city: "Round Rock",
+    name: "Mueller Development Site",
+    address: "4550 Mueller Blvd",
+    city: "Austin",
     state: "TX",
-    lat: 30.5083,
-    lng: -97.6789,
+    lat: 30.2986,
+    lng: -97.7025,
     votes: 35,
   },
   {
     id: "4",
-    name: "Cedar Park Campus",
-    address: "500 Discovery Blvd",
-    city: "Cedar Park",
+    name: "Round Rock Campus",
+    address: "1 Dell Way",
+    city: "Round Rock",
     state: "TX",
-    lat: 30.5052,
-    lng: -97.8203,
-    votes: 19,
+    lat: 30.5083,
+    lng: -97.6789,
+    votes: 29,
   },
   {
     id: "5",
-    name: "South Congress Location",
-    address: "1619 S Congress Ave",
-    city: "Austin",
+    name: "Cedar Park Location",
+    address: "1890 Ranch Shopping Center",
+    city: "Cedar Park",
     state: "TX",
-    lat: 30.2449,
-    lng: -97.7494,
-    votes: 56,
+    lat: 30.5217,
+    lng: -97.8200,
+    votes: 24,
   },
   {
     id: "6",
-    name: "Mueller Development",
-    address: "4550 Mueller Blvd",
+    name: "Domain Area",
+    address: "11410 Century Oaks Terrace",
     city: "Austin",
     state: "TX",
-    lat: 30.2984,
-    lng: -97.7048,
+    lat: 30.4021,
+    lng: -97.7253,
     votes: 31,
   },
   {
     id: "7",
-    name: "Lakeway Center",
-    address: "103 Main St",
-    city: "Lakeway",
+    name: "Bee Cave Community Center",
+    address: "4000 Galleria Pkwy",
+    city: "Bee Cave",
     state: "TX",
-    lat: 30.3628,
-    lng: -97.9797,
-    votes: 23,
+    lat: 30.3080,
+    lng: -97.9420,
+    votes: 18,
   },
   {
     id: "8",
-    name: "Pflugerville Campus",
-    address: "201 E Pecan St",
+    name: "Pflugerville Site",
+    address: "1200 E Pecan St",
     city: "Pflugerville",
     state: "TX",
-    lat: 30.4394,
-    lng: -97.6201,
-    votes: 17,
+    lat: 30.4393,
+    lng: -97.6200,
+    votes: 22,
+    suggested: true,
   },
 ];
 
 export async function getLocations(): Promise<Location[]> {
-  // Stub: In v2, this will fetch from Supabase
-  return mockLocations;
+  // If Supabase is not configured, return mock data
+  if (!isSupabaseConfigured || !supabase) {
+    console.log("Supabase not configured, using mock data");
+    return mockLocations;
+  }
+
+  try {
+    const { data, error } = await supabase
+      .from("pp_locations_with_votes")
+      .select("*")
+      .order("votes", { ascending: false });
+
+    if (error) {
+      console.error("Error fetching locations:", error);
+      return mockLocations;
+    }
+
+    return data.map((row) => ({
+      id: row.id,
+      name: row.name,
+      address: row.address,
+      city: row.city,
+      state: row.state,
+      lat: Number(row.lat),
+      lng: Number(row.lng),
+      votes: row.votes,
+      suggested: row.source === "parent_suggested",
+    }));
+  } catch (error) {
+    console.error("Failed to fetch locations:", error);
+    return mockLocations;
+  }
+}
+
+interface GeocodeResult {
+  lat: number;
+  lng: number;
+}
+
+async function geocodeAddress(
+  address: string,
+  city: string,
+  state: string
+): Promise<GeocodeResult | null> {
+  const mapboxToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
+  if (!mapboxToken) {
+    console.log("Mapbox token not configured, skipping geocoding");
+    return null;
+  }
+
+  const query = encodeURIComponent(`${address}, ${city}, ${state}`);
+  const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${query}.json?access_token=${mapboxToken}&limit=1`;
+
+  try {
+    const response = await fetch(url);
+    const data = await response.json();
+
+    if (data.features && data.features.length > 0) {
+      const [lng, lat] = data.features[0].center;
+      return { lat, lng };
+    }
+    return null;
+  } catch (error) {
+    console.error("Geocoding error:", error);
+    return null;
+  }
 }
 
 export async function suggestLocation(
   address: string,
   city: string,
   state: string,
-  _notes?: string
+  notes?: string,
+  userId?: string
 ): Promise<Location> {
-  // Stub: In v2, this will insert into Supabase and trigger scoring
-  // _notes will be used in v2 for parent feedback
-  const newLocation: Location = {
+  // Geocode the address
+  const coords = await geocodeAddress(address, city, state);
+
+  // Use geocoded coordinates or fall back to approximate Austin area
+  const lat = coords?.lat ?? 30.2672 + (Math.random() - 0.5) * 0.1;
+  const lng = coords?.lng ?? -97.7431 + (Math.random() - 0.5) * 0.1;
+
+  const locationName = `Suggested: ${address}`;
+
+  // If user is authenticated and Supabase is configured, persist to database
+  if (userId && isSupabaseConfigured && supabase) {
+    try {
+      const { data, error } = await supabase
+        .from("pp_locations")
+        .insert({
+          name: locationName,
+          address,
+          city,
+          state,
+          lat,
+          lng,
+          status: "pending_review",
+          source: "parent_suggested",
+          notes: notes || null,
+          suggested_by: userId,
+        })
+        .select()
+        .single();
+
+      if (error) {
+        console.error("Error inserting location:", error);
+        // Fall through to return local-only location
+      } else if (data) {
+        return {
+          id: data.id,
+          name: data.name,
+          address: data.address,
+          city: data.city,
+          state: data.state,
+          lat: Number(data.lat),
+          lng: Number(data.lng),
+          votes: 0,
+          suggested: true,
+        };
+      }
+    } catch (error) {
+      console.error("Failed to insert location:", error);
+    }
+  }
+
+  // Return local-only location (not persisted)
+  return {
     id: `suggested-${Date.now()}`,
-    name: `Suggested: ${address}`,
+    name: locationName,
     address,
     city,
     state,
-    lat: 30.2672 + (Math.random() - 0.5) * 0.1, // Mock coordinates
-    lng: -97.7431 + (Math.random() - 0.5) * 0.1,
+    lat,
+    lng,
     votes: 0,
     suggested: true,
   };
-  return newLocation;
 }

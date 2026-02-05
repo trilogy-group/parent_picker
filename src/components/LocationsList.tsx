@@ -4,6 +4,7 @@ import { Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { LocationCard } from "./LocationCard";
 import { useVotesStore } from "@/lib/votes";
+import { useAuth } from "./AuthProvider";
 
 export function LocationsList() {
   const {
@@ -17,7 +18,11 @@ export function LocationsList() {
     setSearchQuery,
   } = useVotesStore();
 
+  const { user, isOfflineMode } = useAuth();
   const locations = filteredLocations();
+
+  // In offline mode, allow voting without auth (local-only)
+  const canVote = isOfflineMode || !!user;
 
   return (
     <div className="flex flex-col h-full">
@@ -46,6 +51,7 @@ export function LocationsList() {
                 location={location}
                 isSelected={selectedLocationId === location.id}
                 hasVoted={votedLocationIds.has(location.id)}
+                isAuthenticated={canVote}
                 onSelect={() => setSelectedLocation(location.id)}
                 onVote={() => vote(location.id)}
                 onUnvote={() => unvote(location.id)}
