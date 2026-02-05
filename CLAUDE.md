@@ -21,7 +21,8 @@ An interactive, consumer-facing website where parents can vote on and express pr
 | Styling | Tailwind CSS + shadcn/ui | Button, Card, Dialog, Input components |
 | Maps | Mapbox GL via react-map-gl/mapbox | Dynamic import (SSR disabled) |
 | State | Zustand | Global state for locations, votes, selection |
-| Database | Stubbed (Supabase in v2) | Mock data in src/lib/locations.ts |
+| Database | Supabase | Falls back to mock data if not configured |
+| Auth | Supabase Auth | Magic link sign-in |
 
 ## Commands
 
@@ -32,6 +33,9 @@ npm run dev          # Start dev server at localhost:3000
 # Build & Production
 npm run build        # Build for production
 npm run start        # Start production server
+
+# Deploy to Vercel (manual - not connected to GitHub)
+npx vercel --prod
 
 # Testing
 source .venv/bin/activate && python tests/requirements.test.py  # Run test suite (requires dev server running)
@@ -66,8 +70,12 @@ This project uses TDD. All requirements are documented in `requirements.md` with
 
 Store in `.env.local`:
 ```
-NEXT_PUBLIC_MAPBOX_TOKEN=   # Get from mapbox.com
+NEXT_PUBLIC_MAPBOX_TOKEN=        # Get from mapbox.com
+NEXT_PUBLIC_SUPABASE_URL=        # Supabase project URL (optional - falls back to mock data)
+NEXT_PUBLIC_SUPABASE_ANON_KEY=   # Supabase anon key (optional - falls back to mock data)
 ```
+
+**Offline/Demo Mode:** If Supabase env vars are missing, app runs with mock data and local-only voting. Shows "Demo Mode" badge in header.
 
 ## MVP Scope
 
@@ -78,23 +86,51 @@ Duplicate the Sports Academy facilities map functionality:
 - Suggest new locations
 - Search/filter locations
 
-## Version 2.0 (Future - Do Not Build Yet)
+## Deployment
 
-- Supabase database integration
-- User authentication
+- **Hosting:** Vercel (https://parentpicker.vercel.app)
+- **Deploy:** `npx vercel --prod` (manual - not connected to GitHub auto-deploy)
+
+## Current Features
+
+- Supabase database integration (with offline fallback)
+- Magic link authentication
+- Persistent vote storage (optimistic updates + async DB sync)
+- Parent-suggested locations with geocoding
+
+## Future Features
+
 - Pre-scored locations database
 - Parent-suggested locations trigger scoring workflow
 - Low-scoring locations prompt parent assistance (zoning help, contacts)
-- Persistent vote storage
 
-**Key Invariant:** Ship MVP before adding any v2 complexity.
+## Session State (2026-02-04)
+
+**Accomplished this session:**
+- Implemented Supabase Auth with magic link sign-in
+- Added persistent votes (pp_votes table) with optimistic updates + rollback
+- Added persistent suggestions (pp_locations table) with Mapbox geocoding
+- Added offline/demo mode fallback when Supabase not configured
+- Deployed to Vercel via `npx vercel --prod`
+
+**Committed:** `d1238b5` - "Add Supabase auth with magic link + persistent votes"
+
+**Known state:**
+- Vercel deployment working (https://parentpicker.vercel.app)
+- If Supabase env vars not set on Vercel, shows "Demo Mode" with 8 mock Austin locations
+- Need to configure Supabase env vars on Vercel for production auth/persistence
+
+**Next steps:**
+- Configure NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY on Vercel
+- Verify auth flow works end-to-end in production
+- Consider connecting Vercel to GitHub for auto-deploy
 
 ## File Structure
 
 ```
 src/
 ├── app/
-│   ├── layout.tsx      # Root layout with metadata
+│   ├── layout.tsx      # Root layout with AuthProvider
 │   ├── page.tsx        # Main page (full-screen map + overlay)
 │   └── globals.css     # Tailwind + shadcn styles
 ├── components/
@@ -102,12 +138,17 @@ src/
 │   ├── MapView.tsx     # Mapbox GL map with markers
 │   ├── LocationsList.tsx
 │   ├── LocationCard.tsx
-│   ├── VoteButton.tsx
+│   ├── VoteButton.tsx  # Vote button with auth check
 │   ├── SuggestLocationModal.tsx
+│   ├── AuthProvider.tsx # Session context + auth state
+│   ├── AuthButton.tsx   # Sign in/out UI
+│   ├── SignInPrompt.tsx # Reusable magic link form
 │   └── ui/             # shadcn components
 ├── lib/
-│   ├── locations.ts    # Mock data & stub functions
-│   ├── votes.ts        # Zustand store
+│   ├── supabase.ts     # Supabase client (null if not configured)
+│   ├── auth.ts         # Auth helpers (magic link, sign out)
+│   ├── locations.ts    # Fetch locations + suggest with geocoding
+│   ├── votes.ts        # Zustand store with DB persistence
 │   └── utils.ts        # Tailwind merge utility
 └── types/
     └── index.ts        # TypeScript interfaces
