@@ -36,6 +36,7 @@ Duplicate the Sports Academy facilities map functionality:
 ## Version 2.0 (Future - Do Not Build Yet)
 
 - Pre-scored locations database (in Supabase)
+  - Location information, specs, and simpler consumer-level scoring
 - Low-scoring locations to prompt parent assistance (zoning help, contacts)
   - "I know you all voted for this property, but we can't get it zoned, do you anyone who can get it zoned. city hall? lawyer who has gotten approvals in the past?"
 - Parent-suggested locations trigger scoring workflow (separate agent)
