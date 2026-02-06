@@ -198,24 +198,29 @@ export function LocationsList() {
     setPage(0);
   }
 
-  // Memoize sorted list to avoid redundant sort/filter on non-map re-renders
+  // Memoize sorted list: on-screen only, votes desc then distance asc
   const sorted = useMemo(() => {
-    if (!mapBounds) return [...locations].sort((a, b) => b.votes - a.votes);
+    if (!mapBounds) return [...locations].sort((a, b) => {
+      if (b.votes !== a.votes) return b.votes - a.votes;
+      if (mapCenter) {
+        return getDistanceMiles(mapCenter.lat, mapCenter.lng, a.lat, a.lng)
+          - getDistanceMiles(mapCenter.lat, mapCenter.lng, b.lat, b.lng);
+      }
+      return 0;
+    });
 
     const onScreen = locations.filter(loc => isInViewport(loc.lat, loc.lng, mapBounds));
-    const offScreen = locations.filter(loc => !isInViewport(loc.lat, loc.lng, mapBounds));
 
-    onScreen.sort((a, b) => b.votes - a.votes);
+    onScreen.sort((a, b) => {
+      if (b.votes !== a.votes) return b.votes - a.votes;
+      if (mapCenter) {
+        return getDistanceMiles(mapCenter.lat, mapCenter.lng, a.lat, a.lng)
+          - getDistanceMiles(mapCenter.lat, mapCenter.lng, b.lat, b.lng);
+      }
+      return 0;
+    });
 
-    if (mapCenter) {
-      offScreen.sort((a, b) => {
-        const distA = getDistanceMiles(mapCenter.lat, mapCenter.lng, a.lat, a.lng);
-        const distB = getDistanceMiles(mapCenter.lat, mapCenter.lng, b.lat, b.lng);
-        return distA - distB;
-      });
-    }
-
-    return [...onScreen, ...offScreen];
+    return onScreen;
   }, [locations, mapBounds, mapCenter]);
 
   const PAGE_SIZE = 25;
@@ -273,26 +278,23 @@ export function LocationsList() {
           )
         ) : locations.length === 0 ? (
           <p className="text-center text-muted-foreground py-8">
-            No locations found matching your search.
+            No locations found in this area matching your filters.
           </p>
         ) : (
           <>
-            {visible.map((location) => {
-              const inView = mapBounds ? isInViewport(location.lat, location.lng, mapBounds) : false;
-              return (
+            {visible.map((location) => (
                 <LocationCard
                   key={location.id}
                   location={location}
                   isSelected={selectedLocationId === location.id}
                   hasVoted={votedLocationIds.has(location.id)}
                   isAuthenticated={canVote}
-                  isInViewport={inView}
+                  isInViewport={true}
                   onSelect={() => setSelectedLocation(location.id)}
                   onVote={() => vote(location.id)}
                   onUnvote={() => unvote(location.id)}
                 />
-              );
-            })}
+            ))}
             <p data-testid="location-count" className="text-center text-xs text-muted-foreground pt-2">
               Showing {Math.min(showCount, sorted.length)} of {sorted.length} locations
             </p>
