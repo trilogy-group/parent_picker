@@ -1,4 +1,4 @@
-import { Location, LocationScores } from "@/types";
+import { Location, LocationScores, CitySummary } from "@/types";
 import { supabase, isSupabaseConfigured } from "./supabase";
 
 // Generate a color from a 0-1 sub-score
@@ -168,11 +168,15 @@ export const mockLocations: Location[] = [
 export const AUSTIN_CENTER = { lat: 30.2672, lng: -97.7431 };
 export const AUSTIN_ZOOM = 10;
 
+// US-wide initial view showing all city bubbles
+export const US_CENTER = { lat: 39.8, lng: -98.6 };
+export const US_ZOOM = 4;
+
 // Threshold distance in miles to consider "nearby"
 const NEARBY_THRESHOLD_MILES = 50;
 
 // Calculate distance between two points using Haversine formula
-function getDistanceMiles(lat1: number, lng1: number, lat2: number, lng2: number): number {
+export function getDistanceMiles(lat1: number, lng1: number, lat2: number, lng2: number): number {
   const R = 3959; // Earth's radius in miles
   const dLat = (lat2 - lat1) * Math.PI / 180;
   const dLng = (lng2 - lng1) * Math.PI / 180;
@@ -202,9 +206,9 @@ export function getInitialMapView(
   userLng: number | null,
   locations: Location[]
 ): { center: { lat: number; lng: number }; zoom: number } {
-  // If no user location, default to Austin TX
+  // If no user location, show US-wide city bubbles view
   if (userLat === null || userLng === null) {
-    return { center: AUSTIN_CENTER, zoom: AUSTIN_ZOOM };
+    return { center: US_CENTER, zoom: US_ZOOM };
   }
 
   // Check if there are nearby locations
@@ -215,8 +219,8 @@ export function getInitialMapView(
     return { center: { lat: userLat, lng: userLng }, zoom: 10 };
   }
 
-  // No nearby locations, default to Austin TX
-  return { center: AUSTIN_CENTER, zoom: AUSTIN_ZOOM };
+  // No nearby locations, show US-wide city bubbles view
+  return { center: US_CENTER, zoom: US_ZOOM };
 }
 
 export async function getLocations(): Promise<Location[]> {
@@ -251,6 +255,89 @@ export async function getLocations(): Promise<Location[]> {
     }));
   } catch (error) {
     console.error("Failed to fetch locations:", error);
+    return mockLocations;
+  }
+}
+
+function getMockCitySummaries(): CitySummary[] {
+  const map = new Map<string, { city: string; state: string; lats: number[]; lngs: number[]; count: number; votes: number }>();
+  for (const loc of mockLocations) {
+    const key = `${loc.city}|${loc.state}`;
+    const entry = map.get(key);
+    if (entry) {
+      entry.lats.push(loc.lat);
+      entry.lngs.push(loc.lng);
+      entry.count++;
+      entry.votes += loc.votes;
+    } else {
+      map.set(key, { city: loc.city, state: loc.state, lats: [loc.lat], lngs: [loc.lng], count: 1, votes: loc.votes });
+    }
+  }
+  return Array.from(map.values()).map(e => ({
+    city: e.city,
+    state: e.state,
+    lat: e.lats.reduce((a, b) => a + b, 0) / e.lats.length,
+    lng: e.lngs.reduce((a, b) => a + b, 0) / e.lngs.length,
+    locationCount: e.count,
+    totalVotes: e.votes,
+  }));
+}
+
+export async function getCitySummaries(): Promise<CitySummary[]> {
+  if (!isSupabaseConfigured || !supabase) {
+    return getMockCitySummaries();
+  }
+
+  try {
+    const { data, error } = await supabase.rpc("get_location_cities");
+    if (error) {
+      console.error("Error fetching city summaries:", error);
+      return getMockCitySummaries();
+    }
+    return (data || []).map((row: Record<string, unknown>) => ({
+      city: row.city as string,
+      state: row.state as string,
+      lat: Number(row.lat),
+      lng: Number(row.lng),
+      locationCount: Number(row.location_count),
+      totalVotes: Number(row.total_votes),
+    }));
+  } catch (error) {
+    console.error("Failed to fetch city summaries:", error);
+    return getMockCitySummaries();
+  }
+}
+
+export async function getNearbyLocations(centerLat: number, centerLng: number, limit: number = 500): Promise<Location[]> {
+  if (!isSupabaseConfigured || !supabase) {
+    // Mock fallback: return all mockLocations (50 fit in 500 limit)
+    return mockLocations;
+  }
+
+  try {
+    const { data, error } = await supabase.rpc("get_nearby_locations", {
+      center_lat: centerLat,
+      center_lng: centerLng,
+      max_results: limit,
+    });
+    if (error) {
+      console.error("Error fetching nearby locations:", error);
+      return mockLocations;
+    }
+    return (data || []).map((row: Record<string, unknown>) => ({
+      id: row.id as string,
+      name: row.name as string,
+      address: row.address as string,
+      city: row.city as string,
+      state: row.state as string,
+      lat: Number(row.lat),
+      lng: Number(row.lng),
+      votes: Number(row.vote_count),
+      suggested: (row.source as string) === "parent_suggested",
+      scores: mapRowToScores(row),
+    }));
+  } catch (error) {
+    console.error("Failed to fetch nearby locations:", error);
     return mockLocations;
   }
 }

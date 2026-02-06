@@ -1,8 +1,9 @@
 "use client";
 
 import { create } from "zustand";
-import { Location } from "@/types";
+import { Location, CitySummary } from "@/types";
 import { supabase, isSupabaseConfigured } from "./supabase";
+import { getCitySummaries, getNearbyLocations, getDistanceMiles } from "./locations";
 
 interface MapBounds {
   north: number;
@@ -13,6 +14,9 @@ interface MapBounds {
 
 interface VotesState {
   locations: Location[];
+  citySummaries: CitySummary[];
+  lastFetchCenter: { lat: number; lng: number } | null;
+  zoomLevel: number;
   votedLocationIds: Set<string>;
   selectedLocationId: string | null;
   searchQuery: string;
@@ -20,7 +24,7 @@ interface VotesState {
   previewLocation: { lat: number; lng: number; address: string } | null;
   mapCenter: { lat: number; lng: number } | null;
   mapBounds: MapBounds | null;
-  referencePoint: { lat: number; lng: number } | null; // Initial location for sorting - doesn't change
+  referencePoint: { lat: number; lng: number } | null;
   isLoading: boolean;
   userId: string | null;
   setLocations: (locations: Location[]) => void;
@@ -36,6 +40,10 @@ interface VotesState {
   setReferencePoint: (coords: { lat: number; lng: number } | null) => void;
   setLoading: (loading: boolean) => void;
   setUserId: (id: string | null) => void;
+  setZoomLevel: (zoom: number) => void;
+  loadCitySummaries: () => Promise<void>;
+  fetchNearby: (center: { lat: number; lng: number }) => Promise<void>;
+  fetchNearbyForce: (center: { lat: number; lng: number }) => Promise<void>;
   loadUserVotes: (userId: string) => Promise<void>;
   clearUserVotes: () => void;
   filteredLocations: () => Location[];
@@ -43,6 +51,9 @@ interface VotesState {
 
 export const useVotesStore = create<VotesState>((set, get) => ({
   locations: [],
+  citySummaries: [],
+  lastFetchCenter: null,
+  zoomLevel: 4,
   votedLocationIds: new Set<string>(),
   selectedLocationId: null,
   searchQuery: "",
@@ -59,6 +70,28 @@ export const useVotesStore = create<VotesState>((set, get) => ({
   setLoading: (isLoading) => set({ isLoading }),
 
   setUserId: (userId) => set({ userId }),
+
+  setZoomLevel: (zoom) => set({ zoomLevel: zoom }),
+
+  loadCitySummaries: async () => {
+    const summaries = await getCitySummaries();
+    set({ citySummaries: summaries, isLoading: false });
+  },
+
+  fetchNearby: async (center) => {
+    const { lastFetchCenter } = get();
+    if (lastFetchCenter) {
+      const dist = getDistanceMiles(lastFetchCenter.lat, lastFetchCenter.lng, center.lat, center.lng);
+      if (dist < 5) return;
+    }
+    const locations = await getNearbyLocations(center.lat, center.lng);
+    set({ locations, lastFetchCenter: center });
+  },
+
+  fetchNearbyForce: async (center) => {
+    const locations = await getNearbyLocations(center.lat, center.lng);
+    set({ locations, lastFetchCenter: center });
+  },
 
   loadUserVotes: async (userId: string) => {
     // Skip if Supabase is not configured

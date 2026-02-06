@@ -6,20 +6,8 @@ import { Input } from "@/components/ui/input";
 import { LocationCard } from "./LocationCard";
 import { useVotesStore } from "@/lib/votes";
 import { searchAddresses, GeocodingResult } from "@/lib/geocoding";
+import { getDistanceMiles } from "@/lib/locations";
 import { useAuth } from "./AuthProvider";
-
-// Calculate distance between two points using Haversine formula
-function getDistanceMiles(lat1: number, lng1: number, lat2: number, lng2: number): number {
-  const R = 3959; // Earth's radius in miles
-  const dLat = (lat2 - lat1) * Math.PI / 180;
-  const dLng = (lng2 - lng1) * Math.PI / 180;
-  const a =
-    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-    Math.sin(dLng / 2) * Math.sin(dLng / 2);
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  return R * c;
-}
 
 // Check if a location is within viewport bounds
 function isInViewport(
@@ -43,6 +31,9 @@ export function LocationsList() {
     setFlyToTarget,
     referencePoint,
     mapBounds,
+    zoomLevel,
+    citySummaries,
+    fetchNearbyForce,
   } = useVotesStore();
 
   const [addressSuggestions, setAddressSuggestions] = useState<
@@ -194,64 +185,87 @@ export function LocationsList() {
         </div>
       </div>
       <div className="flex-1 overflow-y-auto p-4 space-y-3">
-        {locations.length === 0 ? (
-          <p className="text-center text-muted-foreground py-8">
-            No locations found matching your search.
-          </p>
+        {zoomLevel < 9 ? (
+          // City list mode (wide zoom)
+          citySummaries.length === 0 ? (
+            <p className="text-center text-muted-foreground py-8">
+              Loading cities...
+            </p>
+          ) : (
+            [...citySummaries]
+              .sort((a, b) => b.totalVotes - a.totalVotes)
+              .map((city) => (
+                <button
+                  key={`${city.city}-${city.state}`}
+                  type="button"
+                  className="w-full text-left p-3 rounded-lg border bg-white hover:bg-blue-50 hover:border-blue-200 transition-colors"
+                  onClick={() => {
+                    setFlyToTarget({ lat: city.lat, lng: city.lng });
+                    fetchNearbyForce({ lat: city.lat, lng: city.lng });
+                  }}
+                >
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="font-semibold text-sm">{city.city}, {city.state}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {city.locationCount} location{city.locationCount !== 1 ? "s" : ""}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-sm font-bold text-blue-600">{city.totalVotes}</p>
+                      <p className="text-xs text-muted-foreground">votes</p>
+                    </div>
+                  </div>
+                </button>
+              ))
+          )
         ) : (
-          (() => {
-            // Viewport-aware sorting logic:
-            // 1. Locations visible on screen: sorted by votes (descending)
-            // 2. Locations off-screen: sorted by distance from reference point (ascending)
+          // Individual location cards mode (city zoom)
+          locations.length === 0 ? (
+            <p className="text-center text-muted-foreground py-8">
+              No locations found matching your search.
+            </p>
+          ) : (
+            (() => {
+              if (!referencePoint) {
+                return locations.sort((a, b) => b.votes - a.votes);
+              }
 
-            if (!referencePoint) {
-              // Absolute fallback: sort by votes if no reference point
-              return locations.sort((a, b) => b.votes - a.votes);
-            }
+              if (mapBounds) {
+                const visible = locations.filter(loc => isInViewport(loc.lat, loc.lng, mapBounds));
+                const nonVisible = locations.filter(loc => !isInViewport(loc.lat, loc.lng, mapBounds));
+                visible.sort((a, b) => b.votes - a.votes);
+                nonVisible.sort((a, b) => {
+                  const distA = getDistanceMiles(referencePoint.lat, referencePoint.lng, a.lat, a.lng);
+                  const distB = getDistanceMiles(referencePoint.lat, referencePoint.lng, b.lat, b.lng);
+                  return distA - distB;
+                });
+                return [...visible, ...nonVisible];
+              }
 
-            // If we have mapBounds, use viewport-aware sorting
-            if (mapBounds) {
-              // Separate visible from non-visible locations
-              const visible = locations.filter(loc => isInViewport(loc.lat, loc.lng, mapBounds));
-              const nonVisible = locations.filter(loc => !isInViewport(loc.lat, loc.lng, mapBounds));
-
-              // Sort visible by votes (descending)
-              visible.sort((a, b) => b.votes - a.votes);
-
-              // Sort non-visible by distance from reference point (ascending)
-              nonVisible.sort((a, b) => {
+              return locations.sort((a, b) => {
                 const distA = getDistanceMiles(referencePoint.lat, referencePoint.lng, a.lat, a.lng);
                 const distB = getDistanceMiles(referencePoint.lat, referencePoint.lng, b.lat, b.lng);
                 return distA - distB;
               });
-
-              // Return visible first, then non-visible
-              return [...visible, ...nonVisible];
-            }
-
-            // No mapBounds yet (initial load): sort all by distance from reference point
-            return locations.sort((a, b) => {
-              const distA = getDistanceMiles(referencePoint.lat, referencePoint.lng, a.lat, a.lng);
-              const distB = getDistanceMiles(referencePoint.lat, referencePoint.lng, b.lat, b.lng);
-              return distA - distB;
-            });
-          })()
-            .map((location) => {
-              const isVisible = mapBounds ? isInViewport(location.lat, location.lng, mapBounds) : false;
-              return (
-                <LocationCard
-                  key={location.id}
-                  location={location}
-                  isSelected={selectedLocationId === location.id}
-                  hasVoted={votedLocationIds.has(location.id)}
-                  isAuthenticated={canVote}
-                  isInViewport={isVisible}
-                  onSelect={() => setSelectedLocation(location.id)}
-                  onVote={() => vote(location.id)}
-                  onUnvote={() => unvote(location.id)}
-                />
-              );
-            })
+            })()
+              .map((location) => {
+                const isVisible = mapBounds ? isInViewport(location.lat, location.lng, mapBounds) : false;
+                return (
+                  <LocationCard
+                    key={location.id}
+                    location={location}
+                    isSelected={selectedLocationId === location.id}
+                    hasVoted={votedLocationIds.has(location.id)}
+                    isAuthenticated={canVote}
+                    isInViewport={isVisible}
+                    onSelect={() => setSelectedLocation(location.id)}
+                    onVote={() => vote(location.id)}
+                    onUnvote={() => unvote(location.id)}
+                  />
+                );
+              })
+          )
         )}
       </div>
     </div>
