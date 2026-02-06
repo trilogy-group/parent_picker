@@ -48,6 +48,7 @@ export function VoteButton({
   return (
     <>
       <Button
+        data-testid="vote-button"
         variant="ghost"
         size="sm"
         onClick={handleClick}

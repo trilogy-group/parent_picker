@@ -58,7 +58,7 @@ export function ScoreBadge({ scores }: { scores?: LocationScores }) {
   );
 
   return (
-    <div className="mt-2 flex items-center gap-2">
+    <div data-testid="score-badge" className="mt-2 flex items-center gap-2">
       {hasOverallLink ? (
         <a href={scores.overallDetailsUrl!} target="_blank" rel="noopener noreferrer" className="hover:opacity-80 flex-shrink-0 inline-flex items-center gap-0.5" onClick={(e) => e.stopPropagation()}>
           {overallBadge}

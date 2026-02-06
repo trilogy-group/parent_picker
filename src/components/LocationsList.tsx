@@ -1,25 +1,14 @@
 "use client";
 
-import { useState, useCallback, useRef, useEffect } from "react";
+import { useState, useCallback, useRef, useEffect, useMemo } from "react";
 import { Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { LocationCard } from "./LocationCard";
 import { useVotesStore } from "@/lib/votes";
+import { useShallow } from "zustand/react/shallow";
 import { searchAddresses, GeocodingResult } from "@/lib/geocoding";
+import { getDistanceMiles } from "@/lib/locations";
 import { useAuth } from "./AuthProvider";
-
-// Calculate distance between two points using Haversine formula
-function getDistanceMiles(lat1: number, lng1: number, lat2: number, lng2: number): number {
-  const R = 3959; // Earth's radius in miles
-  const dLat = (lat2 - lat1) * Math.PI / 180;
-  const dLng = (lng2 - lng1) * Math.PI / 180;
-  const a =
-    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-    Math.sin(dLng / 2) * Math.sin(dLng / 2);
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  return R * c;
-}
 
 // Check if a location is within viewport bounds
 function isInViewport(
@@ -41,10 +30,31 @@ export function LocationsList() {
     searchQuery,
     setSearchQuery,
     setFlyToTarget,
-    referencePoint,
+    mapCenter,
     mapBounds,
-  } = useVotesStore();
+    zoomLevel,
+    citySummaries,
+    fetchNearbyForce,
+  } = useVotesStore(useShallow((s) => ({
+    filteredLocations: s.filteredLocations,
+    selectedLocationId: s.selectedLocationId,
+    setSelectedLocation: s.setSelectedLocation,
+    votedLocationIds: s.votedLocationIds,
+    vote: s.vote,
+    unvote: s.unvote,
+    searchQuery: s.searchQuery,
+    setSearchQuery: s.setSearchQuery,
+    setFlyToTarget: s.setFlyToTarget,
+    mapCenter: s.mapCenter,
+    mapBounds: s.mapBounds,
+    zoomLevel: s.zoomLevel,
+    citySummaries: s.citySummaries,
+    fetchNearbyForce: s.fetchNearbyForce,
+  })));
 
+  const [page, setPage] = useState(0);
+  const [prevSearchQuery, setPrevSearchQuery] = useState(searchQuery);
+  const [prevMapBounds, setPrevMapBounds] = useState(mapBounds);
   const [addressSuggestions, setAddressSuggestions] = useState<
     GeocodingResult[]
   >([]);
@@ -66,11 +76,11 @@ export function LocationsList() {
       return;
     }
 
-    const results = await searchAddresses(query);
+    const results = await searchAddresses(query, mapCenter ?? undefined);
     setAddressSuggestions(results);
     setShowSuggestions(results.length > 0);
     setHighlightedIndex(-1);
-  }, []);
+  }, [mapCenter]);
 
   const handleSearchChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -153,6 +163,38 @@ export function LocationsList() {
     };
   }, []);
 
+  // Reset pagination when search or map viewport changes (render-time adjustment)
+  if (searchQuery !== prevSearchQuery || mapBounds !== prevMapBounds) {
+    setPrevSearchQuery(searchQuery);
+    setPrevMapBounds(mapBounds);
+    setPage(0);
+  }
+
+  // Memoize sorted list to avoid redundant sort/filter on non-map re-renders
+  const sorted = useMemo(() => {
+    if (!mapBounds) return [...locations].sort((a, b) => b.votes - a.votes);
+
+    const onScreen = locations.filter(loc => isInViewport(loc.lat, loc.lng, mapBounds));
+    const offScreen = locations.filter(loc => !isInViewport(loc.lat, loc.lng, mapBounds));
+
+    onScreen.sort((a, b) => b.votes - a.votes);
+
+    if (mapCenter) {
+      offScreen.sort((a, b) => {
+        const distA = getDistanceMiles(mapCenter.lat, mapCenter.lng, a.lat, a.lng);
+        const distB = getDistanceMiles(mapCenter.lat, mapCenter.lng, b.lat, b.lng);
+        return distA - distB;
+      });
+    }
+
+    return [...onScreen, ...offScreen];
+  }, [locations, mapBounds, mapCenter]);
+
+  const PAGE_SIZE = 25;
+  const showCount = (page + 1) * PAGE_SIZE;
+  const visible = sorted.slice(0, showCount);
+  const hasMore = showCount < sorted.length;
+
   return (
     <div className="flex flex-col h-full">
       <div
@@ -162,7 +204,7 @@ export function LocationsList() {
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Search locations..."
+            placeholder="Find location..."
             value={searchQuery}
             onChange={handleSearchChange}
             onKeyDown={handleKeyDown}
@@ -194,50 +236,49 @@ export function LocationsList() {
         </div>
       </div>
       <div className="flex-1 overflow-y-auto p-4 space-y-3">
-        {locations.length === 0 ? (
+        {zoomLevel < 9 ? (
+          // City list mode (wide zoom)
+          citySummaries.length === 0 ? (
+            <p className="text-center text-muted-foreground py-8">
+              Loading cities...
+            </p>
+          ) : (
+            [...citySummaries]
+              .sort((a, b) => b.totalVotes - a.totalVotes)
+              .map((city) => (
+                <button
+                  key={`${city.city}-${city.state}`}
+                  type="button"
+                  data-testid="city-card"
+                  className="w-full text-left p-3 rounded-lg border bg-white hover:bg-blue-50 hover:border-blue-200 transition-colors"
+                  onClick={() => {
+                    setFlyToTarget({ lat: city.lat, lng: city.lng });
+                    fetchNearbyForce({ lat: city.lat, lng: city.lng });
+                  }}
+                >
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="font-semibold text-sm">{city.city}, {city.state}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {city.locationCount} location{city.locationCount !== 1 ? "s" : ""}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-sm font-bold text-blue-600">{city.totalVotes}</p>
+                      <p className="text-xs text-muted-foreground">votes</p>
+                    </div>
+                  </div>
+                </button>
+              ))
+          )
+        ) : locations.length === 0 ? (
           <p className="text-center text-muted-foreground py-8">
             No locations found matching your search.
           </p>
         ) : (
-          (() => {
-            // Viewport-aware sorting logic:
-            // 1. Locations visible on screen: sorted by votes (descending)
-            // 2. Locations off-screen: sorted by distance from reference point (ascending)
-
-            if (!referencePoint) {
-              // Absolute fallback: sort by votes if no reference point
-              return locations.sort((a, b) => b.votes - a.votes);
-            }
-
-            // If we have mapBounds, use viewport-aware sorting
-            if (mapBounds) {
-              // Separate visible from non-visible locations
-              const visible = locations.filter(loc => isInViewport(loc.lat, loc.lng, mapBounds));
-              const nonVisible = locations.filter(loc => !isInViewport(loc.lat, loc.lng, mapBounds));
-
-              // Sort visible by votes (descending)
-              visible.sort((a, b) => b.votes - a.votes);
-
-              // Sort non-visible by distance from reference point (ascending)
-              nonVisible.sort((a, b) => {
-                const distA = getDistanceMiles(referencePoint.lat, referencePoint.lng, a.lat, a.lng);
-                const distB = getDistanceMiles(referencePoint.lat, referencePoint.lng, b.lat, b.lng);
-                return distA - distB;
-              });
-
-              // Return visible first, then non-visible
-              return [...visible, ...nonVisible];
-            }
-
-            // No mapBounds yet (initial load): sort all by distance from reference point
-            return locations.sort((a, b) => {
-              const distA = getDistanceMiles(referencePoint.lat, referencePoint.lng, a.lat, a.lng);
-              const distB = getDistanceMiles(referencePoint.lat, referencePoint.lng, b.lat, b.lng);
-              return distA - distB;
-            });
-          })()
-            .map((location) => {
-              const isVisible = mapBounds ? isInViewport(location.lat, location.lng, mapBounds) : false;
+          <>
+            {visible.map((location) => {
+              const inView = mapBounds ? isInViewport(location.lat, location.lng, mapBounds) : false;
               return (
                 <LocationCard
                   key={location.id}
@@ -245,13 +286,28 @@ export function LocationsList() {
                   isSelected={selectedLocationId === location.id}
                   hasVoted={votedLocationIds.has(location.id)}
                   isAuthenticated={canVote}
-                  isInViewport={isVisible}
+                  isInViewport={inView}
                   onSelect={() => setSelectedLocation(location.id)}
                   onVote={() => vote(location.id)}
                   onUnvote={() => unvote(location.id)}
                 />
               );
-            })
+            })}
+            <p data-testid="location-count" className="text-center text-xs text-muted-foreground pt-2">
+              Showing {Math.min(showCount, sorted.length)} of {sorted.length} locations
+            </p>
+            {hasMore && (
+              <button
+                type="button"
+                data-testid="pagination-next"
+                onClick={() => setPage((p) => p + 1)}
+                className="w-full py-2 text-sm font-medium text-primary hover:underline"
+              >
+                Next
+              </button>
+            )}
+          </>
+
         )}
       </div>
     </div>
