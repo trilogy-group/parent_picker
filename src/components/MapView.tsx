@@ -3,7 +3,7 @@
 import { useEffect, useRef, useCallback, useState, useMemo } from "react";
 import Map, { Source, Layer, NavigationControl, Popup, Marker } from "react-map-gl/mapbox";
 import { MapPin } from "lucide-react";
-import { ScoreBadge } from "./ScoreBadge";
+import { OverallBadge, ScoreDetails } from "./ScoreBadge";
 import { useVotesStore } from "@/lib/votes";
 import { useShallow } from "zustand/react/shallow";
 import { getInitialMapView, US_CENTER, US_ZOOM } from "@/lib/locations";
@@ -421,11 +421,14 @@ export function MapView() {
           offset={[0, 8]}
         >
           <div className="p-1">
-            <p className="font-semibold text-sm">{selectedLocation.name}</p>
+            <div className="flex items-center justify-between gap-2">
+              <p className="font-semibold text-sm truncate">{selectedLocation.name}</p>
+              <OverallBadge scores={selectedLocation.scores} />
+            </div>
             <p className="text-xs text-muted-foreground">
-              {selectedLocation.address}
+              {selectedLocation.address}, {selectedLocation.city}, {selectedLocation.state}
             </p>
-            <ScoreBadge scores={selectedLocation.scores} compact />
+            <ScoreDetails scores={selectedLocation.scores} useGrid />
           </div>
         </Popup>
       )}

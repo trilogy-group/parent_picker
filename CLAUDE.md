@@ -68,21 +68,33 @@ Duplicate the Sports Academy facilities map functionality:
 
 **Current branch:** `main`
 **Deployed:** https://parentpicker.vercel.app
-**Last deploy:** 2026-02-06 — score/size filters + header layout fix
+**Last deploy:** 2026-02-06 — card UI polish (compact cards, aligned icons, map popup parity)
 
 ### Workstreams 1-8: DONE (merged to main)
 
 ### Workstream 9: Score & Size Filters — DONE
 
 **What was built:**
-- Collapsible filter panel below search bar in left panel
-- Color chip toggles (G/Y/R) for Overall, Demo, Price, Zoning, Nbhd, Bldg
-- Size tier buttons: Micro, Micro2, Growth, Full Size, Red (Reject)
-- AND across categories, OR within; Red (Reject) excluded by default
-- Unscored locations hidden when any color filter is active for that category
+- Collapsible filter panel in left panel (full category names: Demographics, Price, Regulatory, Neighborhood, Building)
+- Color chip toggles (G/Y/R) for 6 categories + size tier buttons (Micro, Micro2, Growth, Full Size, N/A)
+- AND across categories, OR within; Red (Reject) excluded by default, 4 non-reject sizes selected by default
+- Search bar removed — filters only
 - Filters cascade to map (via `filteredLocations()` in Zustand store)
 - `size_classification` added to `pp_location_scores` table, synced from upstream (normalized)
-- Updated `sync_scores_from_listings()`, `pp_locations_with_votes` view, `get_nearby_locations()` RPC
+
+### Workstream 10: Card & Score Display Polish — DONE
+
+**What was built:**
+- Sub-scores: lucide icons instead of text labels, expandable "details"/"less" toggle
+- Overall score badge in card header row (upper right, next to vote button)
+- Single-line address: `address, city, state`
+- Score legend popup (? icon, bottom-right) — icons only, no color thresholds
+- Map popup matches card layout: name + overall badge header, address, expandable sub-scores with 3/3 grid
+- Left cards: sub-scores in single row, map popup: 3-col grid
+- Card whitespace fix: overrode shadcn Card's built-in `gap-6` with `gap-0`
+- Icon alignment fix: `<div flex h-4>` with `[&>svg]:block` instead of `<span inline-flex>` to eliminate baseline shift
+- Suggest button moved below "How It Works", label: "+ Or Suggest New Location"
+- Map popup dismiss: click dot again, click map, or close button
 
 **DB changes:**
 - `pp_location_scores.size_classification` column added
@@ -92,12 +104,14 @@ Duplicate the Sports Academy facilities map functionality:
 - 1,026 of 1,044 scored locations have size data (628 Micro, 151 Reject, 130 Micro2, 87 Growth, 28 Full)
 
 **Key files modified:**
-- `src/lib/votes.ts` — `ScoreFilters` type, filter state, `filteredLocations()` logic
-- `src/components/LocationsList.tsx` — `ScoreFilterPanel` component
-- `src/types/index.ts` — `sizeClassification` on `LocationScores`
-- `src/lib/locations.ts` — `mapRowToScores()` updated
+- `src/components/ScoreBadge.tsx` — OverallBadge, ScoreDetails (expandable), SubScoresRow/Grid, ScoreLegend
+- `src/components/LocationCard.tsx` — compact layout with `gap-0`, overall badge in header
+- `src/components/MapView.tsx` — popup uses OverallBadge + ScoreDetails (grid), dismiss behavior
+- `src/components/LocationsList.tsx` — ScoreFilterPanel, removed search bar, tighter list spacing
+- `src/lib/votes.ts` — ScoreFilters type, filter state, filteredLocations() logic
+- `src/types/index.ts` — sizeClassification on LocationScores
 - `src/components/AuthButton.tsx` — compact sign-in/sign-out styling
-- `src/app/page.tsx` — header layout: title/subtitle/auth on separate rows
+- `src/app/page.tsx` — header layout, suggest button moved
 
 ### Pending / Next steps
 - **Upstream scoring agent bug**: `overall_color` wrong for ~74% of rows — agent artifacts show correct color but DB has wrong value. Needs fix in scoring agent, then re-sync: `SELECT sync_scores_from_listings();`
