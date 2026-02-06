@@ -105,11 +105,11 @@ The map uses Mapbox GL JS via react-map-gl.
 - [ ] `TC-3.1.3`: Map handles missing API token gracefully with error message
 
 ### REQ-3.2: Default View
-The map centers on Austin, TX metro area by default.
+The map starts at a US-wide view (zoom 4) and flies to the user's geolocation if permission is granted.
 
 **Test Cases:**
-- [ ] `TC-3.2.1`: Initial center is approximately (30.2672, -97.7431)
-- [ ] `TC-3.2.2`: Initial zoom level is 10
+- [ ] `TC-3.2.1`: Initial view shows US-wide (zoom ~4) before geolocation resolves
+- [ ] `TC-3.2.2`: Map flies to user geolocation if permission granted
 - [ ] `TC-3.2.3`: Navigation controls (zoom +/-) are visible top-right
 
 ### REQ-3.3: Location Markers
@@ -347,6 +347,8 @@ Primary data source is Supabase (pp_locations, pp_votes, pp_listings tables). Mo
 - [ ] `TC-9.2.1`: App loads locations from Supabase pp_locations_with_votes view
 - [ ] `TC-9.2.2`: App falls back to mock data when Supabase is not configured
 - [ ] `TC-9.2.3`: Mock fallback loads with at least 5 locations with varied vote counts
+- [ ] `TC-9.2.4`: Supabase fetch paginates with .range() to retrieve all rows beyond PostgREST 1000-row limit
+- [ ] `TC-9.2.5`: All parent-suggested locations (0 votes) are included in results regardless of total count
 
 ### REQ-9.3: State Management
 Application state is managed with Zustand.
@@ -591,28 +593,140 @@ Admin can reject a pending location.
 
 ---
 
+## 18. Score Display
+
+### REQ-18.1: Score Badge on Location Cards
+Scored locations display an overall score badge and sub-score pills on their cards.
+
+**Test Cases:**
+- [ ] `TC-18.1.1`: Scored locations show a circular overall score badge
+- [ ] `TC-18.1.2`: Overall badge is color-coded (green/yellow/amber/red)
+- [ ] `TC-18.1.3`: Unscored locations do not show any score badge
+- [ ] `TC-18.1.4`: Sub-score pills display for Demographics, Price, Zoning, Neighborhood, Building
+- [ ] `TC-18.1.5`: Sub-score pills are color-coded by border color matching their score tier
+- [ ] `TC-18.1.6`: Missing sub-scores show "–" instead of a number
+- [ ] `TC-18.1.7`: Sub-score pills with report URLs are clickable links that open in new tab
+
+### REQ-18.2: Score-Colored Map Markers
+Individual location dots on the map are colored by their overall score.
+
+**Test Cases:**
+- [ ] `TC-18.2.1`: Dots with GREEN score are green (#22c55e)
+- [ ] `TC-18.2.2`: Dots with YELLOW score are yellow (#facc15)
+- [ ] `TC-18.2.3`: Dots with AMBER score are amber (#f59e0b)
+- [ ] `TC-18.2.4`: Dots with RED score are red (#ef4444)
+- [ ] `TC-18.2.5`: Dots with no score are dark gray (#475569)
+
+### REQ-18.3: Score in Popup
+Selected location popup displays score badge.
+
+**Test Cases:**
+- [ ] `TC-18.3.1`: Popup for scored location shows ScoreBadge component
+
+---
+
+## 19. Two-Tier Zoom Model
+
+### REQ-19.1: City Bubbles at Wide Zoom
+At zoom < 9, the map shows city-level aggregate bubbles instead of individual markers.
+
+**Test Cases:**
+- [ ] `TC-19.1.1`: At zoom < 9, city bubbles are visible on map
+- [ ] `TC-19.1.2`: City bubbles show location count as label
+- [ ] `TC-19.1.3`: Bubble radius scales with number of locations
+- [ ] `TC-19.1.4`: Bubbles have blue fill with white border
+- [ ] `TC-19.1.5`: Clicking a city bubble zooms into that city (zoom ~9)
+- [ ] `TC-19.1.6`: Overlapping city bubbles cluster together at wide zoom
+
+### REQ-19.2: Individual Dots at City Zoom
+At zoom ≥ 9, the map shows individual location dots.
+
+**Test Cases:**
+- [ ] `TC-19.2.1`: At zoom ≥ 9, individual dots are visible (not city bubbles)
+- [ ] `TC-19.2.2`: Clicking a dot selects that location
+- [ ] `TC-19.2.3`: Selected dot opens a popup with name, address, and scores
+- [ ] `TC-19.2.4`: At most ~500 nearby dots are fetched (not all 1900)
+
+### REQ-19.3: Transition Between Tiers
+Zooming in/out transitions smoothly between city and location views.
+
+**Test Cases:**
+- [ ] `TC-19.3.1`: Zooming from <9 to ≥9 switches from bubbles to dots
+- [ ] `TC-19.3.2`: Zooming from ≥9 to <9 switches from dots to bubbles
+
+---
+
+## 20. City Summaries List
+
+### REQ-20.1: City Cards at Wide Zoom
+When zoom < 9, the panel shows a list of city summary cards instead of individual location cards.
+
+**Test Cases:**
+- [ ] `TC-20.1.1`: At zoom < 9, city cards appear in the list (not location cards)
+- [ ] `TC-20.1.2`: Each city card shows "City, State" name
+- [ ] `TC-20.1.3`: Each city card shows location count (e.g. "760 locations")
+- [ ] `TC-20.1.4`: Each city card shows total vote count
+- [ ] `TC-20.1.5`: City cards are sorted by total votes descending
+- [ ] `TC-20.1.6`: Clicking a city card flies map to that city and fetches nearby locations
+
+---
+
+## 21. Geolocation
+
+### REQ-21.1: Auto-Detect User Location
+On load, the app requests browser geolocation and centers the map accordingly.
+
+**Test Cases:**
+- [ ] `TC-21.1.1`: Browser geolocation permission is requested on page load
+- [ ] `TC-21.1.2`: If granted, map flies to user's location
+- [ ] `TC-21.1.3`: If denied, map stays at US-wide view and uses default reference point
+- [ ] `TC-21.1.4`: Nearby locations are fetched after geolocation resolves
+- [ ] `TC-21.1.5`: Geolocation timeout does not block app load (5-second timeout)
+
+---
+
+## 22. List Pagination
+
+### REQ-22.1: Paginated Location List
+The location list displays 25 items per page with a "Next" button.
+
+**Test Cases:**
+- [ ] `TC-22.1.1`: At most 25 location cards are shown initially
+- [ ] `TC-22.1.2`: "Showing X of Y locations" counter is displayed
+- [ ] `TC-22.1.3`: "Next" button appears when more than 25 locations exist
+- [ ] `TC-22.1.4`: Clicking "Next" loads 25 more location cards
+- [ ] `TC-22.1.5`: Pagination resets when search query changes
+- [ ] `TC-22.1.6`: Pagination resets when map viewport changes
+
+---
+
 ## Test Execution Summary
 
-| Category | Total Tests | Passing | Failing |
-|----------|-------------|---------|---------|
-| Layout & Structure | 10 | - | - |
-| Header & Branding | 8 | - | - |
-| Map Functionality | 17 | - | - |
-| Locations List | 14 | - | - |
-| Voting System | 11 | - | - |
-| Suggest Location | 17 | - | - |
-| How It Works | 4 | - | - |
-| Responsive Design | 10 | - | - |
-| Data Layer | 13 | - | - |
-| Performance | 7 | - | - |
-| Accessibility | 11 | - | - |
-| Error Handling | 4 | - | - |
-| Environment | 3 | - | - |
-| Tech Stack | 8 | - | - |
-| Address Autocomplete & Geocoding | 14 | - | - |
-| Authentication | 10 | - | - |
-| Admin Review Workflow | 23 | - | - |
-| **TOTAL** | **184** | - | - |
+| # | Category | Total TCs |
+|---|----------|-----------|
+| 1 | Layout & Structure | 13 |
+| 2 | Header & Branding | 8 |
+| 3 | Map Functionality | 19 |
+| 4 | Locations List | 26 |
+| 5 | Voting System | 12 |
+| 6 | Suggest Location | 23 |
+| 7 | How It Works | 4 |
+| 8 | Responsive Design | 11 |
+| 9 | Data Layer | 18 |
+| 10 | Performance | 7 |
+| 11 | Accessibility | 11 |
+| 12 | Error Handling | 5 |
+| 13 | Environment | 3 |
+| 14 | Tech Stack | 9 |
+| 15 | Address Autocomplete & Geocoding | 17 |
+| 16 | Authentication | 10 |
+| 17 | Admin Review Workflow | 23 |
+| 18 | Score Display | 13 |
+| 19 | Two-Tier Zoom Model | 12 |
+| 20 | City Summaries List | 6 |
+| 21 | Geolocation | 5 |
+| 22 | List Pagination | 6 |
+| | **TOTAL** | **261** |
 
 ---
 
@@ -623,6 +737,7 @@ Admin can reject a pending location.
 | 1.0.0 | 2024-02-04 | Initial MVP requirements |
 | 1.1.0 | 2026-02-05 | Added auth requirements (Section 16), updated data layer to reflect Supabase integration, aligned v2 scope with location selection brainlift |
 | 1.2.0 | 2026-02-05 | Added admin review workflow (Section 17): admin page, approve/reject, score sync, email notifications |
+| 1.3.0 | 2026-02-06 | TDD audit: fixed REQ-3.2 (geolocation default view), added Sections 18-22 (scores, two-tier zoom, city summaries, geolocation, pagination), added 2 TCs to Section 9 (row pagination), total 261 TCs |
 
 ---
 
