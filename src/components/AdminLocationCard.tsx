@@ -1,16 +1,19 @@
 "use client";
 
 import { useState } from "react";
-import { MapPin, User, Calendar, RefreshCw, Check, X, Loader2, Mail, Eye, EyeOff } from "lucide-react";
+import { MapPin, User, Calendar, RefreshCw, Check, X, Loader2, Mail, Eye, EyeOff, Heart, Send } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ScoreBadge } from "./ScoreBadge";
-import { AdminLocation, LocationScores } from "@/types";
+import { AdminLocation, LikedLocation, LocationScores, UpstreamMetrics, MetroInfo, LocationTodo } from "@/types";
+import { generateTodos } from "@/lib/todo-generator";
+import { generateTodoApprovalHtml, generateLikerEmailHtml } from "@/lib/email-todos";
 
 interface AdminLocationCardProps {
-  location: AdminLocation;
+  location: AdminLocation | LikedLocation;
   token: string;
   onRemove: (id: string) => void;
+  mode?: "suggestion" | "like";
 }
 
 interface EmailScoreInfo {
@@ -76,7 +79,7 @@ function scoreRow(label: string, score: number | null, isOverall: boolean = fals
   return `<tr><td style="padding:4px 8px;font-size:14px;">${label}</td><td style="padding:4px 8px;font-size:14px;font-weight:bold;color:${color};">${pct}</td></tr>`;
 }
 
-function generateApprovalHtml(loc: AdminLocation, scores?: EmailScoreInfo): string {
+function generatePlainApprovalHtml(loc: AdminLocation, scores?: EmailScoreInfo): string {
   let scoreSection = "";
   if (scores?.overall != null) {
     scoreSection = `
@@ -125,14 +128,31 @@ function generateRejectionHtml(loc: AdminLocation, scores?: EmailScoreInfo): str
   `;
 }
 
-export function AdminLocationCard({ location, token, onRemove }: AdminLocationCardProps) {
+function hasRedScores(scores?: LocationScores): boolean {
+  if (!scores) return false;
+  return (
+    scores.zoning.color === "RED" ||
+    scores.demographics.color === "RED" ||
+    scores.price.color === "RED"
+  );
+}
+
+export function AdminLocationCard({ location, token, onRemove, mode = "suggestion" }: AdminLocationCardProps) {
+  const isLikeMode = mode === "like";
+  const likedLocation = isLikeMode ? (location as LikedLocation) : null;
+
   const [scores, setScores] = useState<LocationScores | undefined>(location.scores);
   const [syncing, setSyncing] = useState(false);
   const [approving, setApproving] = useState(false);
   const [rejecting, setRejecting] = useState(false);
+  const [sending, setSending] = useState(false);
   const [syncMessage, setSyncMessage] = useState<string | null>(null);
-  const [emailPreview, setEmailPreview] = useState<"approve" | "reject" | null>(null);
+  const [emailPreview, setEmailPreview] = useState<"approve" | "reject" | "liker" | null>(null);
   const [showPreview, setShowPreview] = useState(false);
+  const [, setUpstreamMetrics] = useState<UpstreamMetrics | null>(null);
+  const [, setMetroInfo] = useState<MetroInfo | null>(null);
+  const [todos, setTodos] = useState<LocationTodo[]>([]);
+  const [sent, setSent] = useState(false);
 
   const headers = {
     Authorization: `Bearer ${token}`,
@@ -140,8 +160,14 @@ export function AdminLocationCard({ location, token, onRemove }: AdminLocationCa
   };
 
   const emailScores = scoresToEmailScores(scores);
-  const approvalHtml = generateApprovalHtml(location, emailScores);
+
+  // Build email HTML based on mode
+  const approvalHtml =
+    todos.length > 0
+      ? generateTodoApprovalHtml(location, emailScores, todos)
+      : generatePlainApprovalHtml(location, emailScores);
   const rejectionHtml = generateRejectionHtml(location, emailScores);
+  const likerHtml = generateLikerEmailHtml(location, emailScores, todos);
 
   const handleSyncScores = async () => {
     setSyncing(true);
@@ -154,10 +180,31 @@ export function AdminLocationCard({ location, token, onRemove }: AdminLocationCa
       const data = await res.json();
       if (res.ok) {
         if (data.scores) {
-          setScores(mapSyncScores(data.scores));
+          const mapped = mapSyncScores(data.scores);
+          setScores(mapped);
           setSyncMessage(`Synced (${data.synced} row${data.synced !== 1 ? "s" : ""})`);
-          // Auto-show approval email preview after scores are pulled
-          setEmailPreview("approve");
+
+          // Store upstream metrics and metro info
+          const um: UpstreamMetrics | null = data.upstreamMetrics || null;
+          const mi: MetroInfo | null = data.metroInfo || null;
+          setUpstreamMetrics(um);
+          setMetroInfo(mi);
+
+          // Generate TODOs if we have RED scores + upstream data
+          if (mapped && hasRedScores(mapped) && um && mi) {
+            const generated = generateTodos(mapped, um, mi);
+            setTodos(generated);
+            if (generated.length > 0) {
+              setSyncMessage(
+                `Synced (${data.synced} row${data.synced !== 1 ? "s" : ""}) — ${generated.length} TODO${generated.length !== 1 ? "s" : ""} generated`
+              );
+            }
+          } else {
+            setTodos([]);
+          }
+
+          // Auto-show email preview after scores are pulled
+          setEmailPreview(isLikeMode ? "liker" : "approve");
           setShowPreview(true);
         } else {
           setSyncMessage("No scores found in upstream data");
@@ -181,7 +228,9 @@ export function AdminLocationCard({ location, token, onRemove }: AdminLocationCa
         headers,
         body: JSON.stringify({
           emailHtml: approvalHtml,
-          emailSubject: "Your suggested location is now live!",
+          emailSubject: todos.length > 0
+            ? "Your location is approved — action items inside"
+            : "Your suggested location is now live!",
         }),
       });
       if (res.ok) {
@@ -222,32 +271,84 @@ export function AdminLocationCard({ location, token, onRemove }: AdminLocationCa
     }
   };
 
+  const handleNotifyVoters = async () => {
+    if (!likedLocation) return;
+    setSending(true);
+    try {
+      const res = await fetch(`/api/admin/locations/${location.id}/notify-voters`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify({
+          emailHtml: likerHtml,
+          emailSubject: todos.length > 0
+            ? "Location update — action items inside"
+            : "Update on a location you liked",
+          voterEmails: likedLocation.voter_emails,
+        }),
+      });
+      if (res.ok) {
+        setSent(true);
+      } else {
+        const data = await res.json().catch(() => ({}));
+        console.error("Notify failed:", data);
+      }
+    } catch (err) {
+      console.error("Notify error:", err);
+    } finally {
+      setSending(false);
+    }
+  };
+
   const createdDate = new Date(location.created_at).toLocaleDateString("en-US", {
     month: "short",
     day: "numeric",
     year: "numeric",
   });
 
-  const currentPreviewHtml = emailPreview === "reject" ? rejectionHtml : approvalHtml;
+  const currentPreviewHtml = isLikeMode
+    ? likerHtml
+    : emailPreview === "reject"
+    ? rejectionHtml
+    : approvalHtml;
+
+  const previewLabel = isLikeMode
+    ? "Voter Update"
+    : emailPreview === "approve"
+    ? "Approval"
+    : "Rejection";
 
   return (
     <Card className="p-0">
       <CardContent className="p-5 space-y-3">
         {/* Location info */}
         <div>
-          <h3 className="font-semibold text-base">{location.name}</h3>
+          <div className="flex items-center gap-2">
+            <h3 className="font-semibold text-base">{location.name}</h3>
+            {isLikeMode && likedLocation && (
+              <span className="flex items-center gap-1 text-xs bg-pink-100 text-pink-700 px-2 py-0.5 rounded-full font-medium">
+                <Heart className="h-3 w-3" />
+                {likedLocation.vote_count} vote{likedLocation.vote_count !== 1 ? "s" : ""}
+              </span>
+            )}
+          </div>
           <div className="flex items-center gap-1 mt-1 text-muted-foreground">
             <MapPin className="h-3.5 w-3.5 flex-shrink-0" />
             <span className="text-sm">{location.address}, {location.city}, {location.state}</span>
           </div>
         </div>
 
-        {/* Suggestor info */}
+        {/* Suggestor info (suggestion mode) or voter info (like mode) */}
         <div className="flex items-center gap-4 text-sm text-muted-foreground">
-          {location.suggestor_email && (
+          {!isLikeMode && location.suggestor_email && (
             <div className="flex items-center gap-1">
               <User className="h-3.5 w-3.5" />
               <span>{location.suggestor_email}</span>
+            </div>
+          )}
+          {isLikeMode && likedLocation && likedLocation.voter_emails.length > 0 && (
+            <div className="flex items-center gap-1">
+              <Mail className="h-3.5 w-3.5" />
+              <span>{likedLocation.voter_emails.length} voter{likedLocation.voter_emails.length !== 1 ? "s" : ""}</span>
             </div>
           )}
           <div className="flex items-center gap-1">
@@ -274,6 +375,26 @@ export function AdminLocationCard({ location, token, onRemove }: AdminLocationCa
           )}
         </div>
 
+        {/* TODO summary badges */}
+        {todos.length > 0 && (
+          <div className="flex flex-wrap gap-1.5">
+            {todos.map((todo) => (
+              <span
+                key={todo.type}
+                className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                  todo.type === "zoning"
+                    ? "bg-red-100 text-red-700"
+                    : todo.type === "demographics"
+                    ? "bg-yellow-100 text-yellow-700"
+                    : "bg-orange-100 text-orange-700"
+                }`}
+              >
+                {todo.scenario}: {todo.title.split(":")[0]}
+              </span>
+            ))}
+          </div>
+        )}
+
         {/* Email preview */}
         {emailPreview && (
           <div className="border rounded-lg overflow-hidden">
@@ -281,19 +402,32 @@ export function AdminLocationCard({ location, token, onRemove }: AdminLocationCa
               <div className="flex items-center gap-2">
                 <Mail className="h-3.5 w-3.5 text-muted-foreground" />
                 <span className="text-xs font-medium">
-                  Email preview ({emailPreview === "approve" ? "Approval" : "Rejection"})
-                  {location.suggestor_email && <span className="text-muted-foreground"> → {location.suggestor_email}</span>}
+                  Email preview ({previewLabel})
+                  {!isLikeMode && emailPreview === "approve" && todos.length > 0 && (
+                    <span className="text-orange-600"> + {todos.length} TODO{todos.length !== 1 ? "s" : ""}</span>
+                  )}
+                  {isLikeMode && todos.length > 0 && (
+                    <span className="text-orange-600"> + {todos.length} TODO{todos.length !== 1 ? "s" : ""}</span>
+                  )}
+                  {!isLikeMode && location.suggestor_email && (
+                    <span className="text-muted-foreground"> → {location.suggestor_email}</span>
+                  )}
+                  {isLikeMode && likedLocation && (
+                    <span className="text-muted-foreground"> → {likedLocation.voter_emails.length} voter{likedLocation.voter_emails.length !== 1 ? "s" : ""}</span>
+                  )}
                 </span>
               </div>
               <div className="flex items-center gap-1">
-                <Button
-                  size="icon-xs"
-                  variant="ghost"
-                  onClick={() => setEmailPreview(emailPreview === "approve" ? "reject" : "approve")}
-                  title="Toggle approve/reject preview"
-                >
-                  <RefreshCw className="h-3 w-3" />
-                </Button>
+                {!isLikeMode && (
+                  <Button
+                    size="icon-xs"
+                    variant="ghost"
+                    onClick={() => setEmailPreview(emailPreview === "approve" ? "reject" : "approve")}
+                    title="Toggle approve/reject preview"
+                  >
+                    <RefreshCw className="h-3 w-3" />
+                  </Button>
+                )}
                 <Button
                   size="icon-xs"
                   variant="ghost"
@@ -323,31 +457,52 @@ export function AdminLocationCard({ location, token, onRemove }: AdminLocationCa
             {syncing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
             Pull Scores
           </Button>
-          <Button
-            size="sm"
-            onClick={handleApprove}
-            disabled={approving || rejecting}
-            className="bg-green-600 hover:bg-green-700 text-white"
-          >
-            {approving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
-            Approve & Send
-          </Button>
-          <Button
-            size="sm"
-            variant="destructive"
-            onClick={(e) => {
-              if (!emailPreview || emailPreview !== "reject") {
-                setEmailPreview("reject");
-                setShowPreview(true);
-                return;
-              }
-              handleReject(e);
-            }}
-            disabled={approving || rejecting}
-          >
-            {rejecting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <X className="h-3.5 w-3.5" />}
-            {emailPreview === "reject" ? "Reject & Send" : "Reject"}
-          </Button>
+
+          {isLikeMode ? (
+            <Button
+              size="sm"
+              onClick={handleNotifyVoters}
+              disabled={sending || sent || !scores}
+              className="bg-blue-600 hover:bg-blue-700 text-white"
+            >
+              {sending ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : sent ? (
+                <Check className="h-3.5 w-3.5" />
+              ) : (
+                <Send className="h-3.5 w-3.5" />
+              )}
+              {sent ? "Sent" : `Send to ${likedLocation?.voter_emails.length || 0} Voter${(likedLocation?.voter_emails.length || 0) !== 1 ? "s" : ""}`}
+            </Button>
+          ) : (
+            <>
+              <Button
+                size="sm"
+                onClick={handleApprove}
+                disabled={approving || rejecting}
+                className="bg-green-600 hover:bg-green-700 text-white"
+              >
+                {approving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
+                Approve & Send
+              </Button>
+              <Button
+                size="sm"
+                variant="destructive"
+                onClick={(e) => {
+                  if (!emailPreview || emailPreview !== "reject") {
+                    setEmailPreview("reject");
+                    setShowPreview(true);
+                    return;
+                  }
+                  handleReject(e);
+                }}
+                disabled={approving || rejecting}
+              >
+                {rejecting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <X className="h-3.5 w-3.5" />}
+                {emailPreview === "reject" ? "Reject & Send" : "Reject"}
+              </Button>
+            </>
+          )}
         </div>
       </CardContent>
     </Card>

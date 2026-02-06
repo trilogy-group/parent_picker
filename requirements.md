@@ -591,6 +591,51 @@ Admin can reject a pending location.
 
 ---
 
+## Section 18: TODO-Based Parent Assistance Emails
+
+When a parent-suggested location has RED scores (zoning, demographics, or pricing), the approval email includes actionable TODO sections instead of a generic "great news" message.
+
+### REQ-18.1: Zoning TODO
+When zoning score is RED, include a zoning TODO in the approval email.
+
+**Test Cases:**
+- [ ] `TC-18.1.1`: Zoning TODO generated when `zoning.color === "RED"`
+- [ ] `TC-18.1.2`: Zoning TODO includes zone code when available (from `zoning_code` or `lot_zoning`)
+- [ ] `TC-18.1.3`: Zoning TODO omits zone code gracefully when none available
+- [ ] `TC-18.1.4`: No zoning TODO when zoning score is GREEN/YELLOW/AMBER
+
+### REQ-18.2: Demographics TODO
+When demographics score is RED, include a demographics TODO with scenario-specific messaging (M1/M2/M3).
+
+**Test Cases:**
+- [ ] `TC-18.2.1`: M1 scenario when metro max enrollment >= 2,500 AND metro max wealth >= 2,500
+- [ ] `TC-18.2.2`: M2 scenario when metro max >= 1,000 but < 2,500
+- [ ] `TC-18.2.3`: M3 scenario when metro max < 1,000 (requires space donation + 25 students)
+- [ ] `TC-18.2.4`: Generic fallback when enrollment/wealth metrics unavailable
+- [ ] `TC-18.2.5`: No demographics TODO when demographics score is GREEN/YELLOW/AMBER
+
+### REQ-18.3: Pricing TODO
+When pricing score is RED, include a pricing TODO with scenario-specific messaging (P1/P2 or P3).
+
+**Test Cases:**
+- [ ] `TC-18.3.1`: P1/P2 scenario when existing Alpha in metro — shows rent negotiation + subsidy table
+- [ ] `TC-18.3.2`: P3 scenario when new metro and RED at 25 students — shows launch subsidy + break-even
+- [ ] `TC-18.3.3`: Dollar math correct: students = space/100, gap = annual - supportable
+- [ ] `TC-18.3.4`: Generic fallback when rent/space data unavailable
+- [ ] `TC-18.3.5`: No pricing TODO when pricing score is GREEN/YELLOW/AMBER
+
+### REQ-18.4: Email Integration
+TODO emails integrate with existing admin approval workflow.
+
+**Test Cases:**
+- [ ] `TC-18.4.1`: Email preview shows TODO sections when RED scores present after pulling scores
+- [ ] `TC-18.4.2`: Email preview shows standard approval email when no RED scores
+- [ ] `TC-18.4.3`: TODO count badge displayed on admin card after score sync
+- [ ] `TC-18.4.4`: Approval email subject changes to "action items inside" when TODOs present
+- [ ] `TC-18.4.5`: Sync-scores API returns upstreamMetrics and metroInfo alongside scores
+
+---
+
 ## Test Execution Summary
 
 | Category | Total Tests | Passing | Failing |
@@ -612,7 +657,8 @@ Admin can reject a pending location.
 | Address Autocomplete & Geocoding | 14 | - | - |
 | Authentication | 10 | - | - |
 | Admin Review Workflow | 23 | - | - |
-| **TOTAL** | **184** | - | - |
+| TODO-Based Parent Assistance Emails | 19 | - | - |
+| **TOTAL** | **203** | - | - |
 
 ---
 
@@ -623,6 +669,7 @@ Admin can reject a pending location.
 | 1.0.0 | 2024-02-04 | Initial MVP requirements |
 | 1.1.0 | 2026-02-05 | Added auth requirements (Section 16), updated data layer to reflect Supabase integration, aligned v2 scope with location selection brainlift |
 | 1.2.0 | 2026-02-05 | Added admin review workflow (Section 17): admin page, approve/reject, score sync, email notifications |
+| 1.3.0 | 2026-02-05 | Added TODO-based parent assistance emails (Section 18): zoning/demographics/pricing TODOs with scenario-specific messaging |
 
 ---
 
@@ -653,6 +700,7 @@ See `docs/brainlift-location-selection.md` for full strategic context.
 
   Of the 734 that are scored, 140 are missing Price sub-scores and 50 are missing Neighborhood. Re-sync after scoring agent fills gaps: `SELECT sync_scores_from_listings();`.
 - **Scoring trigger:** Auto-score when parent suggests a location (separate agent)
-- **Parent assistance solicitation:** Low-scoring locations prompt parents for help (zoning contacts, local knowledge, capacity commitments)
+- **Parent assistance solicitation:** ~~Low-scoring locations prompt parents for help (zoning contacts, local knowledge, capacity commitments)~~ DONE — TODO-enhanced approval emails with zoning/demographics/pricing action items (Section 18)
 - **Admin review workflow:** ~~UI to review/approve parent-suggested locations~~ DONE — `/admin` page with approve/reject/pull-scores, email notifications via Resend
 - **Dealing with listings:** Right now we are only showing the best score per listing, and our scheme only supports having one. This should be addressed eventually, though scores don't vary much at the same location so we punted for now.
+- **New market detection is oversimplified:** Currently uses state-level matching against a hardcoded list of Alpha school locations (e.g., any location in CA/FL/TX/AZ/VA/NC is "existing market"). This is wrong — a location in rural Northern California is not the same market as LA or SF. Needs proper metro-level matching (MSA or similar) to determine if a location is truly in an existing Alpha metro vs. a new market launch. Affects pricing TODO scenarios (P1/P2 vs P3).
