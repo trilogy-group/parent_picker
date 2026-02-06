@@ -228,7 +228,9 @@ export function MapView() {
     } else if (feature.layer?.id === "unclustered-point") {
       const props = feature.properties;
       if (props?.id) {
-        setSelectedLocation(props.id);
+        // Toggle: clicking the same dot again deselects it
+        const current = useVotesStore.getState().selectedLocationId;
+        setSelectedLocation(current === props.id ? null : props.id);
       }
     }
   }, [setSelectedLocation, fetchNearbyForce]);
@@ -413,8 +415,9 @@ export function MapView() {
           latitude={selectedLocation.lat}
           longitude={selectedLocation.lng}
           anchor="top"
-          closeButton={false}
-          closeOnClick={false}
+          closeButton={true}
+          closeOnClick={true}
+          onClose={() => setSelectedLocation(null)}
           offset={[0, 8]}
         >
           <div className="p-1">
