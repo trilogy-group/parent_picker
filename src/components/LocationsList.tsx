@@ -1,12 +1,10 @@
 "use client";
 
-import { useState, useCallback, useRef, useEffect, useMemo } from "react";
-import { Search, ChevronDown, ChevronUp, X } from "lucide-react";
-import { Input } from "@/components/ui/input";
+import { useState, useMemo } from "react";
+import { ChevronDown, ChevronUp, X } from "lucide-react";
 import { LocationCard } from "./LocationCard";
 import { useVotesStore, ScoreFilterCategory } from "@/lib/votes";
 import { useShallow } from "zustand/react/shallow";
-import { searchAddresses, GeocodingResult } from "@/lib/geocoding";
 import { getDistanceMiles } from "@/lib/locations";
 import { useAuth } from "./AuthProvider";
 
@@ -133,7 +131,7 @@ function ScoreFilterPanel({
                     }`}
                     onClick={() => toggleScoreFilter("size", size)}
                   >
-                    {size === "Full Size" ? "Full" : size === "Red (Reject)" ? "Reject" : size}
+                    {size === "Full Size" ? "Full" : size === "Red (Reject)" ? "N/A" : size}
                   </button>
                 );
               })}
@@ -153,8 +151,6 @@ export function LocationsList() {
     votedLocationIds,
     vote,
     unvote,
-    searchQuery,
-    setSearchQuery,
     setFlyToTarget,
     mapCenter,
     mapBounds,
@@ -172,8 +168,6 @@ export function LocationsList() {
     votedLocationIds: s.votedLocationIds,
     vote: s.vote,
     unvote: s.unvote,
-    searchQuery: s.searchQuery,
-    setSearchQuery: s.setSearchQuery,
     setFlyToTarget: s.setFlyToTarget,
     mapCenter: s.mapCenter,
     mapBounds: s.mapBounds,
@@ -188,16 +182,8 @@ export function LocationsList() {
 
   const [page, setPage] = useState(0);
   const [filtersExpanded, setFiltersExpanded] = useState(false);
-  const [prevSearchQuery, setPrevSearchQuery] = useState(searchQuery);
   const [prevMapBounds, setPrevMapBounds] = useState(mapBounds);
   const [prevScoreFilters, setPrevScoreFilters] = useState(scoreFilters);
-  const [addressSuggestions, setAddressSuggestions] = useState<
-    GeocodingResult[]
-  >([]);
-  const [showSuggestions, setShowSuggestions] = useState(false);
-  const [highlightedIndex, setHighlightedIndex] = useState(-1);
-  const containerRef = useRef<HTMLDivElement>(null);
-  const debounceRef = useRef<NodeJS.Timeout | null>(null);
 
   const locations = filteredLocations();
   const { user, isOfflineMode } = useAuth();
@@ -205,103 +191,8 @@ export function LocationsList() {
   // In offline mode, allow voting without auth (local-only)
   const canVote = isOfflineMode || !!user;
 
-  const fetchAddressSuggestions = useCallback(async (query: string) => {
-    if (query.length < 3) {
-      setAddressSuggestions([]);
-      setShowSuggestions(false);
-      return;
-    }
-
-    const results = await searchAddresses(query, mapCenter ?? undefined);
-    setAddressSuggestions(results);
-    setShowSuggestions(results.length > 0);
-    setHighlightedIndex(-1);
-  }, [mapCenter]);
-
-  const handleSearchChange = useCallback(
-    (e: React.ChangeEvent<HTMLInputElement>) => {
-      const value = e.target.value;
-      setSearchQuery(value);
-
-      if (debounceRef.current) {
-        clearTimeout(debounceRef.current);
-      }
-
-      debounceRef.current = setTimeout(() => {
-        fetchAddressSuggestions(value);
-      }, 300);
-    },
-    [setSearchQuery, fetchAddressSuggestions]
-  );
-
-  const handleAddressSelect = useCallback(
-    (result: GeocodingResult) => {
-      setSearchQuery(result.address);
-      setAddressSuggestions([]);
-      setShowSuggestions(false);
-      setFlyToTarget({ lat: result.lat, lng: result.lng });
-    },
-    [setSearchQuery, setFlyToTarget]
-  );
-
-  const handleKeyDown = useCallback(
-    (e: React.KeyboardEvent) => {
-      if (!showSuggestions) return;
-
-      switch (e.key) {
-        case "ArrowDown":
-          e.preventDefault();
-          setHighlightedIndex((prev) =>
-            prev < addressSuggestions.length - 1 ? prev + 1 : prev
-          );
-          break;
-        case "ArrowUp":
-          e.preventDefault();
-          setHighlightedIndex((prev) => (prev > 0 ? prev - 1 : -1));
-          break;
-        case "Enter":
-          e.preventDefault();
-          if (
-            highlightedIndex >= 0 &&
-            highlightedIndex < addressSuggestions.length
-          ) {
-            handleAddressSelect(addressSuggestions[highlightedIndex]);
-          }
-          break;
-        case "Escape":
-          e.preventDefault();
-          setShowSuggestions(false);
-          break;
-      }
-    },
-    [showSuggestions, addressSuggestions, highlightedIndex, handleAddressSelect]
-  );
-
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (
-        containerRef.current &&
-        !containerRef.current.contains(event.target as Node)
-      ) {
-        setShowSuggestions(false);
-      }
-    };
-
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
-
-  useEffect(() => {
-    return () => {
-      if (debounceRef.current) {
-        clearTimeout(debounceRef.current);
-      }
-    };
-  }, []);
-
-  // Reset pagination when search, map viewport, or filters change (render-time adjustment)
-  if (searchQuery !== prevSearchQuery || mapBounds !== prevMapBounds || scoreFilters !== prevScoreFilters) {
-    setPrevSearchQuery(searchQuery);
+  // Reset pagination when map viewport or filters change (render-time adjustment)
+  if (mapBounds !== prevMapBounds || scoreFilters !== prevScoreFilters) {
     setPrevMapBounds(mapBounds);
     setPrevScoreFilters(scoreFilters);
     setPage(0);
@@ -334,44 +225,7 @@ export function LocationsList() {
 
   return (
     <div className="flex flex-col h-full">
-      <div
-        ref={containerRef}
-        className="p-4 border-b bg-background sticky top-0 z-10"
-      >
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Find location..."
-            value={searchQuery}
-            onChange={handleSearchChange}
-            onKeyDown={handleKeyDown}
-            className="pl-9"
-          />
-          {showSuggestions && addressSuggestions.length > 0 && (
-            <div
-              className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-60 overflow-auto"
-              data-testid="search-autocomplete-dropdown"
-            >
-              {addressSuggestions.map((result, index) => (
-                <button
-                  key={`${result.lat}-${result.lng}`}
-                  type="button"
-                  className={`w-full px-3 py-2 text-left text-sm hover:bg-gray-100 ${
-                    index === highlightedIndex ? "bg-gray-100" : ""
-                  }`}
-                  onClick={() => handleAddressSelect(result)}
-                  data-testid="search-autocomplete-option"
-                >
-                  <div className="font-medium">{result.address}</div>
-                  <div className="text-gray-500 text-xs">
-                    {result.city}, {result.state}
-                  </div>
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-        {/* Score & Size Filters */}
+      <div className="px-4 pt-3 pb-2 border-b bg-background sticky top-0 z-10">
         <ScoreFilterPanel
           scoreFilters={scoreFilters}
           toggleScoreFilter={toggleScoreFilter}
