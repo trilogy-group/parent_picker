@@ -1,10 +1,11 @@
 "use client";
 
-import { useState, useCallback, useRef, useEffect } from "react";
+import { useState, useCallback, useRef, useEffect, useMemo } from "react";
 import { Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { LocationCard } from "./LocationCard";
 import { useVotesStore } from "@/lib/votes";
+import { useShallow } from "zustand/react/shallow";
 import { searchAddresses, GeocodingResult } from "@/lib/geocoding";
 import { getDistanceMiles } from "@/lib/locations";
 import { useAuth } from "./AuthProvider";
@@ -29,13 +30,31 @@ export function LocationsList() {
     searchQuery,
     setSearchQuery,
     setFlyToTarget,
-    referencePoint,
+    mapCenter,
     mapBounds,
     zoomLevel,
     citySummaries,
     fetchNearbyForce,
-  } = useVotesStore();
+  } = useVotesStore(useShallow((s) => ({
+    filteredLocations: s.filteredLocations,
+    selectedLocationId: s.selectedLocationId,
+    setSelectedLocation: s.setSelectedLocation,
+    votedLocationIds: s.votedLocationIds,
+    vote: s.vote,
+    unvote: s.unvote,
+    searchQuery: s.searchQuery,
+    setSearchQuery: s.setSearchQuery,
+    setFlyToTarget: s.setFlyToTarget,
+    mapCenter: s.mapCenter,
+    mapBounds: s.mapBounds,
+    zoomLevel: s.zoomLevel,
+    citySummaries: s.citySummaries,
+    fetchNearbyForce: s.fetchNearbyForce,
+  })));
 
+  const [page, setPage] = useState(0);
+  const [prevSearchQuery, setPrevSearchQuery] = useState(searchQuery);
+  const [prevMapBounds, setPrevMapBounds] = useState(mapBounds);
   const [addressSuggestions, setAddressSuggestions] = useState<
     GeocodingResult[]
   >([]);
@@ -57,11 +76,11 @@ export function LocationsList() {
       return;
     }
 
-    const results = await searchAddresses(query);
+    const results = await searchAddresses(query, mapCenter ?? undefined);
     setAddressSuggestions(results);
     setShowSuggestions(results.length > 0);
     setHighlightedIndex(-1);
-  }, []);
+  }, [mapCenter]);
 
   const handleSearchChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -144,6 +163,38 @@ export function LocationsList() {
     };
   }, []);
 
+  // Reset pagination when search or map viewport changes (render-time adjustment)
+  if (searchQuery !== prevSearchQuery || mapBounds !== prevMapBounds) {
+    setPrevSearchQuery(searchQuery);
+    setPrevMapBounds(mapBounds);
+    setPage(0);
+  }
+
+  // Memoize sorted list to avoid redundant sort/filter on non-map re-renders
+  const sorted = useMemo(() => {
+    if (!mapBounds) return [...locations].sort((a, b) => b.votes - a.votes);
+
+    const onScreen = locations.filter(loc => isInViewport(loc.lat, loc.lng, mapBounds));
+    const offScreen = locations.filter(loc => !isInViewport(loc.lat, loc.lng, mapBounds));
+
+    onScreen.sort((a, b) => b.votes - a.votes);
+
+    if (mapCenter) {
+      offScreen.sort((a, b) => {
+        const distA = getDistanceMiles(mapCenter.lat, mapCenter.lng, a.lat, a.lng);
+        const distB = getDistanceMiles(mapCenter.lat, mapCenter.lng, b.lat, b.lng);
+        return distA - distB;
+      });
+    }
+
+    return [...onScreen, ...offScreen];
+  }, [locations, mapBounds, mapCenter]);
+
+  const PAGE_SIZE = 25;
+  const showCount = (page + 1) * PAGE_SIZE;
+  const visible = sorted.slice(0, showCount);
+  const hasMore = showCount < sorted.length;
+
   return (
     <div className="flex flex-col h-full">
       <div
@@ -153,7 +204,7 @@ export function LocationsList() {
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Search locations..."
+            placeholder="Find location..."
             value={searchQuery}
             onChange={handleSearchChange}
             onKeyDown={handleKeyDown}
@@ -219,53 +270,42 @@ export function LocationsList() {
                 </button>
               ))
           )
+        ) : locations.length === 0 ? (
+          <p className="text-center text-muted-foreground py-8">
+            No locations found matching your search.
+          </p>
         ) : (
-          // Individual location cards mode (city zoom)
-          locations.length === 0 ? (
-            <p className="text-center text-muted-foreground py-8">
-              No locations found matching your search.
+          <>
+            {visible.map((location) => {
+              const inView = mapBounds ? isInViewport(location.lat, location.lng, mapBounds) : false;
+              return (
+                <LocationCard
+                  key={location.id}
+                  location={location}
+                  isSelected={selectedLocationId === location.id}
+                  hasVoted={votedLocationIds.has(location.id)}
+                  isAuthenticated={canVote}
+                  isInViewport={inView}
+                  onSelect={() => setSelectedLocation(location.id)}
+                  onVote={() => vote(location.id)}
+                  onUnvote={() => unvote(location.id)}
+                />
+              );
+            })}
+            <p className="text-center text-xs text-muted-foreground pt-2">
+              Showing {Math.min(showCount, sorted.length)} of {sorted.length} locations
             </p>
-          ) : (
-            (() => {
-              if (!referencePoint) {
-                return locations.sort((a, b) => b.votes - a.votes);
-              }
+            {hasMore && (
+              <button
+                type="button"
+                onClick={() => setPage((p) => p + 1)}
+                className="w-full py-2 text-sm font-medium text-primary hover:underline"
+              >
+                Next
+              </button>
+            )}
+          </>
 
-              if (mapBounds) {
-                const visible = locations.filter(loc => isInViewport(loc.lat, loc.lng, mapBounds));
-                const nonVisible = locations.filter(loc => !isInViewport(loc.lat, loc.lng, mapBounds));
-                visible.sort((a, b) => b.votes - a.votes);
-                nonVisible.sort((a, b) => {
-                  const distA = getDistanceMiles(referencePoint.lat, referencePoint.lng, a.lat, a.lng);
-                  const distB = getDistanceMiles(referencePoint.lat, referencePoint.lng, b.lat, b.lng);
-                  return distA - distB;
-                });
-                return [...visible, ...nonVisible];
-              }
-
-              return locations.sort((a, b) => {
-                const distA = getDistanceMiles(referencePoint.lat, referencePoint.lng, a.lat, a.lng);
-                const distB = getDistanceMiles(referencePoint.lat, referencePoint.lng, b.lat, b.lng);
-                return distA - distB;
-              });
-            })()
-              .map((location) => {
-                const isVisible = mapBounds ? isInViewport(location.lat, location.lng, mapBounds) : false;
-                return (
-                  <LocationCard
-                    key={location.id}
-                    location={location}
-                    isSelected={selectedLocationId === location.id}
-                    hasVoted={votedLocationIds.has(location.id)}
-                    isAuthenticated={canVote}
-                    isInViewport={isVisible}
-                    onSelect={() => setSelectedLocation(location.id)}
-                    onVote={() => vote(location.id)}
-                    onUnvote={() => unvote(location.id)}
-                  />
-                );
-              })
-          )
         )}
       </div>
     </div>

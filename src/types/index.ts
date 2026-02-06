@@ -43,3 +43,20 @@ export interface SuggestedLocation {
   state: string;
   notes?: string;
 }
+
+export interface AdminLocation {
+  id: string;
+  name: string;
+  address: string;
+  city: string;
+  state: string;
+  lat: number;
+  lng: number;
+  status: string;
+  source: string;
+  notes: string | null;
+  suggested_by: string | null;
+  created_at: string;
+  scores?: LocationScores;
+  suggestor_email?: string | null;
+}

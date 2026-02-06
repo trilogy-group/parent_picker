@@ -231,32 +231,50 @@ export async function getLocations(): Promise<Location[]> {
   }
 
   try {
-    const { data, error } = await supabase
-      .from("pp_locations_with_votes")
-      .select("*")
-      .order("votes", { ascending: false });
+    // Supabase PostgREST enforces a 1000-row max per request,
+    // so we paginate to fetch all locations
+    const PAGE_SIZE = 1000;
+    const allRows: Record<string, unknown>[] = [];
+    let from = 0;
+    let hasMore = true;
 
-    if (error) {
-      console.error("Error fetching locations:", error);
-      return mockLocations;
+    while (hasMore) {
+      const { data, error } = await supabase
+        .from("pp_locations_with_votes")
+        .select("*")
+        .order("votes", { ascending: false })
+        .range(from, from + PAGE_SIZE - 1);
+
+      if (error) {
+        console.error("Error fetching locations:", error);
+        return allRows.length > 0 ? mapRows(allRows) : mockLocations;
+      }
+
+      allRows.push(...(data as Record<string, unknown>[]));
+      hasMore = data.length === PAGE_SIZE;
+      from += PAGE_SIZE;
     }
 
-    return data.map((row) => ({
-      id: row.id,
-      name: row.name,
-      address: row.address,
-      city: row.city,
-      state: row.state,
-      lat: Number(row.lat),
-      lng: Number(row.lng),
-      votes: row.votes,
-      suggested: row.source === "parent_suggested",
-      scores: mapRowToScores(row),
-    }));
+    return mapRows(allRows);
   } catch (error) {
     console.error("Failed to fetch locations:", error);
     return mockLocations;
   }
+}
+
+function mapRows(rows: Record<string, unknown>[]): Location[] {
+  return rows.map((row) => ({
+    id: row.id as string,
+    name: row.name as string,
+    address: row.address as string,
+    city: row.city as string,
+    state: row.state as string,
+    lat: Number(row.lat),
+    lng: Number(row.lng),
+    votes: row.votes as number,
+    suggested: row.source === "parent_suggested",
+    scores: mapRowToScores(row),
+  }));
 }
 
 function getMockCitySummaries(): CitySummary[] {
@@ -341,6 +359,7 @@ export async function getNearbyLocations(centerLat: number, centerLng: number, l
     return mockLocations;
   }
 }
+
 
 interface GeocodeResult {
   lat: number;

@@ -539,6 +539,58 @@ Votes are stored per-user in Supabase with row-level security.
 
 ---
 
+## 17. Admin Review Workflow
+
+### REQ-17.1: Admin Access Control
+Only designated admin emails can access the admin page. Security is enforced server-side.
+
+**Test Cases:**
+- [ ] `TC-17.1.1`: Non-admin user sees "Access Denied" on /admin
+- [ ] `TC-17.1.2`: Unauthenticated user sees "Access Denied" on /admin
+- [ ] `TC-17.1.3`: Admin user (email in ADMIN_EMAILS) can access /admin
+- [ ] `TC-17.1.4`: API routes return 401 for non-admin requests
+
+### REQ-17.2: Review Queue Display
+Admin page shows all locations with `status = 'pending_review'`.
+
+**Test Cases:**
+- [ ] `TC-17.2.1`: Pending locations appear in the review queue
+- [ ] `TC-17.2.2`: Each card shows location name, address, city/state
+- [ ] `TC-17.2.3`: Each card shows suggestor email and submission date
+- [ ] `TC-17.2.4`: Parent notes are displayed when present
+- [ ] `TC-17.2.5`: Score badges are displayed when scores exist
+- [ ] `TC-17.2.6`: Empty state shown when no pending locations
+
+### REQ-17.3: Pull Scores
+Admin can pull scores from upstream `real_estate_listings` for a pending location.
+
+**Test Cases:**
+- [ ] `TC-17.3.1`: "Pull Scores" button triggers sync for the location's address
+- [ ] `TC-17.3.2`: Scores display after successful sync
+- [ ] `TC-17.3.3`: "No scores found" message when address not in upstream data
+- [ ] `TC-17.3.4`: Pull scores does not affect other locations
+
+### REQ-17.4: Approve Location
+Admin can approve a pending location, making it visible to all parents.
+
+**Test Cases:**
+- [ ] `TC-17.4.1`: Clicking "Approve" changes location status to `active`
+- [ ] `TC-17.4.2`: Approved location appears in the main app map and list
+- [ ] `TC-17.4.3`: Card is removed from review queue after approval
+- [ ] `TC-17.4.4`: Approval email sent to suggestor (best-effort)
+- [ ] `TC-17.4.5`: Location retains scores after approval
+
+### REQ-17.5: Reject Location
+Admin can reject a pending location.
+
+**Test Cases:**
+- [ ] `TC-17.5.1`: Clicking "Reject" changes location status to `rejected`
+- [ ] `TC-17.5.2`: Rejected location does not appear in the main app
+- [ ] `TC-17.5.3`: Card is removed from review queue after rejection
+- [ ] `TC-17.5.4`: Rejection email sent to suggestor (best-effort)
+
+---
+
 ## Test Execution Summary
 
 | Category | Total Tests | Passing | Failing |
@@ -559,7 +611,8 @@ Votes are stored per-user in Supabase with row-level security.
 | Tech Stack | 8 | - | - |
 | Address Autocomplete & Geocoding | 14 | - | - |
 | Authentication | 10 | - | - |
-| **TOTAL** | **161** | - | - |
+| Admin Review Workflow | 23 | - | - |
+| **TOTAL** | **184** | - | - |
 
 ---
 
@@ -569,6 +622,7 @@ Votes are stored per-user in Supabase with row-level security.
 |---------|------|---------|
 | 1.0.0 | 2024-02-04 | Initial MVP requirements |
 | 1.1.0 | 2026-02-05 | Added auth requirements (Section 16), updated data layer to reflect Supabase integration, aligned v2 scope with location selection brainlift |
+| 1.2.0 | 2026-02-05 | Added admin review workflow (Section 17): admin page, approve/reject, score sync, email notifications |
 
 ---
 
@@ -579,19 +633,26 @@ See `docs/brainlift-location-selection.md` for full strategic context.
 - **Moody's data ETL:** Filter commercial RE listings by size tier (Micro 2.5-7.5K SF, Growth 15-50K SF, Flagship 50-150K SF) and load into pp_locations + pp_listings
 - **Location and Zoning scoring:** Enrollment Score (ES), Wealth Score (WS), and Relative Scores per brainlift thresholds (>2,500 ideal, <1,250 exclude); Microschools require zoned-by-right; larger schools accept CUP/SUP; reject if school use prohibited
 - **Score display:** ~~Show consumer-level scoring on location cards~~ DONE — synced from `real_estate_listings` into `pp_location_scores`, displayed on cards and map popups
-- **TODO: Fill missing scores in source data.** Current gaps across 681 scored locations (14 active locations have no scores at all):
+- **TODO: Score locations.** 1,899 active locations. **1,165 have no scores at all** — `overall_score` is NULL in `real_estate_listings` for these addresses. Scoring agent needs to run on them.
 
-  | Sub-score | Missing Score | Missing Report URL |
-  |-----------|--------------|-------------------|
-  | Overall | 0 | 70 |
-  | Demographics | 3 | 14 |
-  | Price | **114** | **196** |
-  | Zoning | 0 | 56 |
-  | Neighborhood | 49 | 112 |
-  | Building | 30 | 66 |
+  **Unscored locations by metro:**
 
-  Price is the biggest gap (114 missing scores, 196 missing report links). Neighborhood and Building are next. These need to be filled by the scoring agent in `real_estate_listings`, then re-synced via `SELECT sync_scores_from_listings();`.
+  | Metro | Unscored |
+  |-------|----------|
+  | New York, NY | **700** |
+  | Brooklyn, NY | **205** |
+  | Boca Raton, FL | 100 |
+  | West Palm Beach, FL | 64 |
+  | Boynton Beach, FL | 25 |
+  | Delray Beach, FL | 21 |
+  | Palm Beach Gardens, FL | 13 |
+  | North Palm Beach, FL | 9 |
+  | Jupiter, FL | 7 |
+  | Other (Lantana, Greenacres, Palm Springs, etc.) | 21 |
+  | **Total** | **1,165** |
+
+  Of the 734 that are scored, 140 are missing Price sub-scores and 50 are missing Neighborhood. Re-sync after scoring agent fills gaps: `SELECT sync_scores_from_listings();`.
 - **Scoring trigger:** Auto-score when parent suggests a location (separate agent)
 - **Parent assistance solicitation:** Low-scoring locations prompt parents for help (zoning contacts, local knowledge, capacity commitments)
-- **Admin review workflow:** UI to review/approve parent-suggested locations (RLS and status field already in place)
+- **Admin review workflow:** ~~UI to review/approve parent-suggested locations~~ DONE — `/admin` page with approve/reject/pull-scores, email notifications via Resend
 - **Dealing with listings:** Right now we are only showing the best score per listing, and our scheme only supports having one. This should be addressed eventually, though scores don't vary much at the same location so we punted for now.

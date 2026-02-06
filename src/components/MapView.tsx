@@ -5,6 +5,7 @@ import Map, { Source, Layer, NavigationControl, Popup, Marker } from "react-map-
 import { MapPin } from "lucide-react";
 import { ScoreBadge } from "./ScoreBadge";
 import { useVotesStore } from "@/lib/votes";
+import { useShallow } from "zustand/react/shallow";
 import { getInitialMapView, US_CENTER, US_ZOOM } from "@/lib/locations";
 import "mapbox-gl/dist/mapbox-gl.css";
 import type { MapMouseEvent } from "react-map-gl/mapbox";
@@ -30,7 +31,23 @@ export function MapView() {
     setReferencePoint,
     fetchNearby,
     fetchNearbyForce,
-  } = useVotesStore();
+  } = useVotesStore(useShallow((s) => ({
+    filteredLocations: s.filteredLocations,
+    selectedLocationId: s.selectedLocationId,
+    setSelectedLocation: s.setSelectedLocation,
+    locations: s.locations,
+    citySummaries: s.citySummaries,
+    zoomLevel: s.zoomLevel,
+    setZoomLevel: s.setZoomLevel,
+    flyToTarget: s.flyToTarget,
+    setFlyToTarget: s.setFlyToTarget,
+    previewLocation: s.previewLocation,
+    setMapCenter: s.setMapCenter,
+    setMapBounds: s.setMapBounds,
+    setReferencePoint: s.setReferencePoint,
+    fetchNearby: s.fetchNearby,
+    fetchNearbyForce: s.fetchNearbyForce,
+  })));
 
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [geoResolved, setGeoResolved] = useState(() => {

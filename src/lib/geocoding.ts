@@ -26,14 +26,19 @@ interface MapboxGeocodingResponse {
 
 const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
 
-export async function searchAddresses(query: string): Promise<GeocodingResult[]> {
+export async function searchAddresses(
+  query: string,
+  proximity?: { lat: number; lng: number }
+): Promise<GeocodingResult[]> {
   if (!MAPBOX_TOKEN || query.length < 3) {
     return [];
   }
 
+  const proximityParam = proximity ? `&proximity=${proximity.lng},${proximity.lat}` : "";
+
   try {
     const response = await fetch(
-      `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json?access_token=${MAPBOX_TOKEN}&country=US&types=address,poi&limit=5`
+      `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json?access_token=${MAPBOX_TOKEN}&country=US&types=address,poi&limit=5${proximityParam}`
     );
 
     if (!response.ok) {

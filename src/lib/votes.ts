@@ -210,14 +210,6 @@ export const useVotesStore = create<VotesState>((set, get) => ({
   setReferencePoint: (coords) => set({ referencePoint: coords }),
 
   filteredLocations: () => {
-    const { locations, searchQuery } = get();
-    if (!searchQuery.trim()) return locations;
-    const query = searchQuery.toLowerCase();
-    return locations.filter(
-      (loc) =>
-        loc.name.toLowerCase().includes(query) ||
-        loc.address.toLowerCase().includes(query) ||
-        loc.city.toLowerCase().includes(query)
-    );
+    return get().locations;
   },
 }));
