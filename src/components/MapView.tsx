@@ -425,7 +425,7 @@ export function MapView() {
             <p className="text-xs text-muted-foreground">
               {selectedLocation.address}
             </p>
-            <ScoreBadge scores={selectedLocation.scores} />
+            <ScoreBadge scores={selectedLocation.scores} compact />
           </div>
         </Popup>
       )}
