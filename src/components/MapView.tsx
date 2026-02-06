@@ -1,81 +1,56 @@
 "use client";
 
-import React, { useEffect, useRef, useCallback, useState } from "react";
-import Map, { Marker, NavigationControl, Popup } from "react-map-gl/mapbox";
+import { useEffect, useRef, useCallback, useState, useMemo } from "react";
+import Map, { Source, Layer, NavigationControl, Popup, Marker } from "react-map-gl/mapbox";
 import { MapPin } from "lucide-react";
 import { ScoreBadge } from "./ScoreBadge";
 import { useVotesStore } from "@/lib/votes";
 import { useShallow } from "zustand/react/shallow";
-import { getInitialMapView, AUSTIN_CENTER, AUSTIN_ZOOM } from "@/lib/locations";
-import { Location } from "@/types";
+import { getInitialMapView, US_CENTER, US_ZOOM } from "@/lib/locations";
 import "mapbox-gl/dist/mapbox-gl.css";
+import type { MapMouseEvent } from "react-map-gl/mapbox";
 
 const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
-
-interface LocationMarkerProps {
-  location: Location;
-  isSelected: boolean;
-  onClick: () => void;
-}
-
-const LocationMarker = React.memo(function LocationMarker({ location, isSelected, onClick }: LocationMarkerProps) {
-  return (
-    <Marker
-      latitude={location.lat}
-      longitude={location.lng}
-      anchor="center"
-      onClick={(e) => {
-        e.originalEvent.stopPropagation();
-        onClick();
-      }}
-    >
-      <div
-        className={`cursor-pointer transition-all duration-200 ${
-          isSelected ? "scale-150 z-10" : "hover:scale-125"
-        }`}
-      >
-        <div
-          className={`w-4 h-4 rounded-full border-2 border-white shadow-md ${
-            isSelected
-              ? "bg-blue-600"
-              : location.scores?.overallColor === "GREEN"
-              ? "bg-green-500"
-              : location.scores?.overallColor === "YELLOW"
-              ? "bg-yellow-400"
-              : location.scores?.overallColor === "AMBER"
-              ? "bg-amber-500"
-              : location.scores?.overallColor === "RED"
-              ? "bg-red-500"
-              : location.suggested
-              ? "bg-amber-500"
-              : "bg-slate-600"
-          }`}
-        />
-      </div>
-    </Marker>
-  );
-});
 
 export function MapView() {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const mapRef = useRef<any>(null);
-  const { filteredLocations, selectedLocationId, setSelectedLocation, locations, flyToTarget, setFlyToTarget, previewLocation, setMapCenter, setMapBounds, setReferencePoint } =
-    useVotesStore(useShallow((s) => ({
-      filteredLocations: s.filteredLocations,
-      selectedLocationId: s.selectedLocationId,
-      setSelectedLocation: s.setSelectedLocation,
-      locations: s.locations,
-      flyToTarget: s.flyToTarget,
-      setFlyToTarget: s.setFlyToTarget,
-      previewLocation: s.previewLocation,
-      setMapCenter: s.setMapCenter,
-      setMapBounds: s.setMapBounds,
-      setReferencePoint: s.setReferencePoint,
-    })));
+  const {
+    filteredLocations,
+    selectedLocationId,
+    setSelectedLocation,
+    locations,
+    citySummaries,
+    zoomLevel,
+    setZoomLevel,
+    flyToTarget,
+    setFlyToTarget,
+    previewLocation,
+    setMapCenter,
+    setMapBounds,
+    setReferencePoint,
+    fetchNearby,
+    fetchNearbyForce,
+  } = useVotesStore(useShallow((s) => ({
+    filteredLocations: s.filteredLocations,
+    selectedLocationId: s.selectedLocationId,
+    setSelectedLocation: s.setSelectedLocation,
+    locations: s.locations,
+    citySummaries: s.citySummaries,
+    zoomLevel: s.zoomLevel,
+    setZoomLevel: s.setZoomLevel,
+    flyToTarget: s.flyToTarget,
+    setFlyToTarget: s.setFlyToTarget,
+    previewLocation: s.previewLocation,
+    setMapCenter: s.setMapCenter,
+    setMapBounds: s.setMapBounds,
+    setReferencePoint: s.setReferencePoint,
+    fetchNearby: s.fetchNearby,
+    fetchNearbyForce: s.fetchNearbyForce,
+  })));
 
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [geoResolved, setGeoResolved] = useState(() => {
-    // Initialize based on whether geolocation is available
     if (typeof navigator === "undefined" || !navigator.geolocation) {
       return true;
     }
@@ -86,9 +61,49 @@ export function MapView() {
   const displayLocations = filteredLocations();
   const selectedLocation = displayLocations.find((l) => l.id === selectedLocationId);
 
+  const showCities = zoomLevel < 9;
+
+  // GeoJSON for city bubbles
+  const cityGeojson = useMemo(() => ({
+    type: "FeatureCollection" as const,
+    features: citySummaries.map((c) => ({
+      type: "Feature" as const,
+      geometry: { type: "Point" as const, coordinates: [c.lng, c.lat] },
+      properties: {
+        city: c.city,
+        state: c.state,
+        locationCount: c.locationCount,
+        totalVotes: c.totalVotes,
+        lng: c.lng,
+        lat: c.lat,
+      },
+    })),
+  }), [citySummaries]);
+
+  // GeoJSON for individual location dots
+  const locationGeojson = useMemo(() => ({
+    type: "FeatureCollection" as const,
+    features: displayLocations.map((loc) => ({
+      type: "Feature" as const,
+      geometry: { type: "Point" as const, coordinates: [loc.lng, loc.lat] },
+      properties: {
+        id: loc.id,
+        name: loc.name,
+        address: loc.address,
+        votes: loc.votes,
+        overallColor: loc.scores?.overallColor || null,
+        suggested: loc.suggested || false,
+      },
+    })),
+  }), [displayLocations]);
+
+  const interactiveLayerIds = useMemo(
+    () => (showCities ? ["city-clusters", "city-circles"] : ["unclustered-point"]),
+    [showCities]
+  );
+
   // Request user's geolocation on mount
   useEffect(() => {
-    // If geolocation not available, geoResolved is already true from initial state
     if (!navigator.geolocation) {
       return;
     }
@@ -111,8 +126,7 @@ export function MapView() {
 
   // Set initial map view based on user location and nearby listings
   useEffect(() => {
-    // Wait for both geolocation to resolve AND locations to load
-    if (initialViewSetRef.current || !geoResolved || locations.length === 0) return;
+    if (initialViewSetRef.current || !geoResolved || citySummaries.length === 0) return;
 
     const { center, zoom } = getInitialMapView(
       userLocation?.lat ?? null,
@@ -120,7 +134,6 @@ export function MapView() {
       locations
     );
 
-    // Set reference point for list sorting (doesn't change after this)
     setReferencePoint(center);
 
     mapRef.current?.flyTo({
@@ -129,7 +142,11 @@ export function MapView() {
       duration: 1500,
     });
 
-    // Set initial map bounds immediately after positioning
+    // If zooming to city level, fetch nearby locations
+    if (zoom >= 9) {
+      fetchNearbyForce(center);
+    }
+
     setTimeout(() => {
       const map = mapRef.current?.getMap();
       if (map) {
@@ -141,46 +158,113 @@ export function MapView() {
           west: bounds.getWest(),
         });
         setMapCenter(center);
+        setZoomLevel(map.getZoom());
       }
     }, 100);
 
     initialViewSetRef.current = true;
-  }, [userLocation, locations, geoResolved, setReferencePoint, setMapBounds, setMapCenter]);
+  }, [userLocation, citySummaries, geoResolved, locations, setReferencePoint, setMapBounds, setMapCenter, setZoomLevel, fetchNearbyForce]);
 
-  const flyToLocation = useCallback((location: Location) => {
-    mapRef.current?.flyTo({
-      center: [location.lng, location.lat],
-      zoom: 14,
-      duration: 1000,
-    });
-  }, []);
-
-  const flyToCoords = useCallback((coords: { lat: number; lng: number }) => {
+  const flyToCoords = useCallback((coords: { lat: number; lng: number }, zoom?: number) => {
     mapRef.current?.flyTo({
       center: [coords.lng, coords.lat],
-      zoom: 14,
+      zoom: zoom ?? 14,
       duration: 1000,
     });
   }, []);
 
+  // Fly to selected location
   useEffect(() => {
     if (selectedLocation) {
-      flyToLocation(selectedLocation);
+      flyToCoords(selectedLocation);
     }
-  }, [selectedLocation, flyToLocation]);
+  }, [selectedLocation, flyToCoords]);
 
+  // Fly to search target
   useEffect(() => {
     if (flyToTarget) {
       flyToCoords(flyToTarget);
+      fetchNearbyForce(flyToTarget);
       setFlyToTarget(null);
     }
-  }, [flyToTarget, flyToCoords, setFlyToTarget]);
+  }, [flyToTarget, flyToCoords, setFlyToTarget, fetchNearbyForce]);
 
+  // Fly to preview location
   useEffect(() => {
     if (previewLocation) {
       flyToCoords(previewLocation);
     }
   }, [previewLocation, flyToCoords]);
+
+  // Click handler for Source/Layer features
+  const handleMapClick = useCallback((e: MapMouseEvent) => {
+    const features = e.features;
+    if (!features || features.length === 0) {
+      setSelectedLocation(null);
+      return;
+    }
+
+    const feature = features[0];
+
+    if (feature.layer?.id === "city-clusters") {
+      // Zoom into the cluster's expansion zoom
+      const clusterId = feature.properties?.cluster_id;
+      const coords = (feature.geometry as GeoJSON.Point).coordinates;
+      if (clusterId != null && coords) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const source = mapRef.current?.getSource("cities") as any;
+        source?.getClusterExpansionZoom(clusterId, (err: Error | null, zoom: number) => {
+          if (!err && zoom != null) {
+            mapRef.current?.flyTo({
+              center: coords as [number, number],
+              zoom: Math.min(zoom, 9),
+              duration: 1000,
+            });
+          }
+        });
+      }
+    } else if (feature.layer?.id === "city-circles") {
+      const props = feature.properties;
+      if (props) {
+        const lng = Number(props.lng);
+        const lat = Number(props.lat);
+        mapRef.current?.flyTo({
+          center: [lng, lat],
+          zoom: 9,
+          duration: 1000,
+        });
+        fetchNearbyForce({ lat, lng });
+      }
+    } else if (feature.layer?.id === "unclustered-point") {
+      const props = feature.properties;
+      if (props?.id) {
+        setSelectedLocation(props.id);
+      }
+    }
+  }, [setSelectedLocation, fetchNearbyForce]);
+
+  // onMoveEnd: update bounds/center/zoom, trigger fetches
+  const handleMoveEnd = useCallback(() => {
+    const map = mapRef.current?.getMap();
+    if (!map) return;
+
+    const center = map.getCenter();
+    const zoom = map.getZoom();
+    const bounds = map.getBounds();
+
+    setMapCenter({ lat: center.lat, lng: center.lng });
+    setZoomLevel(zoom);
+    setMapBounds({
+      north: bounds.getNorth(),
+      south: bounds.getSouth(),
+      east: bounds.getEast(),
+      west: bounds.getWest(),
+    });
+
+    if (zoom >= 9) {
+      fetchNearby({ lat: center.lat, lng: center.lng });
+    }
+  }, [setMapCenter, setZoomLevel, setMapBounds, fetchNearby]);
 
   if (!MAPBOX_TOKEN) {
     return (
@@ -201,42 +285,127 @@ export function MapView() {
     <Map
       ref={mapRef}
       initialViewState={{
-        latitude: AUSTIN_CENTER.lat,
-        longitude: AUSTIN_CENTER.lng,
-        zoom: AUSTIN_ZOOM,
+        latitude: US_CENTER.lat,
+        longitude: US_CENTER.lng,
+        zoom: US_ZOOM,
       }}
       style={{ width: "100%", height: "100%" }}
       mapStyle="mapbox://styles/mapbox/streets-v12"
       mapboxAccessToken={MAPBOX_TOKEN}
-      onClick={() => setSelectedLocation(null)}
-      onMoveEnd={(evt) => {
-        const center = evt.viewState;
-        setMapCenter({ lat: center.latitude, lng: center.longitude });
-
-        // Update bounds for viewport-aware sorting
-        const map = mapRef.current?.getMap();
-        if (map) {
-          const bounds = map.getBounds();
-          setMapBounds({
-            north: bounds.getNorth(),
-            south: bounds.getSouth(),
-            east: bounds.getEast(),
-            west: bounds.getWest(),
-          });
-        }
-      }}
+      onClick={handleMapClick}
+      onMoveEnd={handleMoveEnd}
+      interactiveLayerIds={interactiveLayerIds}
+      cursor="auto"
     >
       <NavigationControl position="top-right" />
 
-      {displayLocations.map((location) => (
-        <LocationMarker
-          key={location.id}
-          location={location}
-          isSelected={selectedLocationId === location.id}
-          onClick={() => setSelectedLocation(location.id)}
-        />
-      ))}
+      {/* City bubbles layer (zoom < 9) */}
+      {showCities && (
+        <Source id="cities" type="geojson" data={cityGeojson}
+          cluster={true}
+          clusterRadius={50}
+          clusterMaxZoom={8}
+          clusterProperties={{
+            totalLocations: ["+", ["get", "locationCount"]],
+            totalVotes: ["+", ["get", "totalVotes"]],
+          }}
+        >
+          {/* Cluster circles */}
+          <Layer
+            id="city-clusters"
+            type="circle"
+            filter={["has", "point_count"]}
+            paint={{
+              "circle-color": "#3b82f6",
+              "circle-radius": [
+                "interpolate", ["linear"], ["get", "totalLocations"],
+                1, 14,
+                50, 22,
+                200, 32,
+                500, 40,
+              ],
+              "circle-opacity": 0.85,
+              "circle-stroke-width": 2,
+              "circle-stroke-color": "#ffffff",
+            }}
+          />
+          {/* Cluster labels */}
+          <Layer
+            id="city-cluster-labels"
+            type="symbol"
+            filter={["has", "point_count"]}
+            layout={{
+              "text-field": ["to-string", ["get", "totalLocations"]],
+              "text-size": 12,
+              "text-allow-overlap": false,
+            }}
+            paint={{
+              "text-color": "#ffffff",
+              "text-halo-color": "#3b82f6",
+              "text-halo-width": 1,
+            }}
+          />
+          {/* Unclustered city circles */}
+          <Layer
+            id="city-circles"
+            type="circle"
+            filter={["!", ["has", "point_count"]]}
+            paint={{
+              "circle-color": "#3b82f6",
+              "circle-radius": [
+                "interpolate", ["linear"], ["get", "locationCount"],
+                1, 12,
+                50, 20,
+                200, 30,
+              ],
+              "circle-opacity": 0.85,
+              "circle-stroke-width": 2,
+              "circle-stroke-color": "#ffffff",
+            }}
+          />
+          {/* City labels */}
+          <Layer
+            id="city-labels"
+            type="symbol"
+            filter={["!", ["has", "point_count"]]}
+            layout={{
+              "text-field": ["to-string", ["get", "locationCount"]],
+              "text-size": 11,
+              "text-allow-overlap": false,
+            }}
+            paint={{
+              "text-color": "#ffffff",
+              "text-halo-color": "#3b82f6",
+              "text-halo-width": 1,
+            }}
+          />
+        </Source>
+      )}
 
+      {/* Individual location dots (zoom >= 9) */}
+      {!showCities && (
+        <Source id="locations" type="geojson" data={locationGeojson}>
+          <Layer
+            id="unclustered-point"
+            type="circle"
+            paint={{
+              "circle-color": [
+                "match", ["get", "overallColor"],
+                "GREEN", "#22c55e",
+                "YELLOW", "#facc15",
+                "AMBER", "#f59e0b",
+                "RED", "#ef4444",
+                "#475569",
+              ],
+              "circle-radius": 6,
+              "circle-stroke-width": 2,
+              "circle-stroke-color": "#ffffff",
+            }}
+          />
+        </Source>
+      )}
+
+      {/* Selected location popup */}
       {selectedLocation && (
         <Popup
           latitude={selectedLocation.lat}
@@ -256,6 +425,7 @@ export function MapView() {
         </Popup>
       )}
 
+      {/* Preview marker for suggested locations */}
       {previewLocation && (
         <>
           <Marker

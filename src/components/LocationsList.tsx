@@ -7,20 +7,8 @@ import { LocationCard } from "./LocationCard";
 import { useVotesStore } from "@/lib/votes";
 import { useShallow } from "zustand/react/shallow";
 import { searchAddresses, GeocodingResult } from "@/lib/geocoding";
+import { getDistanceMiles } from "@/lib/locations";
 import { useAuth } from "./AuthProvider";
-
-// Calculate distance between two points using Haversine formula
-function getDistanceMiles(lat1: number, lng1: number, lat2: number, lng2: number): number {
-  const R = 3959; // Earth's radius in miles
-  const dLat = (lat2 - lat1) * Math.PI / 180;
-  const dLng = (lng2 - lng1) * Math.PI / 180;
-  const a =
-    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-    Math.sin(dLng / 2) * Math.sin(dLng / 2);
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  return R * c;
-}
 
 // Check if a location is within viewport bounds
 function isInViewport(
@@ -44,6 +32,9 @@ export function LocationsList() {
     setFlyToTarget,
     mapCenter,
     mapBounds,
+    zoomLevel,
+    citySummaries,
+    fetchNearbyForce,
   } = useVotesStore(useShallow((s) => ({
     filteredLocations: s.filteredLocations,
     selectedLocationId: s.selectedLocationId,
@@ -56,6 +47,9 @@ export function LocationsList() {
     setFlyToTarget: s.setFlyToTarget,
     mapCenter: s.mapCenter,
     mapBounds: s.mapBounds,
+    zoomLevel: s.zoomLevel,
+    citySummaries: s.citySummaries,
+    fetchNearbyForce: s.fetchNearbyForce,
   })));
 
   const [page, setPage] = useState(0);
@@ -242,7 +236,41 @@ export function LocationsList() {
         </div>
       </div>
       <div className="flex-1 overflow-y-auto p-4 space-y-3">
-        {locations.length === 0 ? (
+        {zoomLevel < 9 ? (
+          // City list mode (wide zoom)
+          citySummaries.length === 0 ? (
+            <p className="text-center text-muted-foreground py-8">
+              Loading cities...
+            </p>
+          ) : (
+            [...citySummaries]
+              .sort((a, b) => b.totalVotes - a.totalVotes)
+              .map((city) => (
+                <button
+                  key={`${city.city}-${city.state}`}
+                  type="button"
+                  className="w-full text-left p-3 rounded-lg border bg-white hover:bg-blue-50 hover:border-blue-200 transition-colors"
+                  onClick={() => {
+                    setFlyToTarget({ lat: city.lat, lng: city.lng });
+                    fetchNearbyForce({ lat: city.lat, lng: city.lng });
+                  }}
+                >
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="font-semibold text-sm">{city.city}, {city.state}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {city.locationCount} location{city.locationCount !== 1 ? "s" : ""}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-sm font-bold text-blue-600">{city.totalVotes}</p>
+                      <p className="text-xs text-muted-foreground">votes</p>
+                    </div>
+                  </div>
+                </button>
+              ))
+          )
+        ) : locations.length === 0 ? (
           <p className="text-center text-muted-foreground py-8">
             No locations found matching your search.
           </p>
@@ -277,6 +305,7 @@ export function LocationsList() {
               </button>
             )}
           </>
+
         )}
       </div>
     </div>
