@@ -55,11 +55,6 @@ export default function Home() {
           </div>
         </div>
 
-        {/* Suggest Button */}
-        <div className="p-4">
-          <SuggestLocationModal />
-        </div>
-
         {/* How it works */}
         <div className="px-5 pb-3">
           <h3 className="text-white font-semibold text-sm mb-2">How It Works</h3>
@@ -70,13 +65,16 @@ export default function Home() {
             </li>
             <li className="flex gap-2">
               <span className="bg-blue-500 text-white rounded-full w-4 h-4 flex items-center justify-center text-[10px] flex-shrink-0">2</span>
-              <span>Vote for locations near you (1 vote per location)</span>
+              <span>Vote for locations near you</span>
             </li>
             <li className="flex gap-2">
               <span className="bg-blue-500 text-white rounded-full w-4 h-4 flex items-center justify-center text-[10px] flex-shrink-0">3</span>
               <span>Top-voted locations will be prioritized for development</span>
             </li>
           </ol>
+          <div className="mt-3">
+            <SuggestLocationModal />
+          </div>
         </div>
 
         {/* Locations List */}

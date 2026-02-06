@@ -95,7 +95,7 @@ export function SuggestLocationModal() {
       <DialogTrigger asChild>
         <Button className="gap-2 bg-amber-400 hover:bg-amber-500 text-amber-950 font-semibold">
           <Plus className="h-4 w-4" />
-          Suggest a Location
+          Or Suggest New Location
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-md" draggable position="top-right">
