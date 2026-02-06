@@ -416,7 +416,7 @@ export function MapView() {
           longitude={selectedLocation.lng}
           anchor="top"
           closeButton={true}
-          closeOnClick={true}
+          closeOnClick={false}
           onClose={() => setSelectedLocation(null)}
           offset={[0, 8]}
         >
