@@ -2,8 +2,13 @@ name: Deploy to GitHub Pages
 
 on:
   push:
-    branches: [scale-to-100k]
+    branches: ['**']
   workflow_dispatch:
+    inputs:
+      branch:
+        description: Branch to deploy (default: main)
+        required: false
+        default: main
 
 permissions:
   contents: read
@@ -17,8 +22,13 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      github.actor == 'neerajg00pta'
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.branch || github.ref }}
 
       - uses: actions/setup-node@v4
         with:
