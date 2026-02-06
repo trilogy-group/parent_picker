@@ -57,9 +57,12 @@ export function MapView() {
     return false;
   });
   const initialViewSetRef = useRef(false);
+  const flyingRef = useRef(false);
+  const selectedLocationRef = useRef<{ lat: number; lng: number } | null>(null);
 
   const displayLocations = filteredLocations();
   const selectedLocation = displayLocations.find((l) => l.id === selectedLocationId);
+  selectedLocationRef.current = selectedLocation ? { lat: selectedLocation.lat, lng: selectedLocation.lng } : null;
 
   const showCities = zoomLevel < 9;
 
@@ -166,6 +169,7 @@ export function MapView() {
   }, [userLocation, citySummaries, geoResolved, locations, setReferencePoint, setMapBounds, setMapCenter, setZoomLevel, fetchNearbyForce]);
 
   const flyToCoords = useCallback((coords: { lat: number; lng: number }, zoom?: number) => {
+    flyingRef.current = true;
     mapRef.current?.flyTo({
       center: [coords.lng, coords.lat],
       zoom: zoom ?? 14,
@@ -173,12 +177,14 @@ export function MapView() {
     });
   }, []);
 
-  // Fly to selected location
+  // Fly to selected location (only when selection changes, not on re-renders)
   useEffect(() => {
-    if (selectedLocation) {
-      flyToCoords(selectedLocation);
+    if (selectedLocationId) {
+      const loc = displayLocations.find((l) => l.id === selectedLocationId);
+      if (loc) flyToCoords(loc);
     }
-  }, [selectedLocation, flyToCoords]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedLocationId]);
 
   // Fly to search target
   useEffect(() => {
@@ -206,28 +212,12 @@ export function MapView() {
 
     const feature = features[0];
 
-    if (feature.layer?.id === "city-clusters") {
-      // Zoom into the cluster's expansion zoom
-      const clusterId = feature.properties?.cluster_id;
+    if (feature.layer?.id === "city-clusters" || feature.layer?.id === "city-circles") {
       const coords = (feature.geometry as GeoJSON.Point).coordinates;
-      if (clusterId != null && coords) {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const source = mapRef.current?.getSource("cities") as any;
-        source?.getClusterExpansionZoom(clusterId, (err: Error | null, zoom: number) => {
-          if (!err && zoom != null) {
-            mapRef.current?.flyTo({
-              center: coords as [number, number],
-              zoom: Math.min(zoom, 9),
-              duration: 1000,
-            });
-          }
-        });
-      }
-    } else if (feature.layer?.id === "city-circles") {
-      const props = feature.properties;
-      if (props) {
-        const lng = Number(props.lng);
-        const lat = Number(props.lat);
+      if (coords) {
+        const lng = coords[0];
+        const lat = coords[1];
+        flyingRef.current = true;
         mapRef.current?.flyTo({
           center: [lng, lat],
           zoom: 9,
@@ -248,9 +238,19 @@ export function MapView() {
     const map = mapRef.current?.getMap();
     if (!map) return;
 
+    flyingRef.current = false;
+
     const center = map.getCenter();
     const zoom = map.getZoom();
     const bounds = map.getBounds();
+
+    // Clear selection if the selected dot is no longer visible
+    if (selectedLocationRef.current) {
+      const loc = selectedLocationRef.current;
+      if (!bounds.contains([loc.lng, loc.lat])) {
+        setSelectedLocation(null);
+      }
+    }
 
     setMapCenter({ lat: center.lat, lng: center.lng });
     setZoomLevel(zoom);
@@ -264,7 +264,7 @@ export function MapView() {
     if (zoom >= 9) {
       fetchNearby({ lat: center.lat, lng: center.lng });
     }
-  }, [setMapCenter, setZoomLevel, setMapBounds, fetchNearby]);
+  }, [setMapCenter, setZoomLevel, setMapBounds, fetchNearby, setSelectedLocation]);
 
   if (!MAPBOX_TOKEN) {
     return (
@@ -316,16 +316,16 @@ export function MapView() {
             type="circle"
             filter={["has", "point_count"]}
             paint={{
-              "circle-color": "#3b82f6",
+              "circle-color": "#2563eb",
               "circle-radius": [
                 "interpolate", ["linear"], ["get", "totalLocations"],
-                1, 14,
-                50, 22,
-                200, 32,
-                500, 40,
+                1, 16,
+                50, 24,
+                200, 34,
+                500, 42,
               ],
-              "circle-opacity": 0.85,
-              "circle-stroke-width": 2,
+              "circle-opacity": 1,
+              "circle-stroke-width": 3,
               "circle-stroke-color": "#ffffff",
             }}
           />
@@ -336,13 +336,14 @@ export function MapView() {
             filter={["has", "point_count"]}
             layout={{
               "text-field": ["to-string", ["get", "totalLocations"]],
-              "text-size": 12,
+              "text-font": ["DIN Pro Bold", "Arial Unicode MS Bold"],
+              "text-size": 13,
               "text-allow-overlap": false,
             }}
             paint={{
               "text-color": "#ffffff",
-              "text-halo-color": "#3b82f6",
-              "text-halo-width": 1,
+              "text-halo-color": "#1e40af",
+              "text-halo-width": 1.5,
             }}
           />
           {/* Unclustered city circles */}
@@ -351,15 +352,15 @@ export function MapView() {
             type="circle"
             filter={["!", ["has", "point_count"]]}
             paint={{
-              "circle-color": "#3b82f6",
+              "circle-color": "#2563eb",
               "circle-radius": [
                 "interpolate", ["linear"], ["get", "locationCount"],
-                1, 12,
-                50, 20,
-                200, 30,
+                1, 14,
+                50, 22,
+                200, 32,
               ],
-              "circle-opacity": 0.85,
-              "circle-stroke-width": 2,
+              "circle-opacity": 1,
+              "circle-stroke-width": 3,
               "circle-stroke-color": "#ffffff",
             }}
           />
@@ -370,13 +371,14 @@ export function MapView() {
             filter={["!", ["has", "point_count"]]}
             layout={{
               "text-field": ["to-string", ["get", "locationCount"]],
-              "text-size": 11,
+              "text-font": ["DIN Pro Bold", "Arial Unicode MS Bold"],
+              "text-size": 13,
               "text-allow-overlap": false,
             }}
             paint={{
               "text-color": "#ffffff",
-              "text-halo-color": "#3b82f6",
-              "text-halo-width": 1,
+              "text-halo-color": "#1e40af",
+              "text-halo-width": 1.5,
             }}
           />
         </Source>
