@@ -50,6 +50,7 @@ function mapSyncScores(s: Record<string, unknown>): LocationScores | undefined {
     zoning: { score: zoning, color: (s.zoning_color as string) || colorFromScore(zoning), detailsUrl: (s.zoning_details_url as string) || null },
     neighborhood: { score: nbhd, color: (s.neighborhood_color as string) || colorFromScore(nbhd), detailsUrl: (s.neighborhood_details_url as string) || null },
     building: { score: bldg, color: (s.building_color as string) || colorFromScore(bldg), detailsUrl: (s.building_details_url as string) || null },
+    sizeClassification: (s.size_classification as string) || null,
   };
 }
 

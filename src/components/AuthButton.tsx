@@ -70,34 +70,32 @@ export function AuthButton() {
 
   if (user) {
     return (
-      <div className="flex items-center gap-2">
-        <span className="text-sm text-blue-100 hidden sm:inline">
+      <div className="flex items-center gap-2 relative z-10">
+        <span className="text-xs text-blue-200 truncate max-w-[200px]">
           {user.email}
         </span>
-        <Button
-          variant="ghost"
-          size="sm"
+        <button
+          type="button"
           onClick={handleSignOut}
-          className="text-white hover:bg-blue-700"
+          className="flex items-center gap-1 text-xs text-blue-200 hover:text-white shrink-0"
         >
-          <LogOut className="h-4 w-4 mr-1" />
-          <span className="hidden sm:inline">Sign Out</span>
-        </Button>
+          <LogOut className="h-3.5 w-3.5" />
+          Sign Out
+        </button>
       </div>
     );
   }
 
   return (
     <>
-      <Button
-        variant="ghost"
-        size="sm"
+      <button
+        type="button"
         onClick={() => setShowSignIn(true)}
-        className="text-white hover:bg-blue-700"
+        className="flex items-center gap-1 text-xs text-blue-200 hover:text-white"
       >
-        <LogIn className="h-4 w-4 mr-1" />
+        <LogIn className="h-3.5 w-3.5" />
         Sign In
-      </Button>
+      </button>
 
       <Dialog open={showSignIn} onOpenChange={handleClose}>
         <DialogContent className="sm:max-w-md">

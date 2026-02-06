@@ -1,10 +1,10 @@
 "use client";
 
 import { useState, useCallback, useRef, useEffect, useMemo } from "react";
-import { Search } from "lucide-react";
+import { Search, ChevronDown, ChevronUp, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { LocationCard } from "./LocationCard";
-import { useVotesStore } from "@/lib/votes";
+import { useVotesStore, ScoreFilterCategory } from "@/lib/votes";
 import { useShallow } from "zustand/react/shallow";
 import { searchAddresses, GeocodingResult } from "@/lib/geocoding";
 import { getDistanceMiles } from "@/lib/locations";
@@ -17,6 +17,132 @@ function isInViewport(
   bounds: { north: number; south: number; east: number; west: number }
 ): boolean {
   return lat <= bounds.north && lat >= bounds.south && lng <= bounds.east && lng >= bounds.west;
+}
+
+const COLOR_OPTIONS = ["GREEN", "YELLOW", "RED"] as const;
+const COLOR_DISPLAY: Record<string, { bg: string; bgActive: string; ring: string; label: string }> = {
+  GREEN: { bg: "bg-green-100", bgActive: "bg-green-500", ring: "ring-green-400", label: "G" },
+  YELLOW: { bg: "bg-yellow-100", bgActive: "bg-yellow-400", ring: "ring-yellow-400", label: "Y" },
+  RED: { bg: "bg-red-100", bgActive: "bg-red-500", ring: "ring-red-400", label: "R" },
+};
+
+const SIZE_OPTIONS = ["Micro", "Micro2", "Growth", "Full Size", "Red (Reject)"] as const;
+
+const SCORE_CATEGORIES: { key: ScoreFilterCategory; label: string }[] = [
+  { key: "overall", label: "Overall" },
+  { key: "demographics", label: "Demo" },
+  { key: "price", label: "Price" },
+  { key: "zoning", label: "Zoning" },
+  { key: "neighborhood", label: "Nbhd" },
+  { key: "building", label: "Bldg" },
+];
+
+interface ScoreFilterPanelProps {
+  scoreFilters: import("@/lib/votes").ScoreFilters;
+  toggleScoreFilter: (category: ScoreFilterCategory, value: string) => void;
+  clearScoreFilters: () => void;
+  activeFilterCount: () => number;
+  expanded: boolean;
+  setExpanded: (v: boolean) => void;
+}
+
+function ScoreFilterPanel({
+  scoreFilters,
+  toggleScoreFilter,
+  clearScoreFilters,
+  activeFilterCount,
+  expanded,
+  setExpanded,
+}: ScoreFilterPanelProps) {
+  const count = activeFilterCount();
+
+  return (
+    <div className="mt-2">
+      <button
+        type="button"
+        className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors w-full"
+        onClick={() => setExpanded(!expanded)}
+      >
+        {expanded ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+        <span className="font-medium">Filters</span>
+        {count > 0 && (
+          <span className="bg-blue-500 text-white text-[10px] font-bold rounded-full w-4 h-4 flex items-center justify-center">
+            {count}
+          </span>
+        )}
+        {count > 0 && (
+          <button
+            type="button"
+            className="ml-auto text-[10px] text-blue-600 hover:text-blue-800 flex items-center gap-0.5"
+            onClick={(e) => { e.stopPropagation(); clearScoreFilters(); }}
+          >
+            <X className="h-3 w-3" /> Clear
+          </button>
+        )}
+      </button>
+
+      {expanded && (
+        <div className="mt-2 space-y-1.5">
+          {/* Color score categories */}
+          {SCORE_CATEGORIES.map(({ key, label }) => (
+            <div key={key} className="flex items-center gap-1.5">
+              <span className="text-[10px] font-medium text-muted-foreground w-10 shrink-0">{label}</span>
+              <div className="flex gap-1">
+                {COLOR_OPTIONS.map((color) => {
+                  const active = scoreFilters[key].has(color);
+                  const d = COLOR_DISPLAY[color];
+                  return (
+                    <button
+                      key={color}
+                      type="button"
+                      title={`${color} ${label}`}
+                      className={`w-5 h-5 rounded-full text-[9px] font-bold flex items-center justify-center transition-all ${
+                        active
+                          ? `${d.bgActive} text-white ring-2 ${d.ring} ring-offset-1`
+                          : `${d.bg} text-gray-500 hover:ring-1 ${d.ring}`
+                      }`}
+                      onClick={() => toggleScoreFilter(key, color)}
+                    >
+                      {d.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
+
+          {/* Size filter */}
+          <div className="flex items-center gap-1.5">
+            <span className="text-[10px] font-medium text-muted-foreground w-10 shrink-0">Size</span>
+            <div className="flex gap-1 flex-wrap">
+              {SIZE_OPTIONS.map((size) => {
+                const active = scoreFilters.size.has(size);
+                const isReject = size === "Red (Reject)";
+                return (
+                  <button
+                    key={size}
+                    type="button"
+                    className={`px-1.5 py-0.5 rounded text-[9px] font-medium transition-all ${
+                      active
+                        ? isReject
+                          ? "bg-red-500 text-white ring-2 ring-red-400 ring-offset-1"
+                          : "bg-blue-500 text-white ring-2 ring-blue-400 ring-offset-1"
+                        : isReject
+                          ? "bg-red-50 text-red-400 hover:bg-red-100"
+                          : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                    }`}
+                    onClick={() => toggleScoreFilter("size", size)}
+                  >
+                    {size === "Full Size" ? "Full" : size === "Red (Reject)" ? "Reject" : size}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
 }
 
 export function LocationsList() {
@@ -35,6 +161,10 @@ export function LocationsList() {
     zoomLevel,
     citySummaries,
     fetchNearbyForce,
+    scoreFilters,
+    toggleScoreFilter,
+    clearScoreFilters,
+    activeFilterCount,
   } = useVotesStore(useShallow((s) => ({
     filteredLocations: s.filteredLocations,
     selectedLocationId: s.selectedLocationId,
@@ -50,11 +180,17 @@ export function LocationsList() {
     zoomLevel: s.zoomLevel,
     citySummaries: s.citySummaries,
     fetchNearbyForce: s.fetchNearbyForce,
+    scoreFilters: s.scoreFilters,
+    toggleScoreFilter: s.toggleScoreFilter,
+    clearScoreFilters: s.clearScoreFilters,
+    activeFilterCount: s.activeFilterCount,
   })));
 
   const [page, setPage] = useState(0);
+  const [filtersExpanded, setFiltersExpanded] = useState(false);
   const [prevSearchQuery, setPrevSearchQuery] = useState(searchQuery);
   const [prevMapBounds, setPrevMapBounds] = useState(mapBounds);
+  const [prevScoreFilters, setPrevScoreFilters] = useState(scoreFilters);
   const [addressSuggestions, setAddressSuggestions] = useState<
     GeocodingResult[]
   >([]);
@@ -163,10 +299,11 @@ export function LocationsList() {
     };
   }, []);
 
-  // Reset pagination when search or map viewport changes (render-time adjustment)
-  if (searchQuery !== prevSearchQuery || mapBounds !== prevMapBounds) {
+  // Reset pagination when search, map viewport, or filters change (render-time adjustment)
+  if (searchQuery !== prevSearchQuery || mapBounds !== prevMapBounds || scoreFilters !== prevScoreFilters) {
     setPrevSearchQuery(searchQuery);
     setPrevMapBounds(mapBounds);
+    setPrevScoreFilters(scoreFilters);
     setPage(0);
   }
 
@@ -234,6 +371,15 @@ export function LocationsList() {
             </div>
           )}
         </div>
+        {/* Score & Size Filters */}
+        <ScoreFilterPanel
+          scoreFilters={scoreFilters}
+          toggleScoreFilter={toggleScoreFilter}
+          clearScoreFilters={clearScoreFilters}
+          activeFilterCount={activeFilterCount}
+          expanded={filtersExpanded}
+          setExpanded={setFiltersExpanded}
+        />
       </div>
       <div className="flex-1 overflow-y-auto p-4 space-y-3">
         {zoomLevel < 9 ? (

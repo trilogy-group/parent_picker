@@ -37,6 +37,7 @@ function mockScores(index: number): LocationScores {
     zoning: { score: zoning, color: colorFromScore(zoning), detailsUrl: null },
     neighborhood: { score: nbhd, color: colorFromScore(nbhd), detailsUrl: null },
     building: { score: bldg, color: colorFromScore(bldg), detailsUrl: null },
+    sizeClassification: ["Micro", "Micro2", "Growth", "Full Size"][Math.floor(rand() * 4)],
   };
 }
 
@@ -78,6 +79,7 @@ function mapRowToScores(row: Record<string, unknown>): LocationScores | undefine
       color: (row.building_color as string) || colorFromScore(bldg),
       detailsUrl: (row.building_details_url as string) || null,
     },
+    sizeClassification: (row.size_classification as string) || null,
   };
 }
 

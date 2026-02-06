@@ -64,59 +64,42 @@ Duplicate the Sports Academy facilities map functionality:
 - `docs/brainlift-location-selection.md` - Location selection brainlift (scoring, zoning, parent override)
 - `sql/import_locations_from_upstream.sql` - SQL function to import from upstream
 
-## Session State (2026-02-05)
+## Session State (2026-02-06)
 
-**Current branch:** `admin-likes-tab`
-**Deployed:** https://parentpicker.vercel.app (does NOT include likes tab yet)
-**Last deploy:** 2026-02-05 — admin workflow + pagination fix
-**Branch commits:**
-- `2be534e` — Admin likes tab + TODO system + voter email notifications
-- `3099f4b` — Remove fabricated colorFromOverall fallback
+**Current branch:** `main`
+**Deployed:** https://parentpicker.vercel.app
+**Last deploy:** 2026-02-06 — score/size filters + header layout fix
 
-### Workstreams 1-6: DONE (see git history)
+### Workstreams 1-8: DONE (merged to main)
 
-### Workstream 7: Admin Likes Tab — DONE (on branch, not deployed)
+### Workstream 9: Score & Size Filters — DONE
 
 **What was built:**
-- Suggestions | Likes tab toggle on `/admin` page
-- Likes tab: active locations with votes, sorted by vote count DESC
-- Pull scores + send informational emails to all voters of a location
-- Emails include score tables + TODO action items for RED sub-scores
-- TODO generator: zoning (CUP/rezone), demographics (M1-M3), pricing (P1-P3b)
-- New API routes: `GET /api/admin/likes`, `POST /api/admin/locations/[id]/notify-voters`
-- Score sync returns upstream metrics + metro info for TODO generation
+- Collapsible filter panel below search bar in left panel
+- Color chip toggles (G/Y/R) for Overall, Demo, Price, Zoning, Nbhd, Bldg
+- Size tier buttons: Micro, Micro2, Growth, Full Size, Red (Reject)
+- AND across categories, OR within; Red (Reject) excluded by default
+- Unscored locations hidden when any color filter is active for that category
+- Filters cascade to map (via `filteredLocations()` in Zustand store)
+- `size_classification` added to `pp_location_scores` table, synced from upstream (normalized)
+- Updated `sync_scores_from_listings()`, `pp_locations_with_votes` view, `get_nearby_locations()` RPC
 
-**Key new files:**
-- `src/app/api/admin/likes/route.ts` — likes endpoint
-- `src/app/api/admin/locations/[id]/notify-voters/route.ts` — voter email endpoint
-- `src/lib/email-todos.ts` — email HTML with score tables + TODO sections
-- `src/lib/todo-generator.ts` — generates actionable TODOs from RED scores
-- `src/types/index.ts` — added `LikedLocation` type
+**DB changes:**
+- `pp_location_scores.size_classification` column added
+- `sync_scores_from_listings()` now syncs size_classification with normalization
+- `get_nearby_locations()` returns `size_classification`
+- `pp_locations_with_votes` view includes `size_classification`
+- 1,026 of 1,044 scored locations have size data (628 Micro, 151 Reject, 130 Micro2, 87 Growth, 28 Full)
 
-### Workstream 8: Overall color fix — DONE (on branch)
-
-**What was fixed:**
-- Removed `colorFromOverall()` fallback that fabricated colors from numeric overall score
-- Overall color logic is: RED if any subscore is 0 or size out of bounds, GREEN if all GREEN, else YELLOW
-- This is computed **upstream** by the scoring agent — our code just passes it through
-- When upstream color is null, we show neutral gray (not a made-up color)
-
-**Upstream bug found:** `overall_color` in `real_estate_listings` is wrong for ~74% of scored rows. The scoring agent's own artifact pages show correct colors but it writes wrong values to the DB. Needs upstream fix.
-
-### Location counts (1,900 active)
-
-| Metro | Locations |
-|-------|-----------|
-| New York, NY | 760 |
-| Brooklyn, NY | 218 |
-| Boca Raton, FL | 105 |
-| West Palm Beach, FL | 100 |
-| Austin, TX | 49 |
-| Dallas, TX | 33 |
-| All others | 635 |
+**Key files modified:**
+- `src/lib/votes.ts` — `ScoreFilters` type, filter state, `filteredLocations()` logic
+- `src/components/LocationsList.tsx` — `ScoreFilterPanel` component
+- `src/types/index.ts` — `sizeClassification` on `LocationScores`
+- `src/lib/locations.ts` — `mapRowToScores()` updated
+- `src/components/AuthButton.tsx` — compact sign-in/sign-out styling
+- `src/app/page.tsx` — header layout: title/subtitle/auth on separate rows
 
 ### Pending / Next steps
-- Merge `admin-likes-tab` branch to main and deploy
 - **Upstream scoring agent bug**: `overall_color` wrong for ~74% of rows — agent artifacts show correct color but DB has wrong value. Needs fix in scoring agent, then re-sync: `SELECT sync_scores_from_listings();`
 - Scoring agent needs to score 1,166 unscored locations in `real_estate_listings`
 - Fill sub-score gaps (especially Price: 140 missing) for the 734 already-scored locations

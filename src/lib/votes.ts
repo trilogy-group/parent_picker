@@ -12,6 +12,18 @@ interface MapBounds {
   west: number;
 }
 
+export type ScoreFilterCategory = "overall" | "demographics" | "price" | "zoning" | "neighborhood" | "building" | "size";
+
+export interface ScoreFilters {
+  overall: Set<string>;
+  demographics: Set<string>;
+  price: Set<string>;
+  zoning: Set<string>;
+  neighborhood: Set<string>;
+  building: Set<string>;
+  size: Set<string>;
+}
+
 interface VotesState {
   locations: Location[];
   citySummaries: CitySummary[];
@@ -25,9 +37,13 @@ interface VotesState {
   mapCenter: { lat: number; lng: number } | null;
   mapBounds: MapBounds | null;
   referencePoint: { lat: number; lng: number } | null;
+  scoreFilters: ScoreFilters;
   isLoading: boolean;
   userId: string | null;
   setLocations: (locations: Location[]) => void;
+  toggleScoreFilter: (category: ScoreFilterCategory, value: string) => void;
+  clearScoreFilters: () => void;
+  activeFilterCount: () => number;
   addLocation: (location: Location) => void;
   vote: (locationId: string) => void;
   unvote: (locationId: string) => void;
@@ -62,8 +78,58 @@ export const useVotesStore = create<VotesState>((set, get) => ({
   mapCenter: null,
   mapBounds: null,
   referencePoint: null,
+  scoreFilters: {
+    overall: new Set<string>(),
+    demographics: new Set<string>(),
+    price: new Set<string>(),
+    zoning: new Set<string>(),
+    neighborhood: new Set<string>(),
+    building: new Set<string>(),
+    size: new Set<string>(["Micro", "Micro2", "Growth", "Full Size"]),
+  },
   isLoading: true,
   userId: null,
+
+  toggleScoreFilter: (category, value) => {
+    const filters = get().scoreFilters;
+    const current = new Set(filters[category]);
+    if (current.has(value)) {
+      current.delete(value);
+    } else {
+      current.add(value);
+    }
+    set({ scoreFilters: { ...filters, [category]: current } });
+  },
+
+  clearScoreFilters: () => {
+    set({
+      scoreFilters: {
+        overall: new Set<string>(),
+        demographics: new Set<string>(),
+        price: new Set<string>(),
+        zoning: new Set<string>(),
+        neighborhood: new Set<string>(),
+        building: new Set<string>(),
+        size: new Set<string>(["Micro", "Micro2", "Growth", "Full Size"]),
+      },
+    });
+  },
+
+  activeFilterCount: () => {
+    const f = get().scoreFilters;
+    const DEFAULT_SIZES = new Set(["Micro", "Micro2", "Growth", "Full Size"]);
+    let count = 0;
+    for (const key of Object.keys(f) as ScoreFilterCategory[]) {
+      if (key === "size") {
+        // Don't count default size selections as active filters
+        const isDefault = f.size.size === DEFAULT_SIZES.size && [...f.size].every(v => DEFAULT_SIZES.has(v));
+        if (!isDefault) count += f.size.size;
+      } else {
+        count += f[key].size;
+      }
+    }
+    return count;
+  },
 
   setLocations: (locations) => set({ locations, isLoading: false }),
 
@@ -210,6 +276,57 @@ export const useVotesStore = create<VotesState>((set, get) => ({
   setReferencePoint: (coords) => set({ referencePoint: coords }),
 
   filteredLocations: () => {
-    return get().locations;
+    const { locations, scoreFilters } = get();
+
+    // Check if any filter is active at all
+    const anyColorFilter = scoreFilters.overall.size > 0 ||
+      scoreFilters.demographics.size > 0 ||
+      scoreFilters.price.size > 0 ||
+      scoreFilters.zoning.size > 0 ||
+      scoreFilters.neighborhood.size > 0 ||
+      scoreFilters.building.size > 0;
+    const anySizeFilter = scoreFilters.size.size > 0;
+    const anyFilter = anyColorFilter || anySizeFilter;
+
+    if (!anyFilter) {
+      // Default: exclude Red (Reject) size locations
+      return locations.filter((loc) => {
+        const size = loc.scores?.sizeClassification;
+        return size !== "Red (Reject)";
+      });
+    }
+
+    return locations.filter((loc) => {
+      const scores = loc.scores;
+
+      // Color filter categories: location must match each active category
+      const colorCategories: { filter: Set<string>; getColor: () => string | null | undefined }[] = [
+        { filter: scoreFilters.overall, getColor: () => scores?.overallColor },
+        { filter: scoreFilters.demographics, getColor: () => scores?.demographics.color },
+        { filter: scoreFilters.price, getColor: () => scores?.price.color },
+        { filter: scoreFilters.zoning, getColor: () => scores?.zoning.color },
+        { filter: scoreFilters.neighborhood, getColor: () => scores?.neighborhood.color },
+        { filter: scoreFilters.building, getColor: () => scores?.building.color },
+      ];
+
+      for (const cat of colorCategories) {
+        if (cat.filter.size > 0) {
+          const color = cat.getColor();
+          if (!color || !cat.filter.has(color)) return false;
+        }
+      }
+
+      // Size filter: OR within size selections
+      if (anySizeFilter) {
+        const size = scores?.sizeClassification;
+        if (!size || !scoreFilters.size.has(size)) return false;
+      } else {
+        // No size filter active but other filters are: exclude Red (Reject)
+        const size = scores?.sizeClassification;
+        if (size === "Red (Reject)") return false;
+      }
+
+      return true;
+    });
   },
 }));

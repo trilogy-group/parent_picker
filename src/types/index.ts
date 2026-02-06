@@ -13,6 +13,7 @@ export interface LocationScores {
   zoning: SubScore;
   neighborhood: SubScore;
   building: SubScore;
+  sizeClassification: string | null;
 }
 
 export interface Location {
