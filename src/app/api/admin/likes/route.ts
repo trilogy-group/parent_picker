@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { verifyAdmin } from "@/lib/admin";
 import { getSupabaseAdmin } from "@/lib/supabase-admin";
 
-// Map Supabase row to score fields (same logic as locations.ts mapRowToScores)
+// Map Supabase row to score fields
 function colorFromScore(score: number | null): string | null {
   if (score === null) return null;
   if (score >= 0.75) return "GREEN";
@@ -42,18 +42,41 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Server not configured" }, { status: 500 });
   }
 
-  // Get pending locations with scores and suggestor profile
-  const { data: locations, error } = await supabase
-    .from("pp_locations")
-    .select("*")
-    .eq("status", "pending_review")
-    .order("created_at", { ascending: false });
+  // Get active locations that have votes, with vote counts
+  const { data: votedLocations, error: voteError } = await supabase
+    .from("pp_votes")
+    .select("location_id, user_id");
 
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  if (voteError) {
+    return NextResponse.json({ error: voteError.message }, { status: 500 });
   }
 
-  // Enrich with scores and suggestor emails
+  if (!votedLocations || votedLocations.length === 0) {
+    return NextResponse.json([]);
+  }
+
+  // Group votes by location_id
+  const voteMap = new Map<string, string[]>();
+  for (const vote of votedLocations) {
+    const existing = voteMap.get(vote.location_id) || [];
+    existing.push(vote.user_id);
+    voteMap.set(vote.location_id, existing);
+  }
+
+  const locationIds = Array.from(voteMap.keys());
+
+  // Fetch active locations that have votes
+  const { data: locations, error: locError } = await supabase
+    .from("pp_locations")
+    .select("*")
+    .in("id", locationIds)
+    .eq("status", "active");
+
+  if (locError) {
+    return NextResponse.json({ error: locError.message }, { status: 500 });
+  }
+
+  // Enrich with scores and voter emails
   const enriched = await Promise.all(
     (locations || []).map(async (loc) => {
       // Get scores
@@ -63,11 +86,14 @@ export async function GET(request: NextRequest) {
         .eq("location_id", loc.id)
         .maybeSingle();
 
-      // Get suggestor email from auth.users (pp_profiles may not be populated)
-      let suggestorEmail: string | null = null;
-      if (loc.suggested_by) {
-        const { data: userData } = await supabase.auth.admin.getUserById(loc.suggested_by);
-        suggestorEmail = userData?.user?.email || null;
+      // Get voter emails
+      const voterUserIds = voteMap.get(loc.id) || [];
+      const voterEmails: string[] = [];
+      for (const uid of voterUserIds) {
+        const { data: userData } = await supabase.auth.admin.getUserById(uid);
+        if (userData?.user?.email) {
+          voterEmails.push(userData.user.email);
+        }
       }
 
       return {
@@ -84,10 +110,14 @@ export async function GET(request: NextRequest) {
         suggested_by: loc.suggested_by,
         created_at: loc.created_at,
         scores: mapScores(scoreData),
-        suggestor_email: suggestorEmail,
+        vote_count: voterUserIds.length,
+        voter_emails: voterEmails,
       };
     })
   );
+
+  // Sort by vote count descending
+  enriched.sort((a, b) => b.vote_count - a.vote_count);
 
   return NextResponse.json(enriched);
 }

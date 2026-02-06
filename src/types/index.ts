@@ -60,3 +60,42 @@ export interface AdminLocation {
   scores?: LocationScores;
   suggestor_email?: string | null;
 }
+
+export interface LikedLocation extends AdminLocation {
+  vote_count: number;
+  voter_emails: string[];
+}
+
+export interface UpstreamMetrics {
+  enrollmentScore: number | null;
+  wealthScore: number | null;
+  relativeEnrollmentScore: number | null;
+  relativeWealthScore: number | null;
+  rentPerSfYear: number | null;
+  rentPeriod: string | null;
+  spaceSizeAvailable: number | null;
+  sizeClassification: string | null;
+  zoningCode: string | null;
+  lotZoning: string | null;
+  county: string | null;
+  city: string | null;
+  state: string | null;
+}
+
+export interface MetroInfo {
+  market: string | null;
+  tuition: number | null;
+  hasExistingAlpha: boolean;
+  greenThreshold: number;
+  redThreshold: number;
+}
+
+export type TodoType = "zoning" | "demographics" | "pricing";
+
+export interface LocationTodo {
+  type: TodoType;
+  scenario: string;
+  title: string;
+  message: string;
+  dataTable?: { label: string; current: string; needed: string; gap?: string }[];
+}

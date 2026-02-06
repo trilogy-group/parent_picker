@@ -66,48 +66,42 @@ Duplicate the Sports Academy facilities map functionality:
 
 ## Session State (2026-02-05)
 
-**Current branch:** `main`
-**Deployed:** https://parentpicker.vercel.app
-**Last deploy:** 2026-02-05 — includes admin workflow + pagination fix
-**Last commit:** `23fe488` (uncommitted: admin workflow + pagination fix)
+**Current branch:** `admin-likes-tab`
+**Deployed:** https://parentpicker.vercel.app (does NOT include likes tab yet)
+**Last deploy:** 2026-02-05 — admin workflow + pagination fix
+**Branch commits:**
+- `2be534e` — Admin likes tab + TODO system + voter email notifications
+- `3099f4b` — Remove fabricated colorFromOverall fallback
 
-### Workstream 1: Auth + suggest location — DONE
-### Workstream 2: Moody's listing data — DONE (ETL + scoring by separate agent)
-### Workstream 3: Score display — DONE
-### Workstream 4: Admin review workflow — DONE
+### Workstreams 1-6: DONE (see git history)
+
+### Workstream 7: Admin Likes Tab — DONE (on branch, not deployed)
 
 **What was built:**
-- `/admin` page — review queue for parent-suggested locations
-- API routes: GET/approve/reject/sync-scores at `/api/admin/locations`
-- Server-side admin auth via `ADMIN_EMAILS` allowlist + service role client
-- Email notifications via Resend (approval + rejection with score tables)
-- Client-side email preview before sending (toggle approve/reject, show/hide)
-- `sync_scores_for_address()` SQL function with pg_trgm fuzzy matching
-- Admin emails: `andy.price@trilogy.com`, `neeraj.gupta@trilogy.com`
-- Requirements Section 17 (23 test cases)
+- Suggestions | Likes tab toggle on `/admin` page
+- Likes tab: active locations with votes, sorted by vote count DESC
+- Pull scores + send informational emails to all voters of a location
+- Emails include score tables + TODO action items for RED sub-scores
+- TODO generator: zoning (CUP/rezone), demographics (M1-M3), pricing (P1-P3b)
+- New API routes: `GET /api/admin/likes`, `POST /api/admin/locations/[id]/notify-voters`
+- Score sync returns upstream metrics + metro info for TODO generation
 
-**Key files:**
-- `src/app/admin/page.tsx` — admin review queue page
-- `src/components/AdminLocationCard.tsx` — card with pull-scores/approve/reject workflow
-- `src/app/api/admin/locations/` — API routes (GET, approve, reject, sync-scores)
-- `src/lib/supabase-admin.ts` — service role client
-- `src/lib/admin.ts` — admin auth verification
-- `src/lib/email.ts` — Resend email service
-- `docs/sql/sync_scores_for_address.sql` — SQL function source
+**Key new files:**
+- `src/app/api/admin/likes/route.ts` — likes endpoint
+- `src/app/api/admin/locations/[id]/notify-voters/route.ts` — voter email endpoint
+- `src/lib/email-todos.ts` — email HTML with score tables + TODO sections
+- `src/lib/todo-generator.ts` — generates actionable TODOs from RED scores
+- `src/types/index.ts` — added `LikedLocation` type
 
-### Workstream 5: Upstream import fix — DONE
+### Workstream 8: Overall color fix — DONE (on branch)
 
 **What was fixed:**
-- `import_locations_from_upstream()` was using `property_standardized_address` (~11% populated) instead of `address` (100% populated)
-- Fixed function now uses `address` column — matches `sync_scores_from_listings()` behavior
-- `/import-upstream` skill created (supports address, city, and "all" modes)
+- Removed `colorFromOverall()` fallback that fabricated colors from numeric overall score
+- Overall color logic is: RED if any subscore is 0 or size out of bounds, GREEN if all GREEN, else YELLOW
+- This is computed **upstream** by the scoring agent — our code just passes it through
+- When upstream color is null, we show neutral gray (not a made-up color)
 
-### Workstream 6: Pagination fix — DONE
-
-**What was fixed:**
-- Supabase PostgREST enforces 1000-row max per request (ignores client `.limit()`)
-- `getLocations()` now paginates with `.range()` to fetch all 1900 locations
-- Without this, parent-suggested locations with 0 votes were cut off past row 1000
+**Upstream bug found:** `overall_color` in `real_estate_listings` is wrong for ~74% of scored rows. The scoring agent's own artifact pages show correct colors but it writes wrong values to the DB. Needs upstream fix.
 
 ### Location counts (1,900 active)
 
@@ -121,35 +115,12 @@ Duplicate the Sports Academy facilities map functionality:
 | Dallas, TX | 33 |
 | All others | 635 |
 
-### Score coverage (734 of 1,900 scored — 39%)
-
-1,166 locations have no scores at all (all newly imported `upstream` source — `overall_score` is NULL in `real_estate_listings` for these). Scoring agent needs to run on them.
-
-**Among the 734 scored locations:**
-
-| Sub-score | Missing Score | Missing Report URL |
-|-----------|--------------|-------------------|
-| Overall | 0 | 70 |
-| Demographics | 6 | 17 |
-| Price | **140** | **222** |
-| Zoning | 3 | 59 |
-| Neighborhood | 50 | 114 |
-| Building | 33 | 69 |
-
-To re-sync after scoring agent fills gaps: `SELECT sync_scores_from_listings();`
-
-### Uncommitted changes
-
-All admin workflow files + pagination fix are deployed to Vercel but **not committed to git**. Files:
-- New: `src/app/admin/`, `src/app/api/`, `src/components/AdminLocationCard.tsx`, `src/lib/admin.ts`, `src/lib/email.ts`, `src/lib/supabase-admin.ts`, `docs/sql/`, `sql/`
-- Modified: `src/lib/locations.ts` (pagination), `src/types/index.ts` (AdminLocation), `requirements.md` (Section 17), `package.json` (resend dep)
-
 ### Pending / Next steps
-- Commit all uncommitted changes to git
+- Merge `admin-likes-tab` branch to main and deploy
+- **Upstream scoring agent bug**: `overall_color` wrong for ~74% of rows — agent artifacts show correct color but DB has wrong value. Needs fix in scoring agent, then re-sync: `SELECT sync_scores_from_listings();`
 - Scoring agent needs to score 1,166 unscored locations in `real_estate_listings`
 - Fill sub-score gaps (especially Price: 140 missing) for the 734 already-scored locations
 - Vercel env vars already set: `SUPABASE_SERVICE_ROLE_KEY`, `RESEND_API_KEY`, `ADMIN_EMAILS`, `NEXT_PUBLIC_ADMIN_EMAILS`
-- See `requirements.md` "Out of Scope (v2)" for remaining backlog
 
 ## SQL Functions (in Supabase)
 

@@ -10,15 +10,6 @@ function colorFromScore(score: number | null): string | null {
   return "RED";
 }
 
-// Generate a color from a 0-100 overall score
-function colorFromOverall(score: number | null): string | null {
-  if (score === null) return null;
-  if (score >= 75) return "GREEN";
-  if (score >= 50) return "YELLOW";
-  if (score >= 25) return "AMBER";
-  return "RED";
-}
-
 // Seeded pseudo-random for deterministic mock scores
 function seededRandom(seed: number): () => number {
   let s = seed;
@@ -39,7 +30,7 @@ function mockScores(index: number): LocationScores {
   const overall = Math.round((demo * 20 + price * 20 + zoning * 20 + nbhd * 20 + bldg * 20) * 100) / 100;
   return {
     overall,
-    overallColor: colorFromOverall(overall),
+    overallColor: null,
     overallDetailsUrl: null,
     demographics: { score: demo, color: colorFromScore(demo), detailsUrl: null },
     price: { score: price, color: colorFromScore(price), detailsUrl: null },
@@ -60,7 +51,7 @@ function mapRowToScores(row: Record<string, unknown>): LocationScores | undefine
   const bldg = row.building_score != null ? Number(row.building_score) : null;
   return {
     overall,
-    overallColor: (row.overall_color as string) || colorFromOverall(overall),
+    overallColor: (row.overall_color as string) || null,
     overallDetailsUrl: (row.overall_details_url as string) || null,
     demographics: {
       score: demo,
