@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { ExternalLink, Users, DollarSign, Landmark, Trees, Building2, HelpCircle } from "lucide-react";
+import { ExternalLink, Users, DollarSign, Landmark, Trees, Building2, HelpCircle, ChevronDown, ChevronUp } from "lucide-react";
 import { LocationScores, SubScore } from "@/types";
 
 const colorBg: Record<string, string> = {
@@ -82,6 +82,7 @@ function ScoreLegend({ onClose }: { onClose: () => void }) {
 }
 
 export function ScoreBadge({ scores, compact }: { scores?: LocationScores; compact?: boolean }) {
+  const [expanded, setExpanded] = useState(false);
   const [showLegend, setShowLegend] = useState(false);
 
   if (!scores || scores.overall == null) return null;
@@ -98,7 +99,6 @@ export function ScoreBadge({ scores, compact }: { scores?: LocationScores; compa
   const iconSize = "h-3 w-3";
 
   if (compact) {
-    // Compact: just the overall circle for map popups
     return (
       <div data-testid="score-badge" className="mt-1">
         {hasOverallLink ? (
@@ -113,8 +113,8 @@ export function ScoreBadge({ scores, compact }: { scores?: LocationScores; compa
 
   return (
     <div data-testid="score-badge" className="mt-2 relative">
-      <div className="flex items-center gap-3">
-        {/* Overall score */}
+      {/* Collapsed: overall badge + expand toggle */}
+      <div className="flex items-center gap-2">
         {hasOverallLink ? (
           <a href={scores.overallDetailsUrl!} target="_blank" rel="noopener noreferrer" className="hover:opacity-80 flex-shrink-0 inline-flex items-center gap-0.5" onClick={(e) => e.stopPropagation()}>
             {overallBadge}
@@ -123,28 +123,38 @@ export function ScoreBadge({ scores, compact }: { scores?: LocationScores; compa
         ) : (
           <div className="flex-shrink-0">{overallBadge}</div>
         )}
-
-        {/* Sub-scores in a 3x2 grid */}
-        <div className="grid grid-cols-3 gap-x-3 gap-y-0.5">
-          <ScoreCell icon={<Users className={iconSize} />} sub={scores.demographics} />
-          <ScoreCell icon={<DollarSign className={iconSize} />} sub={scores.price} />
-          <ScoreCell icon={<Landmark className={iconSize} />} sub={scores.zoning} />
-          <ScoreCell icon={<Trees className={iconSize} />} sub={scores.neighborhood} />
-          <ScoreCell icon={<Building2 className={iconSize} />} sub={scores.building} />
-          {scores.sizeClassification && (
-            <span className="text-[10px] text-gray-400 font-medium truncate">{scores.sizeClassification}</span>
-          )}
-        </div>
-
-        {/* Legend toggle */}
         <button
           type="button"
-          className="absolute top-0 right-0 text-gray-300 hover:text-gray-500"
-          onClick={(e) => { e.stopPropagation(); setShowLegend(!showLegend); }}
+          className="text-[10px] text-gray-400 hover:text-gray-600 flex items-center gap-0.5"
+          onClick={(e) => { e.stopPropagation(); setExpanded(!expanded); }}
         >
-          <HelpCircle className="h-3 w-3" />
+          {expanded ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+          <span>{expanded ? "less" : "details"}</span>
         </button>
       </div>
+
+      {/* Expanded: sub-scores grid */}
+      {expanded && (
+        <div className="mt-1.5 flex items-start gap-2">
+          <div className="grid grid-cols-3 gap-x-3 gap-y-0.5">
+            <ScoreCell icon={<Users className={iconSize} />} sub={scores.demographics} />
+            <ScoreCell icon={<DollarSign className={iconSize} />} sub={scores.price} />
+            <ScoreCell icon={<Landmark className={iconSize} />} sub={scores.zoning} />
+            <ScoreCell icon={<Trees className={iconSize} />} sub={scores.neighborhood} />
+            <ScoreCell icon={<Building2 className={iconSize} />} sub={scores.building} />
+            {scores.sizeClassification && (
+              <span className="text-[10px] text-gray-400 font-medium truncate">{scores.sizeClassification}</span>
+            )}
+          </div>
+          <button
+            type="button"
+            className="text-gray-300 hover:text-gray-500 shrink-0 mt-0.5"
+            onClick={(e) => { e.stopPropagation(); setShowLegend(!showLegend); }}
+          >
+            <HelpCircle className="h-3 w-3" />
+          </button>
+        </div>
+      )}
 
       {showLegend && <ScoreLegend onClose={() => setShowLegend(false)} />}
     </div>
