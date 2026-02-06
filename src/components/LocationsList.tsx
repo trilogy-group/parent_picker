@@ -28,7 +28,6 @@ const SIZE_OPTIONS = ["Micro", "Micro2", "Growth", "Full Size", "Red (Reject)"] 
 
 const SCORE_CATEGORIES: { key: ScoreFilterCategory; label: string }[] = [
   { key: "overall", label: "Overall" },
-  { key: "demographics", label: "Demographics" },
   { key: "price", label: "Price" },
   { key: "zoning", label: "Regulatory" },
   { key: "neighborhood", label: "Neighborhood" },
@@ -289,7 +288,7 @@ export function LocationsList() {
                   isSelected={selectedLocationId === location.id}
                   hasVoted={votedLocationIds.has(location.id)}
                   isAuthenticated={canVote}
-                  isInViewport={true}
+
                   onSelect={() => setSelectedLocation(location.id)}
                   onVote={() => vote(location.id)}
                   onUnvote={() => unvote(location.id)}

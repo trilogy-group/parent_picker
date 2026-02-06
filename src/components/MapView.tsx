@@ -3,7 +3,7 @@
 import { useEffect, useRef, useCallback, useState, useMemo } from "react";
 import Map, { Source, Layer, NavigationControl, Popup, Marker } from "react-map-gl/mapbox";
 import { MapPin } from "lucide-react";
-import { OverallBadge, ScoreDetails } from "./ScoreBadge";
+import { ArtifactLink, SizeLabel, ScoreDetails, overallCardBg } from "./ScoreBadge";
 import { useVotesStore } from "@/lib/votes";
 import { useShallow } from "zustand/react/shallow";
 import { getInitialMapView, US_CENTER, US_ZOOM } from "@/lib/locations";
@@ -420,15 +420,18 @@ export function MapView() {
           onClose={() => setSelectedLocation(null)}
           offset={[0, 8]}
         >
-          <div className="p-1">
+          <div className={`p-1.5 rounded ${selectedLocation.scores?.overallColor ? overallCardBg[selectedLocation.scores.overallColor] || "" : ""}`}>
             <div className="flex items-center justify-between gap-2">
               <p className="font-semibold text-sm truncate">{selectedLocation.name}</p>
-              <OverallBadge scores={selectedLocation.scores} />
+              <div className="flex items-center gap-1.5 shrink-0">
+                <SizeLabel scores={selectedLocation.scores} />
+                <ArtifactLink scores={selectedLocation.scores} />
+              </div>
             </div>
             <p className="text-xs text-muted-foreground">
               {selectedLocation.address}, {selectedLocation.city}, {selectedLocation.state}
             </p>
-            <ScoreDetails scores={selectedLocation.scores} useGrid />
+            <ScoreDetails scores={selectedLocation.scores} />
           </div>
         </Popup>
       )}

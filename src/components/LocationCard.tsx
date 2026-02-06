@@ -3,7 +3,7 @@
 import { MapPin } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { VoteButton } from "./VoteButton";
-import { OverallBadge, ScoreDetails } from "./ScoreBadge";
+import { ArtifactLink, SizeLabel, ScoreDetails, overallCardBg } from "./ScoreBadge";
 import { Location } from "@/types";
 import { cn } from "@/lib/utils";
 
@@ -12,7 +12,6 @@ interface LocationCardProps {
   isSelected: boolean;
   hasVoted: boolean;
   isAuthenticated: boolean;
-  isInViewport: boolean;
   onSelect: () => void;
   onVote: () => void;
   onUnvote: () => void;
@@ -23,27 +22,31 @@ export function LocationCard({
   isSelected,
   hasVoted,
   isAuthenticated,
-  isInViewport,
   onSelect,
   onVote,
   onUnvote,
 }: LocationCardProps) {
+  const cardBg = location.scores?.overallColor
+    ? overallCardBg[location.scores.overallColor] || ""
+    : "";
+
   return (
     <Card
       data-testid="location-card"
       onClick={onSelect}
       className={cn(
         "px-2 py-1.5 gap-0 cursor-pointer transition-all hover:shadow-md relative",
+        cardBg,
         isSelected && "ring-2 ring-primary shadow-md",
         location.suggested && "border-dashed border-amber-400",
-        isInViewport ? "border-l-4 border-l-blue-500" : "border-l-4 border-l-gray-200"
       )}
     >
-      {/* Row 1: Name + Overall Badge + Vote */}
+      {/* Row 1: Name + Size + Artifact Link + Vote */}
       <div className="flex items-center justify-between gap-2">
         <h3 className="font-semibold text-sm truncate flex-1 min-w-0">{location.name}</h3>
-        <div className="flex items-center gap-1 shrink-0">
-          <OverallBadge scores={location.scores} />
+        <div className="flex items-center gap-1.5 shrink-0">
+          <SizeLabel scores={location.scores} />
+          <ArtifactLink scores={location.scores} />
           <VoteButton
             votes={location.votes}
             hasVoted={hasVoted}
@@ -66,7 +69,7 @@ export function LocationCard({
         </span>
       )}
 
-      {/* Row 3: Expandable sub-scores */}
+      {/* Row 3: Sub-scores */}
       <ScoreDetails scores={location.scores} />
     </Card>
   );

@@ -68,7 +68,7 @@ Duplicate the Sports Academy facilities map functionality:
 
 **Current branch:** `main`
 **Deployed:** https://parentpicker.vercel.app
-**Last deploy:** 2026-02-06 — card UI polish (compact cards, aligned icons, map popup parity)
+**Last deploy:** 2026-02-06 — score display redesign (4 subscores, color-only, card shading, no expand/collapse)
 
 ### Workstreams 1-8: DONE (merged to main)
 
@@ -85,14 +85,17 @@ Duplicate the Sports Academy facilities map functionality:
 ### Workstream 10: Card & Score Display Polish — DONE
 
 **What was built:**
-- Sub-scores: lucide icons instead of text labels, expandable "details"/"less" toggle
-- Overall score badge in card header row (upper right, next to vote button)
-- Single-line address: `address, city, state`
-- Score legend popup (? icon, bottom-right) — icons only, no color thresholds
-- Map popup matches card layout: name + overall badge header, address, expandable sub-scores with 3/3 grid
-- Left cards: sub-scores in single row, map popup: 3-col grid
+- 4 subscores only: Neighborhood (MapPin), Regulatory (Landmark), Building (Building2), Price (DollarSign) — demographics removed
+- Colors only, no numeric scores — overall shown as card background tint (green/yellow/amber/red)
+- Card shading: `overallCardBg` maps GREEN→bg-green-50, YELLOW→bg-yellow-50, etc.
+- ArtifactLink (external link icon) only for overall score details URL
+- SizeLabel moved to header row (left of ArtifactLink and vote button)
+- Sub-scores always visible (no expand/collapse toggle)
+- Score legend popup (? icon) — icons only, no color thresholds
+- Map popup matches card layout: name + size + artifact link, address, sub-scores row
 - Card whitespace fix: overrode shadcn Card's built-in `gap-6` with `gap-0`
-- Icon alignment fix: `<div flex h-4>` with `[&>svg]:block` instead of `<span inline-flex>` to eliminate baseline shift
+- Icon alignment fix: `<div flex h-4>` with `[&>svg]:block` instead of `<span inline-flex>`
+- Removed blue left border (isInViewport indicator) — all on-screen locations shown
 - Suggest button moved below "How It Works", label: "+ Or Suggest New Location"
 - Map popup dismiss: click dot again, click map, or close button
 
@@ -104,11 +107,11 @@ Duplicate the Sports Academy facilities map functionality:
 - 1,026 of 1,044 scored locations have size data (628 Micro, 151 Reject, 130 Micro2, 87 Growth, 28 Full)
 
 **Key files modified:**
-- `src/components/ScoreBadge.tsx` — OverallBadge, ScoreDetails (expandable), SubScoresRow/Grid, ScoreLegend
-- `src/components/LocationCard.tsx` — compact layout with `gap-0`, overall badge in header
-- `src/components/MapView.tsx` — popup uses OverallBadge + ScoreDetails (grid), dismiss behavior
-- `src/components/LocationsList.tsx` — ScoreFilterPanel, removed search bar, tighter list spacing
-- `src/lib/votes.ts` — ScoreFilters type, filter state, filteredLocations() logic
+- `src/components/ScoreBadge.tsx` — ScoreCell, SubScoresRow, ArtifactLink, SizeLabel, ScoreDetails, ScoreLegend, overallCardBg
+- `src/components/LocationCard.tsx` — card shading via overallCardBg, SizeLabel+ArtifactLink in header, gap-0
+- `src/components/MapView.tsx` — popup shading via overallCardBg, ArtifactLink+SizeLabel+ScoreDetails
+- `src/components/LocationsList.tsx` — ScoreFilterPanel (no demographics), tighter list spacing
+- `src/lib/votes.ts` — ScoreFilters (no demographics), filter state, filteredLocations() logic
 - `src/types/index.ts` — sizeClassification on LocationScores
 - `src/components/AuthButton.tsx` — compact sign-in/sign-out styling
 - `src/app/page.tsx` — header layout, suggest button moved

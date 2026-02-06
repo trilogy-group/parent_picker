@@ -12,11 +12,10 @@ interface MapBounds {
   west: number;
 }
 
-export type ScoreFilterCategory = "overall" | "demographics" | "price" | "zoning" | "neighborhood" | "building" | "size";
+export type ScoreFilterCategory = "overall" | "price" | "zoning" | "neighborhood" | "building" | "size";
 
 export interface ScoreFilters {
   overall: Set<string>;
-  demographics: Set<string>;
   price: Set<string>;
   zoning: Set<string>;
   neighborhood: Set<string>;
@@ -80,7 +79,6 @@ export const useVotesStore = create<VotesState>((set, get) => ({
   referencePoint: null,
   scoreFilters: {
     overall: new Set<string>(),
-    demographics: new Set<string>(),
     price: new Set<string>(),
     zoning: new Set<string>(),
     neighborhood: new Set<string>(),
@@ -105,7 +103,6 @@ export const useVotesStore = create<VotesState>((set, get) => ({
     set({
       scoreFilters: {
         overall: new Set<string>(),
-        demographics: new Set<string>(),
         price: new Set<string>(),
         zoning: new Set<string>(),
         neighborhood: new Set<string>(),
@@ -280,7 +277,6 @@ export const useVotesStore = create<VotesState>((set, get) => ({
 
     // Check if any filter is active at all
     const anyColorFilter = scoreFilters.overall.size > 0 ||
-      scoreFilters.demographics.size > 0 ||
       scoreFilters.price.size > 0 ||
       scoreFilters.zoning.size > 0 ||
       scoreFilters.neighborhood.size > 0 ||
@@ -302,7 +298,6 @@ export const useVotesStore = create<VotesState>((set, get) => ({
       // Color filter categories: location must match each active category
       const colorCategories: { filter: Set<string>; getColor: () => string | null | undefined }[] = [
         { filter: scoreFilters.overall, getColor: () => scores?.overallColor },
-        { filter: scoreFilters.demographics, getColor: () => scores?.demographics.color },
         { filter: scoreFilters.price, getColor: () => scores?.price.color },
         { filter: scoreFilters.zoning, getColor: () => scores?.zoning.color },
         { filter: scoreFilters.neighborhood, getColor: () => scores?.neighborhood.color },
