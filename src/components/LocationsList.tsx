@@ -30,7 +30,7 @@ const SCORE_CATEGORIES: { key: ScoreFilterCategory; label: string }[] = [
   { key: "overall", label: "Overall" },
   { key: "demographics", label: "Demographics" },
   { key: "price", label: "Price" },
-  { key: "zoning", label: "Zoning" },
+  { key: "zoning", label: "Regulatory" },
   { key: "neighborhood", label: "Neighborhood" },
   { key: "building", label: "Building" },
 ];
