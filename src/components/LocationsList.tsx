@@ -30,11 +30,11 @@ const SIZE_OPTIONS = ["Micro", "Micro2", "Growth", "Full Size", "Red (Reject)"] 
 
 const SCORE_CATEGORIES: { key: ScoreFilterCategory; label: string }[] = [
   { key: "overall", label: "Overall" },
-  { key: "demographics", label: "Demo" },
+  { key: "demographics", label: "Demographics" },
   { key: "price", label: "Price" },
   { key: "zoning", label: "Zoning" },
-  { key: "neighborhood", label: "Nbhd" },
-  { key: "building", label: "Bldg" },
+  { key: "neighborhood", label: "Neighborhood" },
+  { key: "building", label: "Building" },
 ];
 
 interface ScoreFilterPanelProps {
@@ -86,7 +86,7 @@ function ScoreFilterPanel({
           {/* Color score categories */}
           {SCORE_CATEGORIES.map(({ key, label }) => (
             <div key={key} className="flex items-center gap-1.5">
-              <span className="text-[10px] font-medium text-muted-foreground w-10 shrink-0">{label}</span>
+              <span className="text-[10px] font-medium text-muted-foreground w-[72px] shrink-0">{label}</span>
               <div className="flex gap-1">
                 {COLOR_OPTIONS.map((color) => {
                   const active = scoreFilters[key].has(color);
