@@ -28,8 +28,9 @@ npm run start        # Start production server
 # Deploy to Vercel (manual - not connected to GitHub)
 npx vercel --prod
 
-# Testing
-source .venv/bin/activate && python tests/requirements.test.py  # Run test suite (requires dev server running)
+# Testing (requires dev server running on :3000)
+npm test                                                        # Run full test suite (261 TCs, 178 automated, 28 skipped)
+BASE_URL=http://localhost:3001 npm test                         # Override dev server URL
 
 # Linting
 npm run lint         # Run ESLint

@@ -249,6 +249,7 @@ export function LocationsList() {
                 <button
                   key={`${city.city}-${city.state}`}
                   type="button"
+                  data-testid="city-card"
                   className="w-full text-left p-3 rounded-lg border bg-white hover:bg-blue-50 hover:border-blue-200 transition-colors"
                   onClick={() => {
                     setFlyToTarget({ lat: city.lat, lng: city.lng });
@@ -292,12 +293,13 @@ export function LocationsList() {
                 />
               );
             })}
-            <p className="text-center text-xs text-muted-foreground pt-2">
+            <p data-testid="location-count" className="text-center text-xs text-muted-foreground pt-2">
               Showing {Math.min(showCount, sorted.length)} of {sorted.length} locations
             </p>
             {hasMore && (
               <button
                 type="button"
+                data-testid="pagination-next"
                 onClick={() => setPage((p) => p + 1)}
                 className="w-full py-2 text-sm font-medium text-primary hover:underline"
               >

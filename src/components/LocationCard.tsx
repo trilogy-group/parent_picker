@@ -30,6 +30,7 @@ export function LocationCard({
 }: LocationCardProps) {
   return (
     <Card
+      data-testid="location-card"
       onClick={onSelect}
       className={cn(
         "p-4 cursor-pointer transition-all hover:shadow-md relative",

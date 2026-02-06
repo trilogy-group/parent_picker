@@ -31,7 +31,7 @@ export default function Home() {
       </div>
 
       {/* Desktop: Left overlay panel */}
-      <div className="hidden lg:flex flex-col absolute top-4 left-4 bottom-4 w-[380px] bg-blue-600 rounded-xl shadow-2xl overflow-hidden">
+      <div data-testid="desktop-panel" className="hidden lg:flex flex-col absolute top-4 left-4 bottom-4 w-[380px] bg-blue-600 rounded-xl shadow-2xl overflow-hidden">
         {/* Panel Header */}
         <div className="p-5 text-white">
           <div className="flex items-center justify-between mb-1">
@@ -90,7 +90,7 @@ export default function Home() {
       </div>
 
       {/* Mobile: Bottom sheet */}
-      <div className="lg:hidden absolute left-0 right-0 bottom-0 flex flex-col">
+      <div data-testid="mobile-bottom-sheet" className="lg:hidden absolute left-0 right-0 bottom-0 flex flex-col">
         {/* Pull handle */}
         <button
           onClick={() => setPanelExpanded(!panelExpanded)}

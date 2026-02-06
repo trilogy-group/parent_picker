@@ -23,7 +23,8 @@ An interactive, consumer-facing website where parents can vote on and express pr
 
 ## Test-Driven Development
 
-- This project uses TDD. All requirements are documented in `requirements.md` with corresponding test cases.  
+- This project uses TDD. All requirements are documented in `requirements.md` with corresponding test cases.
+- **Update `requirements.md` BEFORE implementing new features.** Add requirement sections and test cases first, then write the code and tests.
 - Create a feedback.md to keep my feedback.  Understand the root cause for the feedback, and update requirements.md and correspending tests to keep issues like that from re-appearing.
 - Before adding a requirement, ask yourself "will this require a human (other than parent) in the processing loop".  Redesign until the answer is "no."
 
