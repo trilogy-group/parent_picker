@@ -211,16 +211,8 @@ export function getInitialMapView(
     return { center: US_CENTER, zoom: US_ZOOM };
   }
 
-  // Check if there are nearby locations
-  const nearbyLocations = findNearbyLocations(userLat, userLng, locations);
-
-  if (nearbyLocations.length > 0) {
-    // Center on user with city-level zoom
-    return { center: { lat: userLat, lng: userLng }, zoom: 10 };
-  }
-
-  // No nearby locations, show US-wide city bubbles view
-  return { center: US_CENTER, zoom: US_ZOOM };
+  // Center on user at zoom 9; fetchNearbyForce will load nearby dots
+  return { center: { lat: userLat, lng: userLng }, zoom: 9 };
 }
 
 export async function getLocations(): Promise<Location[]> {

@@ -98,7 +98,7 @@ export function MapView() {
   }), [displayLocations]);
 
   const interactiveLayerIds = useMemo(
-    () => (showCities ? ["city-circles"] : ["unclustered-point"]),
+    () => (showCities ? ["city-clusters", "city-circles"] : ["unclustered-point"]),
     [showCities]
   );
 
@@ -206,7 +206,24 @@ export function MapView() {
 
     const feature = features[0];
 
-    if (feature.layer?.id === "city-circles") {
+    if (feature.layer?.id === "city-clusters") {
+      // Zoom into the cluster's expansion zoom
+      const clusterId = feature.properties?.cluster_id;
+      const coords = (feature.geometry as GeoJSON.Point).coordinates;
+      if (clusterId != null && coords) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const source = mapRef.current?.getSource("cities") as any;
+        source?.getClusterExpansionZoom(clusterId, (err: Error | null, zoom: number) => {
+          if (!err && zoom != null) {
+            mapRef.current?.flyTo({
+              center: coords as [number, number],
+              zoom: Math.min(zoom, 9),
+              duration: 1000,
+            });
+          }
+        });
+      }
+    } else if (feature.layer?.id === "city-circles") {
       const props = feature.properties;
       if (props) {
         const lng = Number(props.lng);
@@ -284,10 +301,55 @@ export function MapView() {
 
       {/* City bubbles layer (zoom < 9) */}
       {showCities && (
-        <Source id="cities" type="geojson" data={cityGeojson}>
+        <Source id="cities" type="geojson" data={cityGeojson}
+          cluster={true}
+          clusterRadius={50}
+          clusterMaxZoom={8}
+          clusterProperties={{
+            totalLocations: ["+", ["get", "locationCount"]],
+            totalVotes: ["+", ["get", "totalVotes"]],
+          }}
+        >
+          {/* Cluster circles */}
+          <Layer
+            id="city-clusters"
+            type="circle"
+            filter={["has", "point_count"]}
+            paint={{
+              "circle-color": "#3b82f6",
+              "circle-radius": [
+                "interpolate", ["linear"], ["get", "totalLocations"],
+                1, 14,
+                50, 22,
+                200, 32,
+                500, 40,
+              ],
+              "circle-opacity": 0.85,
+              "circle-stroke-width": 2,
+              "circle-stroke-color": "#ffffff",
+            }}
+          />
+          {/* Cluster labels */}
+          <Layer
+            id="city-cluster-labels"
+            type="symbol"
+            filter={["has", "point_count"]}
+            layout={{
+              "text-field": ["to-string", ["get", "totalLocations"]],
+              "text-size": 12,
+              "text-allow-overlap": false,
+            }}
+            paint={{
+              "text-color": "#ffffff",
+              "text-halo-color": "#3b82f6",
+              "text-halo-width": 1,
+            }}
+          />
+          {/* Unclustered city circles */}
           <Layer
             id="city-circles"
             type="circle"
+            filter={["!", ["has", "point_count"]]}
             paint={{
               "circle-color": "#3b82f6",
               "circle-radius": [
@@ -301,13 +363,15 @@ export function MapView() {
               "circle-stroke-color": "#ffffff",
             }}
           />
+          {/* City labels */}
           <Layer
             id="city-labels"
             type="symbol"
+            filter={["!", ["has", "point_count"]]}
             layout={{
               "text-field": ["to-string", ["get", "locationCount"]],
               "text-size": 11,
-              "text-allow-overlap": true,
+              "text-allow-overlap": false,
             }}
             paint={{
               "text-color": "#ffffff",
