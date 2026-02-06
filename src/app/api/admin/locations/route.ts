@@ -11,14 +11,6 @@ function colorFromScore(score: number | null): string | null {
   return "RED";
 }
 
-function colorFromOverall(score: number | null): string | null {
-  if (score === null) return null;
-  if (score >= 75) return "GREEN";
-  if (score >= 50) return "YELLOW";
-  if (score >= 25) return "AMBER";
-  return "RED";
-}
-
 function mapScores(s: Record<string, unknown> | null) {
   if (!s || s.overall_score == null) return undefined;
   const overall = Number(s.overall_score);
@@ -29,7 +21,7 @@ function mapScores(s: Record<string, unknown> | null) {
   const bldg = s.building_score != null ? Number(s.building_score) : null;
   return {
     overall,
-    overallColor: (s.overall_color as string) || colorFromOverall(overall),
+    overallColor: (s.overall_color as string) || null,
     overallDetailsUrl: (s.overall_details_url as string) || null,
     demographics: { score: demo, color: (s.demographics_color as string) || colorFromScore(demo), detailsUrl: (s.demographics_details_url as string) || null },
     price: { score: price, color: (s.price_color as string) || colorFromScore(price), detailsUrl: (s.price_details_url as string) || null },
