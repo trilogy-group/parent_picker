@@ -3,7 +3,8 @@
 import { useEffect, useRef, useCallback, useState, useMemo } from "react";
 import Map, { Source, Layer, NavigationControl, Popup, Marker } from "react-map-gl/mapbox";
 import { MapPin } from "lucide-react";
-import { ArtifactLink, SizeLabel, ScoreDetails, overallCardBg } from "./ScoreBadge";
+import { SizeLabel, ScoreDetails, overallCardBorder, overallCardBg } from "./ScoreBadge";
+import { extractStreet, extractZip, formatCityLine, hasDistinctName } from "@/lib/address";
 import { useVotesStore } from "@/lib/votes";
 import { useShallow } from "zustand/react/shallow";
 import { getInitialMapView, US_CENTER, US_ZOOM } from "@/lib/locations";
@@ -170,12 +171,14 @@ export function MapView() {
 
   const flyToCoords = useCallback((coords: { lat: number; lng: number }, zoom?: number) => {
     flyingRef.current = true;
+    const targetZoom = zoom ?? 14;
+    setZoomLevel(targetZoom);  // Switch layers immediately
     mapRef.current?.flyTo({
       center: [coords.lng, coords.lat],
-      zoom: zoom ?? 14,
+      zoom: targetZoom,
       duration: 1000,
     });
-  }, []);
+  }, [setZoomLevel]);
 
   // Fly to selected location (only when selection changes, not on re-renders)
   useEffect(() => {
@@ -186,10 +189,10 @@ export function MapView() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedLocationId]);
 
-  // Fly to search target
+  // Fly to search target (city cards)
   useEffect(() => {
     if (flyToTarget) {
-      flyToCoords(flyToTarget);
+      flyToCoords(flyToTarget, 9);
       fetchNearbyForce(flyToTarget);
       setFlyToTarget(null);
     }
@@ -217,12 +220,7 @@ export function MapView() {
       if (coords) {
         const lng = coords[0];
         const lat = coords[1];
-        flyingRef.current = true;
-        mapRef.current?.flyTo({
-          center: [lng, lat],
-          zoom: 9,
-          duration: 1000,
-        });
+        flyToCoords({ lat, lng }, 9);
         fetchNearbyForce({ lat, lng });
       }
     } else if (feature.layer?.id === "unclustered-point") {
@@ -233,7 +231,7 @@ export function MapView() {
         setSelectedLocation(current === props.id ? null : props.id);
       }
     }
-  }, [setSelectedLocation, fetchNearbyForce]);
+  }, [setSelectedLocation, fetchNearbyForce, flyToCoords]);
 
   // onMoveEnd: update bounds/center/zoom, trigger fetches
   const handleMoveEnd = useCallback(() => {
@@ -410,7 +408,7 @@ export function MapView() {
       )}
 
       {/* Selected location popup */}
-      {selectedLocation && (
+      {selectedLocation && !showCities && (
         <Popup
           latitude={selectedLocation.lat}
           longitude={selectedLocation.lng}
@@ -420,18 +418,22 @@ export function MapView() {
           onClose={() => setSelectedLocation(null)}
           offset={[0, 8]}
         >
-          <div className={`p-1.5 rounded ${selectedLocation.scores?.overallColor ? overallCardBg[selectedLocation.scores.overallColor] || "" : ""}`}>
+          <div className={`p-3 rounded-lg border-[3px] ${selectedLocation.scores?.overallColor ? `${overallCardBorder[selectedLocation.scores.overallColor] || ""} ${overallCardBg[selectedLocation.scores.overallColor] || "bg-white"}` : "bg-white"}`}>
             <div className="flex items-center justify-between gap-2">
-              <p className="font-semibold text-sm truncate">{selectedLocation.name}</p>
+              <p className="font-semibold text-sm truncate">{extractStreet(selectedLocation.address, selectedLocation.city)}</p>
               <div className="flex items-center gap-1.5 shrink-0">
                 <SizeLabel scores={selectedLocation.scores} />
-                <ArtifactLink scores={selectedLocation.scores} />
               </div>
             </div>
-            <p className="text-xs text-muted-foreground">
-              {selectedLocation.address}, {selectedLocation.city}, {selectedLocation.state}
+            <p className="text-xs text-muted-foreground -mt-0.5 leading-tight">
+              {formatCityLine(selectedLocation.city, selectedLocation.state, extractZip(selectedLocation.address))}
             </p>
-            <ScoreDetails scores={selectedLocation.scores} />
+            {hasDistinctName(selectedLocation.name, extractStreet(selectedLocation.address, selectedLocation.city)) && (
+              <p className="text-xs text-muted-foreground leading-tight">{selectedLocation.name}</p>
+            )}
+            <div className="mt-2">
+              <ScoreDetails scores={selectedLocation.scores} />
+            </div>
           </div>
         </Popup>
       )}
