@@ -177,6 +177,7 @@ export function LocationsList() {
     toggleScoreFilter: s.toggleScoreFilter,
     clearScoreFilters: s.clearScoreFilters,
     activeFilterCount: s.activeFilterCount,
+    locations: s.locations,
   })));
 
   const [page, setPage] = useState(0);
@@ -256,7 +257,7 @@ export function LocationsList() {
                   data-testid="city-card"
                   className="w-full text-left p-3 rounded-lg border bg-white hover:bg-blue-50 hover:border-blue-200 transition-colors"
                   onClick={() => {
-                    setFlyToTarget({ lat: city.lat, lng: city.lng });
+                    setFlyToTarget({ lat: city.lat, lng: city.lng, zoom: 10 });
                     fetchNearbyForce({ lat: city.lat, lng: city.lng });
                   }}
                 >

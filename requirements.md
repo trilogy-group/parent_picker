@@ -63,7 +63,7 @@ On mobile (<1024px), a bottom sheet replaces the overlay panel.
 - [ ] `TC-1.3.2`: Bottom sheet has pull handle (gray rounded bar)
 - [ ] `TC-1.3.3`: Bottom sheet can be expanded/collapsed by tapping handle
 - [ ] `TC-1.3.4`: Collapsed state shows title, vote count, and suggest button
-- [ ] `TC-1.3.5`: Expanded state shows full locations list with search
+- [ ] `TC-1.3.5`: Expanded state shows full locations list with filters
 
 ---
 
@@ -81,7 +81,7 @@ The panel header displays the application title "Alpha School Locations".
 A descriptive tagline appears below the title.
 
 **Test Cases:**
-- [ ] `TC-2.2.1`: Tagline "Help us find the best locations for new micro schools" is visible
+- [ ] `TC-2.2.1`: Tagline "Find & vote on micro school sites" is visible
 - [ ] `TC-2.2.2`: Tagline is lighter blue text (blue-100)
 
 ### REQ-2.3: Vote Statistics
@@ -152,16 +152,29 @@ The locations list appears in the white section of the overlay panel.
 - [ ] `TC-4.1.2`: List is scrollable when content overflows
 - [ ] `TC-4.1.3`: List fills remaining panel height below header sections
 
-### REQ-4.2: Search/Filter
-A search input allows filtering locations.
+### REQ-4.2: Score & Size Filters
+A collapsible filter panel allows filtering locations by score color and size tier. The search bar has been removed — filters are the only way to narrow down locations.
+
+**Business Logic:**
+- 5 score categories: Overall, Price, Regulatory, Neighborhood, Building — each with G/Y/R color chip toggles
+- Size tier buttons: Micro, Micro2, Growth, Full Size, N/A (Red Reject)
+- AND logic across categories, OR within a category (e.g., GREEN OR YELLOW overall AND GREEN price)
+- Red (Reject) size is excluded by default; 4 non-reject sizes selected by default
+- Filters cascade to both list and map (via `filteredLocations()` in Zustand store)
 
 **Test Cases:**
-- [ ] `TC-4.2.1`: Search input has placeholder "Search locations..."
-- [ ] `TC-4.2.2`: Search input has magnifying glass icon
-- [ ] `TC-4.2.3`: Typing filters list in real-time
-- [ ] `TC-4.2.4`: Filter matches location name, address, or city
-- [ ] `TC-4.2.5`: Empty results show "No locations found" message
-- [ ] `TC-4.2.6`: Clearing search restores full list
+- [ ] `TC-4.2.1`: Collapsible "Filters" button is visible in list panel
+- [ ] `TC-4.2.2`: Clicking "Filters" expands the filter panel
+- [ ] `TC-4.2.3`: Filter panel shows 5 score categories (Overall, Price, Regulatory, Neighborhood, Building)
+- [ ] `TC-4.2.4`: Each score category has G/Y/R color chip toggles
+- [ ] `TC-4.2.5`: Size filter shows Micro, Micro2, Growth, Full, N/A buttons
+- [ ] `TC-4.2.6`: Empty results show "No locations found" message
+- [ ] `TC-4.2.7`: Clicking a color chip toggles it on/off
+- [ ] `TC-4.2.8`: Active filter count badge shown when filters are active
+- [ ] `TC-4.2.9`: "Clear" button resets all filters to defaults
+- [ ] `TC-4.2.10`: Red (Reject) size excluded by default
+- [ ] `TC-4.2.11`: Filters apply to map markers (filtered locations only)
+- [ ] `TC-4.2.12`: Filters reset pagination to page 1
 
 ### REQ-4.3: Location Cards
 Each location displays as a card in the list.
@@ -183,23 +196,22 @@ Clicking a card selects that location.
 - [ ] `TC-4.4.3`: Selected card has elevated shadow
 - [ ] `TC-4.4.4`: Clicking card centers map on that location
 
-### REQ-4.5: Viewport-Aware Sorting
-The locations list sorts based on map viewport visibility.
+### REQ-4.5: On-Screen Location List
+The locations list shows only locations visible in the current map viewport, sorted by votes then distance.
 
 **Business Logic:**
-- Locations visible on the map viewport are sorted by votes (descending)
-- Locations outside the viewport are sorted by distance from map center (ascending)
-- Visible locations always appear first in the list, followed by non-visible locations
-- As users pan/zoom the map, the list reorders dynamically
+- Only locations within the current map viewport bounds are shown in the list
+- Locations are sorted by vote count (descending), then by distance from map center (ascending) as tiebreaker
+- As users pan/zoom the map, the list updates to show only visible locations
+- Off-screen locations are not shown (no "beyond viewport" section)
 
 **Test Cases:**
-- [ ] `TC-4.5.1`: Locations visible in viewport appear at top of list
-- [ ] `TC-4.5.2`: Visible locations are sorted by vote count (highest first)
-- [ ] `TC-4.5.3`: Non-visible locations appear below visible ones
-- [ ] `TC-4.5.4`: Non-visible locations are sorted by distance to reference point (closest first)
-- [ ] `TC-4.5.5`: List reorders when user pans map to show different locations
-- [ ] `TC-4.5.6`: List reorders when user zooms map to change viewport bounds
-- [ ] `TC-4.5.7`: List is sorted by distance from map center on initial load (before geolocation resolves)
+- [ ] `TC-4.5.1`: Only on-screen locations appear in the list
+- [ ] `TC-4.5.2`: Locations are sorted by vote count (highest first)
+- [ ] `TC-4.5.3`: Distance from map center is tiebreaker for equal votes
+- [ ] `TC-4.5.5`: List updates when user pans map
+- [ ] `TC-4.5.6`: List updates when user zooms map
+- [ ] `TC-4.5.7`: List is sorted by votes then distance on initial load
 
 ---
 
@@ -237,10 +249,10 @@ Voting provides immediate visual feedback.
 ## 6. Suggest Location
 
 ### REQ-6.1: Suggest Button
-A prominent button allows suggesting new locations.
+A suggest button appears below the "How It Works" section in the blue panel header area.
 
 **Test Cases:**
-- [ ] `TC-6.1.1`: Button text is "Suggest a Location"
+- [ ] `TC-6.1.1`: Button text contains "Suggest" (e.g. "+ Or Suggest New Location")
 - [ ] `TC-6.1.2`: Button has plus icon
 - [ ] `TC-6.1.3`: Button is amber/yellow colored (bg-amber-400)
 - [ ] `TC-6.1.4`: Button is visible in panel (desktop) and bottom sheet (mobile)
@@ -595,17 +607,28 @@ Admin can reject a pending location.
 
 ## 18. Score Display
 
-### REQ-18.1: Score Badge on Location Cards
-Scored locations display an overall score badge and sub-score pills on their cards.
+### REQ-18.1: Card Score Display
+Scored locations display their overall score as a card background tint and 4 icon-based sub-scores.
+
+**Business Logic:**
+- Overall score shown as card background color (green-50/yellow-50/amber-50/red-50), not a badge
+- 4 sub-scores displayed as colored dots with icons: Neighborhood (MapPin), Regulatory (Landmark), Building (Building2), Price (DollarSign)
+- Demographics sub-score is NOT displayed (only used internally)
+- Sub-scores are always visible (no expand/collapse)
+- ArtifactLink (external link icon) shown in card header when overall details URL exists
+- SizeLabel (e.g. "Micro", "Growth") shown in card header row
+- Score legend popup (? icon) explains what each icon means
 
 **Test Cases:**
-- [ ] `TC-18.1.1`: Scored locations show a circular overall score badge
-- [ ] `TC-18.1.2`: Overall badge is color-coded (green/yellow/amber/red)
-- [ ] `TC-18.1.3`: Unscored locations do not show any score badge
-- [ ] `TC-18.1.4`: Sub-score pills display for Demographics, Price, Zoning, Neighborhood, Building
-- [ ] `TC-18.1.5`: Sub-score pills are color-coded by border color matching their score tier
-- [ ] `TC-18.1.6`: Missing sub-scores show "–" instead of a number
-- [ ] `TC-18.1.7`: Sub-score pills with report URLs are clickable links that open in new tab
+- [ ] `TC-18.1.1`: Scored location cards have background tint matching overall score color
+- [ ] `TC-18.1.2`: Card tint is green-50 for GREEN, yellow-50 for YELLOW, amber-50 for AMBER, red-50 for RED
+- [ ] `TC-18.1.3`: Unscored locations have no background tint
+- [ ] `TC-18.1.4`: 4 sub-score icons displayed: MapPin, Landmark, Building2, DollarSign
+- [ ] `TC-18.1.5`: Each sub-score has a colored dot (green/yellow/red/gray)
+- [ ] `TC-18.1.6`: Score legend popup opens on ? icon click
+- [ ] `TC-18.1.7`: ArtifactLink (ExternalLink icon) shown when overall details URL exists
+- [ ] `TC-18.1.8`: SizeLabel shown in card header (e.g. "Micro", "Growth", "Full Size")
+- [ ] `TC-18.1.9`: ArtifactLink opens in new tab and stops click propagation
 
 ### REQ-18.2: Score-Colored Map Markers
 Individual location dots on the map are colored by their overall score.
@@ -617,11 +640,17 @@ Individual location dots on the map are colored by their overall score.
 - [ ] `TC-18.2.4`: Dots with RED score are red (#ef4444)
 - [ ] `TC-18.2.5`: Dots with no score are dark gray (#475569)
 
-### REQ-18.3: Score in Popup
-Selected location popup displays score badge.
+### REQ-18.3: Map Popup
+Selected location popup displays score information matching card layout.
 
 **Test Cases:**
-- [ ] `TC-18.3.1`: Popup for scored location shows ScoreBadge component
+- [ ] `TC-18.3.1`: Popup shows location name, size label, and artifact link
+- [ ] `TC-18.3.2`: Popup shows address
+- [ ] `TC-18.3.3`: Popup shows sub-scores row with 4 icons
+- [ ] `TC-18.3.4`: Popup background tinted by overall score color
+- [ ] `TC-18.3.5`: Popup dismissed by clicking dot again
+- [ ] `TC-18.3.6`: Popup dismissed by clicking map background
+- [ ] `TC-18.3.7`: Popup dismissed by close button
 
 ---
 
@@ -695,7 +724,7 @@ The location list displays 25 items per page with a "Next" button.
 - [ ] `TC-22.1.2`: "Showing X of Y locations" counter is displayed
 - [ ] `TC-22.1.3`: "Next" button appears when more than 25 locations exist
 - [ ] `TC-22.1.4`: Clicking "Next" loads 25 more location cards
-- [ ] `TC-22.1.5`: Pagination resets when search query changes
+- [ ] `TC-22.1.5`: Pagination resets when filters change
 - [ ] `TC-22.1.6`: Pagination resets when map viewport changes
 
 ---
@@ -752,7 +781,7 @@ TODO emails integrate with existing admin approval workflow.
 | 1 | Layout & Structure | 13 |
 | 2 | Header & Branding | 8 |
 | 3 | Map Functionality | 19 |
-| 4 | Locations List | 26 |
+| 4 | Locations List | 31 |
 | 5 | Voting System | 12 |
 | 6 | Suggest Location | 23 |
 | 7 | How It Works | 4 |
@@ -766,13 +795,13 @@ TODO emails integrate with existing admin approval workflow.
 | 15 | Address Autocomplete & Geocoding | 17 |
 | 16 | Authentication | 10 |
 | 17 | Admin Review Workflow | 23 |
-| 18 | Score Display | 13 |
+| 18 | Score Display | 21 |
 | 19 | Two-Tier Zoom Model | 12 |
 | 20 | City Summaries List | 6 |
 | 21 | Geolocation | 5 |
 | 22 | List Pagination | 6 |
 | 23 | TODO-Based Parent Assistance Emails | 19 |
-| | **TOTAL** | **280** |
+| | **TOTAL** | **293** |
 
 ---
 
@@ -784,7 +813,8 @@ TODO emails integrate with existing admin approval workflow.
 | 1.1.0 | 2026-02-05 | Added auth requirements (Section 16), updated data layer to reflect Supabase integration, aligned v2 scope with location selection brainlift |
 | 1.2.0 | 2026-02-05 | Added admin review workflow (Section 17): admin page, approve/reject, score sync, email notifications |
 | 1.3.0 | 2026-02-06 | TDD audit: fixed REQ-3.2 (geolocation default view), added Sections 18-22 (scores, two-tier zoom, city summaries, geolocation, pagination), added 2 TCs to Section 9 (row pagination), total 261 TCs |
-| 1.4.0 | 2026-02-06 | Added TODO-based parent assistance emails (Section 23): zoning/demographics/pricing TODOs with scenario-specific messaging, 19 TCs, total 280 TCs |
+| 1.4.0 | 2026-02-06 | Added TODO-based parent assistance emails (Section 23): zoning/demographics/pricing TODOs with scenario-specific messaging, 19 TCs |
+| 1.5.0 | 2026-02-07 | TDD audit: Updated REQ-4.2 (search→filters), REQ-4.5 (on-screen only), REQ-18 (score display redesign: 4 subscores, card tint, artifact link, size label, popup redesign), updated tagline, 293 total TCs |
 
 ---
 
