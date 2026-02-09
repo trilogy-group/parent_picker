@@ -1,11 +1,11 @@
 "use client";
 
-import { MapPin } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { VoteButton } from "./VoteButton";
-import { ArtifactLink, SizeLabel, ScoreDetails, overallCardBg } from "./ScoreBadge";
+import { SizeLabel, ScoreDetails, overallCardBg, overallCardBorder } from "./ScoreBadge";
 import { Location } from "@/types";
 import { cn } from "@/lib/utils";
+import { extractStreet } from "@/lib/address";
 
 interface LocationCardProps {
   location: Location;
@@ -26,27 +26,29 @@ export function LocationCard({
   onVote,
   onUnvote,
 }: LocationCardProps) {
-  const cardBg = location.scores?.overallColor
-    ? overallCardBg[location.scores.overallColor] || ""
-    : "";
+  const color = location.scores?.overallColor;
+  const borderClass = color ? overallCardBorder[color] || "" : "";
+  const selectedBg = color ? overallCardBg[color] || "" : "";
 
   return (
     <Card
       data-testid="location-card"
       onClick={onSelect}
       className={cn(
-        "px-2 py-1.5 gap-0 cursor-pointer transition-all hover:shadow-md relative",
-        cardBg,
-        isSelected && "ring-2 ring-primary shadow-md",
+        "px-2 py-2 gap-1 cursor-pointer transition-all hover:shadow-md relative border-[3px]",
+        borderClass,
+        isSelected && cn("shadow-md", selectedBg),
+        !isSelected && !location.suggested && "bg-white",
         location.suggested && "border-dashed border-amber-400",
       )}
     >
-      {/* Row 1: Name + Size + Artifact Link + Vote */}
+      {/* Row 1: Street Address + Size + Vote */}
       <div className="flex items-center justify-between gap-2">
-        <h3 className="font-semibold text-sm truncate flex-1 min-w-0">{location.name}</h3>
+        <h3 className="font-semibold text-sm truncate flex-1 min-w-0">
+          {extractStreet(location.address, location.city)}
+        </h3>
         <div className="flex items-center gap-1.5 shrink-0">
           <SizeLabel scores={location.scores} />
-          <ArtifactLink scores={location.scores} />
           <VoteButton
             votes={location.votes}
             hasVoted={hasVoted}
@@ -57,19 +59,13 @@ export function LocationCard({
         </div>
       </div>
 
-      {/* Row 2: Address */}
-      <div className="flex items-center gap-1 text-muted-foreground">
-        <MapPin className="h-3 w-3 flex-shrink-0" />
-        <span className="text-xs truncate">{location.address}, {location.city}, {location.state}</span>
-      </div>
-
       {location.suggested && (
         <span className="inline-block text-[10px] px-1.5 py-0.5 bg-amber-100 text-amber-800 rounded-full">
           Parent Suggested
         </span>
       )}
 
-      {/* Row 3: Sub-scores */}
+      {/* Row 2: Sub-scores with info + legend */}
       <ScoreDetails scores={location.scores} />
     </Card>
   );
