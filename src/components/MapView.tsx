@@ -48,6 +48,11 @@ export function MapView() {
     setReferencePoint: s.setReferencePoint,
     fetchNearby: s.fetchNearby,
     fetchNearbyForce: s.fetchNearbyForce,
+    // Include filter-related state so map re-renders when filters change
+    showRedLocations: s.showRedLocations,
+    releasedFilter: s.releasedFilter,
+    isAdmin: s.isAdmin,
+    viewAsParent: s.viewAsParent,
   })));
 
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);

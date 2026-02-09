@@ -4,6 +4,7 @@ import { create } from "zustand";
 import { Location, CitySummary } from "@/types";
 import { supabase, isSupabaseConfigured } from "./supabase";
 import { getCitySummaries, getNearbyLocations, getDistanceMiles } from "./locations";
+import { consolidateToMetros } from "./metros";
 
 interface MapBounds {
   north: number;
@@ -23,6 +24,8 @@ export interface ScoreFilters {
   size: Set<string>;
 }
 
+export type ReleasedFilter = "all" | "released" | "unreleased";
+
 interface VotesState {
   locations: Location[];
   citySummaries: CitySummary[];
@@ -39,6 +42,13 @@ interface VotesState {
   scoreFilters: ScoreFilters;
   isLoading: boolean;
   userId: string | null;
+
+  // Admin vs non-admin filter state
+  isAdmin: boolean;
+  viewAsParent: boolean;           // Admin toggle: preview parent experience
+  showRedLocations: boolean;       // Non-admin toggle: "I want to help!"
+  releasedFilter: ReleasedFilter;  // Admin: all/released/unreleased
+
   setLocations: (locations: Location[]) => void;
   toggleScoreFilter: (category: ScoreFilterCategory, value: string) => void;
   clearScoreFilters: () => void;
@@ -56,6 +66,10 @@ interface VotesState {
   setLoading: (loading: boolean) => void;
   setUserId: (id: string | null) => void;
   setZoomLevel: (zoom: number) => void;
+  setIsAdmin: (isAdmin: boolean) => void;
+  setViewAsParent: (viewAsParent: boolean) => void;
+  setShowRedLocations: (show: boolean) => void;
+  setReleasedFilter: (filter: ReleasedFilter) => void;
   loadCitySummaries: () => Promise<void>;
   fetchNearby: (center: { lat: number; lng: number }) => Promise<void>;
   fetchNearbyForce: (center: { lat: number; lng: number }) => Promise<void>;
@@ -87,6 +101,10 @@ export const useVotesStore = create<VotesState>((set, get) => ({
   },
   isLoading: true,
   userId: null,
+  isAdmin: false,
+  viewAsParent: false,
+  showRedLocations: false,
+  releasedFilter: "all",
 
   toggleScoreFilter: (category, value) => {
     const filters = get().scoreFilters;
@@ -136,23 +154,44 @@ export const useVotesStore = create<VotesState>((set, get) => ({
 
   setZoomLevel: (zoom) => set({ zoomLevel: zoom }),
 
+  setIsAdmin: (isAdmin) => set({ isAdmin }),
+
+  setViewAsParent: (viewAsParent) => set({ viewAsParent }),
+
+  setShowRedLocations: (showRedLocations) => set({ showRedLocations }),
+
+  setReleasedFilter: (releasedFilter) => set({ releasedFilter }),
+
   loadCitySummaries: async () => {
-    const summaries = await getCitySummaries();
+    const { isAdmin, viewAsParent, releasedFilter, showRedLocations } = get();
+    const effectiveAdmin = isAdmin && !viewAsParent;
+    // Non-admins (or view-as-parent): always released only. Admins: based on filter.
+    const releasedOnly = !effectiveAdmin ? true : releasedFilter === "released" ? true : releasedFilter === "unreleased" ? false : undefined;
+    // Non-admins with red toggle off: exclude RED from bubble counts
+    const excludeRed = !effectiveAdmin && !showRedLocations;
+    const rawSummaries = await getCitySummaries(releasedOnly, excludeRed);
+    // Consolidate to metro-level bubbles
+    const summaries = consolidateToMetros(rawSummaries);
     set({ citySummaries: summaries, isLoading: false });
   },
 
   fetchNearby: async (center) => {
-    const { lastFetchCenter } = get();
+    const { lastFetchCenter, isAdmin, viewAsParent, releasedFilter } = get();
+    const effectiveAdmin = isAdmin && !viewAsParent;
     if (lastFetchCenter) {
       const dist = getDistanceMiles(lastFetchCenter.lat, lastFetchCenter.lng, center.lat, center.lng);
       if (dist < 5) return;
     }
-    const locations = await getNearbyLocations(center.lat, center.lng);
+    const releasedOnly = !effectiveAdmin ? true : releasedFilter === "released" ? true : releasedFilter === "unreleased" ? false : undefined;
+    const locations = await getNearbyLocations(center.lat, center.lng, 500, releasedOnly);
     set({ locations, lastFetchCenter: center });
   },
 
   fetchNearbyForce: async (center) => {
-    const locations = await getNearbyLocations(center.lat, center.lng);
+    const { isAdmin, viewAsParent, releasedFilter } = get();
+    const effectiveAdmin = isAdmin && !viewAsParent;
+    const releasedOnly = !effectiveAdmin ? true : releasedFilter === "released" ? true : releasedFilter === "unreleased" ? false : undefined;
+    const locations = await getNearbyLocations(center.lat, center.lng, 500, releasedOnly);
     set({ locations, lastFetchCenter: center });
   },
 
@@ -273,9 +312,34 @@ export const useVotesStore = create<VotesState>((set, get) => ({
   setReferencePoint: (coords) => set({ referencePoint: coords }),
 
   filteredLocations: () => {
-    const { locations, scoreFilters } = get();
+    const { locations, scoreFilters, isAdmin, viewAsParent, showRedLocations, releasedFilter } = get();
+    const effectiveAdmin = isAdmin && !viewAsParent;
 
-    // Check if any filter is active at all
+    // Step 1: Apply released filter (belt-and-suspenders; server already filters)
+    let filtered = locations;
+    if (!effectiveAdmin) {
+      // Non-admins (or view-as-parent): only released locations
+      filtered = filtered.filter((loc) => loc.released === true);
+    } else if (releasedFilter === "released") {
+      filtered = filtered.filter((loc) => loc.released === true);
+    } else if (releasedFilter === "unreleased") {
+      filtered = filtered.filter((loc) => loc.released !== true);
+    }
+
+    // Step 2: Apply score/size filters based on admin status
+    if (!effectiveAdmin) {
+      // Non-admin: simple red toggle
+      if (!showRedLocations) {
+        return filtered.filter((loc) => {
+          const color = loc.scores?.overallColor;
+          const size = loc.scores?.sizeClassification;
+          return color !== "RED" && size !== "Red (Reject)";
+        });
+      }
+      return filtered;
+    }
+
+    // Admin (effective): full filter logic
     const anyColorFilter = scoreFilters.overall.size > 0 ||
       scoreFilters.price.size > 0 ||
       scoreFilters.zoning.size > 0 ||
@@ -286,13 +350,13 @@ export const useVotesStore = create<VotesState>((set, get) => ({
 
     if (!anyFilter) {
       // Default: exclude Red (Reject) size locations
-      return locations.filter((loc) => {
+      return filtered.filter((loc) => {
         const size = loc.scores?.sizeClassification;
         return size !== "Red (Reject)";
       });
     }
 
-    return locations.filter((loc) => {
+    return filtered.filter((loc) => {
       const scores = loc.scores;
 
       // Color filter categories: location must match each active category

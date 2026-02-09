@@ -10,6 +10,7 @@ interface AuthContextType {
   session: Session | null;
   isLoading: boolean;
   isOfflineMode: boolean;
+  isAdmin: boolean;
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -17,7 +18,13 @@ const AuthContext = createContext<AuthContextType>({
   session: null,
   isLoading: true,
   isOfflineMode: false,
+  isAdmin: false,
 });
+
+const ADMIN_EMAILS = (process.env.NEXT_PUBLIC_ADMIN_EMAILS || "")
+  .split(",")
+  .map((e) => e.trim().toLowerCase())
+  .filter(Boolean);
 
 export function useAuth() {
   return useContext(AuthContext);
@@ -36,6 +43,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
   // If Supabase is not configured, run in offline/demo mode
   const isOfflineMode = !isSupabaseConfigured;
+
+  const isAdmin = !!user?.email && ADMIN_EMAILS.includes(user.email.toLowerCase());
 
   useEffect(() => {
     // If Supabase is not configured, nothing to do
@@ -76,7 +85,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
   }, [setUserId, loadUserVotes, clearUserVotes]);
 
   return (
-    <AuthContext.Provider value={{ user, session, isLoading, isOfflineMode }}>
+    <AuthContext.Provider value={{ user, session, isLoading, isOfflineMode, isAdmin }}>
       {children}
     </AuthContext.Provider>
   );

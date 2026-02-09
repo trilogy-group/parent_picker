@@ -743,6 +743,101 @@ TODO emails integrate with existing admin approval workflow.
 - [ ] `TC-23.4.4`: Approval email subject changes to "action items inside" when TODOs present
 - [ ] `TC-23.4.5`: Sync-scores API returns upstreamMetrics and metroInfo alongside scores
 
+## 24. Admin vs Non-Admin Filters
+
+### REQ-24.1: Admin Filter Panel
+The full score filter panel (5 color categories + size + released) is only visible to admin users.
+
+**Test Cases:**
+- [ ] `TC-24.1.1`: Admin user sees full filter panel with score categories and size filter
+- [ ] `TC-24.1.2`: Non-admin user does not see score category filters
+- [ ] `TC-24.1.3`: Non-admin user does not see size filter buttons
+
+### REQ-24.2: Non-Admin Red Toggle
+Non-admin users see a single toggle: "I want to help! Show me red locations too."
+
+**Test Cases:**
+- [ ] `TC-24.2.1`: Non-admin user sees "I want to help! Show me red locations too." toggle
+- [ ] `TC-24.2.2`: Toggle is OFF by default (red locations hidden)
+- [ ] `TC-24.2.3`: When ON, locations with RED overall score become visible
+- [ ] `TC-24.2.4`: When ON, locations with "Red (Reject)" size become visible
+- [ ] `TC-24.2.5`: When OFF, both RED score and Red (Reject) size locations are hidden
+- [ ] `TC-24.2.6`: Admin user does not see the help toggle (they use full filters)
+
+### REQ-24.3: Client-Side Admin Detection
+Admin status is determined by checking the user's email against NEXT_PUBLIC_ADMIN_EMAILS.
+
+**Test Cases:**
+- [ ] `TC-24.3.1`: User with email in NEXT_PUBLIC_ADMIN_EMAILS is treated as admin
+- [ ] `TC-24.3.2`: User without email in NEXT_PUBLIC_ADMIN_EMAILS is treated as non-admin
+- [ ] `TC-24.3.3`: Unauthenticated user is treated as non-admin
+- [ ] `TC-24.3.4`: isAdmin is available via useAuth() hook
+
+---
+
+## 25. Metro City Bubbles
+
+### REQ-25.1: Metro Consolidation
+City bubbles at wide zoom (< 9) consolidate nearby cities into major US metro areas (~85 metros).
+
+**Test Cases:**
+- [ ] `TC-25.1.1`: Bubbles consolidate to major US metro areas (not individual suburb cities)
+- [ ] `TC-25.1.2`: Austin and Dallas appear as separate bubbles (not merged)
+- [ ] `TC-25.1.3`: Suburb cities (e.g., Frisco, Plano) are consolidated into their parent metro (Dallas-Fort Worth)
+- [ ] `TC-25.1.4`: Metro bubble shows total location count across all consolidated cities
+- [ ] `TC-25.1.5`: Metro bubble shows total vote count across all consolidated cities
+- [ ] `TC-25.1.6`: Metros with zero locations do not show a bubble
+- [ ] `TC-25.1.7`: Cities not near any known metro appear as standalone bubbles
+
+### REQ-25.2: Metro Click Behavior
+Clicking a metro bubble zooms to the density center of its locations at zoom 9.
+
+**Test Cases:**
+- [ ] `TC-25.2.1`: Clicking metro bubble flies map to zoom 9
+- [ ] `TC-25.2.2`: At least one location dot is visible after zoom
+- [ ] `TC-25.2.3`: Zoom target is the location-weighted centroid of consolidated cities
+
+### REQ-25.3: Release-Aware Bubbles
+Metro bubbles reflect the released filter — non-admins see only released location counts.
+
+**Test Cases:**
+- [ ] `TC-25.3.1`: Non-admin city summaries only count released locations
+- [ ] `TC-25.3.2`: Admin city summaries count based on admin's released filter setting
+- [ ] `TC-25.3.3`: Metros with zero locations after release filtering do not show
+
+---
+
+## 26. Released/Unreleased Locations
+
+### REQ-26.1: Released Column
+The pp_locations table has a `released` boolean column indicating if a location is publicly visible.
+
+**Test Cases:**
+- [ ] `TC-26.1.1`: pp_locations table has `released` boolean column (default false)
+- [ ] `TC-26.1.2`: Austin area locations are released
+- [ ] `TC-26.1.3`: Palo Alto / Silicon Valley area locations are released
+- [ ] `TC-26.1.4`: Boca Raton / Palm Beach area locations are released
+- [ ] `TC-26.1.5`: Other locations default to unreleased
+
+### REQ-26.2: Non-Admin Released Filter
+Non-admin users only see released locations. Unreleased locations are completely invisible.
+
+**Test Cases:**
+- [ ] `TC-26.2.1`: Non-admin users never see unreleased locations in the list
+- [ ] `TC-26.2.2`: Non-admin users never see unreleased locations on the map
+- [ ] `TC-26.2.3`: City bubble counts only include released locations for non-admins
+- [ ] `TC-26.2.4`: Unreleased locations are completely invisible to non-admins (not grayed out)
+
+### REQ-26.3: Admin Released Filter
+Admin users can toggle between released, unreleased, or all locations.
+
+**Test Cases:**
+- [ ] `TC-26.3.1`: Admin users see a released/unreleased/all filter toggle
+- [ ] `TC-26.3.2`: Admin can view only released locations
+- [ ] `TC-26.3.3`: Admin can view only unreleased locations
+- [ ] `TC-26.3.4`: Admin default shows all locations
+- [ ] `TC-26.3.5`: Released filter affects both list and map views
+
 ---
 
 ## Test Execution Summary
@@ -772,7 +867,10 @@ TODO emails integrate with existing admin approval workflow.
 | 21 | Geolocation | 5 |
 | 22 | List Pagination | 6 |
 | 23 | TODO-Based Parent Assistance Emails | 19 |
-| | **TOTAL** | **280** |
+| 24 | Admin vs Non-Admin Filters | 13 |
+| 25 | Metro City Bubbles | 13 |
+| 26 | Released/Unreleased Locations | 14 |
+| | **TOTAL** | **320** |
 
 ---
 
@@ -785,6 +883,7 @@ TODO emails integrate with existing admin approval workflow.
 | 1.2.0 | 2026-02-05 | Added admin review workflow (Section 17): admin page, approve/reject, score sync, email notifications |
 | 1.3.0 | 2026-02-06 | TDD audit: fixed REQ-3.2 (geolocation default view), added Sections 18-22 (scores, two-tier zoom, city summaries, geolocation, pagination), added 2 TCs to Section 9 (row pagination), total 261 TCs |
 | 1.4.0 | 2026-02-06 | Added TODO-based parent assistance emails (Section 23): zoning/demographics/pricing TODOs with scenario-specific messaging, 19 TCs, total 280 TCs |
+| 1.5.0 | 2026-02-09 | Added admin/non-admin filters (Section 24), metro city bubbles (Section 25), released/unreleased locations (Section 26), 40 TCs, total 320 TCs |
 
 ---
 

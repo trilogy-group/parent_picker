@@ -7,11 +7,18 @@ import { LocationsList } from "@/components/LocationsList";
 import { SuggestLocationModal } from "@/components/SuggestLocationModal";
 import { AuthButton } from "@/components/AuthButton";
 import { useVotesStore } from "@/lib/votes";
+import { useAuth } from "@/components/AuthProvider";
 import { AUSTIN_CENTER } from "@/lib/locations";
 
 export default function Home() {
   const [panelExpanded, setPanelExpanded] = useState(false);
-  const { locations, citySummaries, zoomLevel, loadCitySummaries, setReferencePoint } = useVotesStore();
+  const { locations, citySummaries, zoomLevel, loadCitySummaries, setReferencePoint, setIsAdmin, releasedFilter, showRedLocations, viewAsParent } = useVotesStore();
+  const { isAdmin } = useAuth();
+
+  // Sync isAdmin from AuthProvider into Zustand store
+  useEffect(() => {
+    setIsAdmin(isAdmin);
+  }, [isAdmin, setIsAdmin]);
 
   // At wide zoom, total votes comes from city summaries; at city zoom, from locations
   const totalVotes = zoomLevel < 9
@@ -22,6 +29,11 @@ export default function Home() {
     setReferencePoint(AUSTIN_CENTER);
     loadCitySummaries();
   }, [loadCitySummaries, setReferencePoint]);
+
+  // Refetch city summaries when filters change (admin released filter, non-admin red toggle, view-as-parent)
+  useEffect(() => {
+    loadCitySummaries();
+  }, [releasedFilter, isAdmin, showRedLocations, viewAsParent, loadCitySummaries]);
 
   return (
     <div className="relative h-screen w-screen overflow-hidden">

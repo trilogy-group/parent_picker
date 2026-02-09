@@ -1,9 +1,9 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { ChevronDown, ChevronUp, X } from "lucide-react";
+import { ChevronDown, ChevronUp, X, Eye } from "lucide-react";
 import { LocationCard } from "./LocationCard";
-import { useVotesStore, ScoreFilterCategory } from "@/lib/votes";
+import { useVotesStore, ScoreFilterCategory, ReleasedFilter } from "@/lib/votes";
 import { useShallow } from "zustand/react/shallow";
 import { getDistanceMiles } from "@/lib/locations";
 import { useAuth } from "./AuthProvider";
@@ -41,6 +41,8 @@ interface ScoreFilterPanelProps {
   activeFilterCount: () => number;
   expanded: boolean;
   setExpanded: (v: boolean) => void;
+  releasedFilter: ReleasedFilter;
+  setReleasedFilter: (filter: ReleasedFilter) => void;
 }
 
 function ScoreFilterPanel({
@@ -50,6 +52,8 @@ function ScoreFilterPanel({
   activeFilterCount,
   expanded,
   setExpanded,
+  releasedFilter,
+  setReleasedFilter,
 }: ScoreFilterPanelProps) {
   const count = activeFilterCount();
 
@@ -80,6 +84,30 @@ function ScoreFilterPanel({
 
       {expanded && (
         <div className="mt-2 space-y-1.5">
+          {/* Released filter */}
+          <div className="flex items-center gap-1.5">
+            <span className="text-[10px] font-medium text-muted-foreground w-[72px] shrink-0">Released</span>
+            <div className="flex gap-1">
+              {(["all", "released", "unreleased"] as ReleasedFilter[]).map((val) => {
+                const active = releasedFilter === val;
+                return (
+                  <button
+                    key={val}
+                    type="button"
+                    className={`px-1.5 py-0.5 rounded text-[9px] font-medium transition-all ${
+                      active
+                        ? "bg-blue-500 text-white ring-2 ring-blue-400 ring-offset-1"
+                        : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                    }`}
+                    onClick={() => setReleasedFilter(val)}
+                  >
+                    {val === "all" ? "All" : val === "released" ? "Released" : "Unreleased"}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
           {/* Color score categories */}
           {SCORE_CATEGORIES.map(({ key, label }) => (
             <div key={key} className="flex items-center gap-1.5">
@@ -142,6 +170,55 @@ function ScoreFilterPanel({
   );
 }
 
+interface SimpleRedToggleProps {
+  showRedLocations: boolean;
+  setShowRedLocations: (show: boolean) => void;
+}
+
+function SimpleRedToggle({ showRedLocations, setShowRedLocations }: SimpleRedToggleProps) {
+  return (
+    <div className="mt-2">
+      <label className="flex items-center gap-2 cursor-pointer select-none">
+        <div
+          className={`relative w-8 h-[18px] rounded-full transition-colors ${
+            showRedLocations ? "bg-red-500" : "bg-gray-300"
+          }`}
+          onClick={() => setShowRedLocations(!showRedLocations)}
+        >
+          <div
+            className={`absolute top-0.5 w-3.5 h-3.5 rounded-full bg-white shadow transition-transform ${
+              showRedLocations ? "translate-x-[15px]" : "translate-x-0.5"
+            }`}
+          />
+        </div>
+        <span
+          className="text-xs text-muted-foreground"
+          onClick={() => setShowRedLocations(!showRedLocations)}
+        >
+          I want to help! Show me red locations too.
+        </span>
+      </label>
+    </div>
+  );
+}
+
+function ViewAsParentToggle({ active, onToggle }: { active: boolean; onToggle: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      className={`mt-2 flex items-center gap-1.5 text-[11px] font-medium px-2 py-1 rounded-md transition-colors ${
+        active
+          ? "bg-amber-100 text-amber-800 hover:bg-amber-200"
+          : "bg-gray-100 text-gray-500 hover:bg-gray-200"
+      }`}
+    >
+      <Eye className="h-3 w-3" />
+      {active ? "Viewing as parent — tap to exit" : "View as parent"}
+    </button>
+  );
+}
+
 export function LocationsList() {
   const {
     filteredLocations,
@@ -160,6 +237,12 @@ export function LocationsList() {
     toggleScoreFilter,
     clearScoreFilters,
     activeFilterCount,
+    showRedLocations,
+    setShowRedLocations,
+    releasedFilter,
+    setReleasedFilter,
+    viewAsParent,
+    setViewAsParent,
   } = useVotesStore(useShallow((s) => ({
     filteredLocations: s.filteredLocations,
     selectedLocationId: s.selectedLocationId,
@@ -177,6 +260,12 @@ export function LocationsList() {
     toggleScoreFilter: s.toggleScoreFilter,
     clearScoreFilters: s.clearScoreFilters,
     activeFilterCount: s.activeFilterCount,
+    showRedLocations: s.showRedLocations,
+    setShowRedLocations: s.setShowRedLocations,
+    releasedFilter: s.releasedFilter,
+    setReleasedFilter: s.setReleasedFilter,
+    viewAsParent: s.viewAsParent,
+    setViewAsParent: s.setViewAsParent,
   })));
 
   const [page, setPage] = useState(0);
@@ -185,7 +274,7 @@ export function LocationsList() {
   const [prevScoreFilters, setPrevScoreFilters] = useState(scoreFilters);
 
   const locations = filteredLocations();
-  const { user, isOfflineMode } = useAuth();
+  const { user, isOfflineMode, isAdmin } = useAuth();
 
   // In offline mode, allow voting without auth (local-only)
   const canVote = isOfflineMode || !!user;
@@ -230,14 +319,34 @@ export function LocationsList() {
   return (
     <div className="flex flex-col h-full">
       <div className="px-4 pt-3 pb-2 border-b bg-background sticky top-0 z-10">
-        <ScoreFilterPanel
-          scoreFilters={scoreFilters}
-          toggleScoreFilter={toggleScoreFilter}
-          clearScoreFilters={clearScoreFilters}
-          activeFilterCount={activeFilterCount}
-          expanded={filtersExpanded}
-          setExpanded={setFiltersExpanded}
-        />
+        {isAdmin && !viewAsParent ? (
+          <>
+            <ScoreFilterPanel
+              scoreFilters={scoreFilters}
+              toggleScoreFilter={toggleScoreFilter}
+              clearScoreFilters={clearScoreFilters}
+              activeFilterCount={activeFilterCount}
+              expanded={filtersExpanded}
+              setExpanded={setFiltersExpanded}
+              releasedFilter={releasedFilter}
+              setReleasedFilter={setReleasedFilter}
+            />
+            <ViewAsParentToggle active={false} onToggle={() => setViewAsParent(true)} />
+          </>
+        ) : isAdmin && viewAsParent ? (
+          <>
+            <SimpleRedToggle
+              showRedLocations={showRedLocations}
+              setShowRedLocations={setShowRedLocations}
+            />
+            <ViewAsParentToggle active={true} onToggle={() => setViewAsParent(false)} />
+          </>
+        ) : (
+          <SimpleRedToggle
+            showRedLocations={showRedLocations}
+            setShowRedLocations={setShowRedLocations}
+          />
+        )}
       </div>
       <div className="flex-1 overflow-y-auto px-3 py-2 space-y-2">
         {zoomLevel < 9 ? (
