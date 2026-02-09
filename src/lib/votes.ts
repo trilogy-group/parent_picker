@@ -31,7 +31,7 @@ interface VotesState {
   votedLocationIds: Set<string>;
   selectedLocationId: string | null;
   searchQuery: string;
-  flyToTarget: { lat: number; lng: number } | null;
+  flyToTarget: { lat: number; lng: number; zoom?: number } | null;
   previewLocation: { lat: number; lng: number; address: string } | null;
   mapCenter: { lat: number; lng: number } | null;
   mapBounds: MapBounds | null;
@@ -48,7 +48,7 @@ interface VotesState {
   unvote: (locationId: string) => void;
   setSelectedLocation: (id: string | null) => void;
   setSearchQuery: (query: string) => void;
-  setFlyToTarget: (coords: { lat: number; lng: number } | null) => void;
+  setFlyToTarget: (coords: { lat: number; lng: number; zoom?: number } | null) => void;
   setPreviewLocation: (preview: { lat: number; lng: number; address: string } | null) => void;
   setMapCenter: (coords: { lat: number; lng: number } | null) => void;
   setMapBounds: (bounds: MapBounds | null) => void;
@@ -281,7 +281,11 @@ export const useVotesStore = create<VotesState>((set, get) => ({
       scoreFilters.zoning.size > 0 ||
       scoreFilters.neighborhood.size > 0 ||
       scoreFilters.building.size > 0;
-    const anySizeFilter = scoreFilters.size.size > 0;
+    // Default size selections don't count as an active filter
+    const DEFAULT_SIZES = new Set(["Micro", "Micro2", "Growth", "Full Size"]);
+    const isDefaultSize = scoreFilters.size.size === DEFAULT_SIZES.size &&
+      [...scoreFilters.size].every(v => DEFAULT_SIZES.has(v));
+    const anySizeFilter = scoreFilters.size.size > 0 && !isDefaultSize;
     const anyFilter = anyColorFilter || anySizeFilter;
 
     if (!anyFilter) {
