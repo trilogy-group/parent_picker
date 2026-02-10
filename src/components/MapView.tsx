@@ -56,12 +56,9 @@ export function MapView() {
   })));
 
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
-  const [geoResolved, setGeoResolved] = useState(() => {
-    if (typeof navigator === "undefined" || !navigator.geolocation) {
-      return true;
-    }
-    return false;
-  });
+  // Start false — the geolocation useEffect will set true on client once resolved/unavailable
+  const [geoResolved, setGeoResolved] = useState(false);
+  const [mapReady, setMapReady] = useState(false);
   const initialViewSetRef = useRef(false);
   const flyingRef = useRef(false);
   const selectedLocationRef = useRef<{ lat: number; lng: number } | null>(null);
@@ -113,7 +110,8 @@ export function MapView() {
 
   // Request user's geolocation on mount
   useEffect(() => {
-    if (!navigator.geolocation) {
+    if (typeof navigator === "undefined" || !navigator.geolocation) {
+      setGeoResolved(true);
       return;
     }
 
@@ -135,7 +133,7 @@ export function MapView() {
 
   // Set initial map view based on user location and nearby listings
   useEffect(() => {
-    if (initialViewSetRef.current || !geoResolved || citySummaries.length === 0) return;
+    if (initialViewSetRef.current || !geoResolved || !mapReady || citySummaries.length === 0) return;
 
     const { center, zoom } = getInitialMapView(
       userLocation?.lat ?? null,
@@ -172,7 +170,7 @@ export function MapView() {
     }, 100);
 
     initialViewSetRef.current = true;
-  }, [userLocation, citySummaries, geoResolved, locations, setReferencePoint, setMapBounds, setMapCenter, setZoomLevel, fetchNearbyForce]);
+  }, [userLocation, citySummaries, geoResolved, mapReady, locations, setReferencePoint, setMapBounds, setMapCenter, setZoomLevel, fetchNearbyForce]);
 
   const flyToCoords = useCallback((coords: { lat: number; lng: number }, zoom?: number) => {
     flyingRef.current = true;
@@ -197,7 +195,7 @@ export function MapView() {
   // Fly to search target (city cards)
   useEffect(() => {
     if (flyToTarget) {
-      flyToCoords(flyToTarget, 9);
+      flyToCoords(flyToTarget, flyToTarget.zoom);
       fetchNearbyForce(flyToTarget);
       setFlyToTarget(null);
     }
@@ -297,6 +295,7 @@ export function MapView() {
       style={{ width: "100%", height: "100%" }}
       mapStyle="mapbox://styles/mapbox/streets-v12"
       mapboxAccessToken={MAPBOX_TOKEN}
+      onLoad={() => setMapReady(true)}
       onClick={handleMapClick}
       onMoveEnd={handleMoveEnd}
       interactiveLayerIds={interactiveLayerIds}
