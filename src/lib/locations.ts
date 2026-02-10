@@ -155,7 +155,16 @@ export const mockLocations: Location[] = [
 
   // California - LA/Pasadena
   { id: "01e6bac0-3285-4baf-a6f2-5c84af035cef", name: "260 S Raymond Ave", address: "260 S Raymond Ave", city: "Pasadena", state: "CA", lat: 34.141479, lng: -118.1485645, votes: 41 },
-].map((loc, i) => ({ ...loc, scores: mockScores(i) }));
+].map((loc, i) => {
+  // Released metros: Austin TX, Bay Area CA (Palo Alto area), Palm Beach FL (Boca/PB area)
+  const RELEASED_CITIES: Record<string, Set<string>> = {
+    TX: new Set(["Austin"]),
+    FL: new Set(["West Palm Beach", "Lake Worth Beach", "Palm Beach Gardens", "Jupiter", "Riviera Beach", "Boca Raton"]),
+    CA: new Set(["Redwood City", "Santa Clara", "San Jose", "Menlo Park"]),
+  };
+  const released = RELEASED_CITIES[loc.state]?.has(loc.city) ?? false;
+  return { ...loc, released, scores: mockScores(i) };
+});
 
 // Austin TX - default location when user location unavailable
 export const AUSTIN_CENTER = { lat: 30.2672, lng: -97.7431 };
@@ -262,9 +271,16 @@ function mapRows(rows: Record<string, unknown>[]): Location[] {
   }));
 }
 
-function getMockCitySummaries(): CitySummary[] {
+function getMockCitySummaries(releasedOnly?: boolean, excludeRed?: boolean, excludeUnscored?: boolean): CitySummary[] {
+  let locs = releasedOnly ? mockLocations.filter(l => l.released === true) : mockLocations;
+  if (excludeRed) {
+    locs = locs.filter(l => l.scores?.overallColor !== "RED" && l.scores?.sizeClassification !== "Red (Reject)");
+  }
+  if (excludeUnscored) {
+    locs = locs.filter(l => l.scores?.overallColor != null);
+  }
   const map = new Map<string, { city: string; state: string; lats: number[]; lngs: number[]; count: number; votes: number }>();
-  for (const loc of mockLocations) {
+  for (const loc of locs) {
     const key = `${loc.city}|${loc.state}`;
     const entry = map.get(key);
     if (entry) {
@@ -286,16 +302,20 @@ function getMockCitySummaries(): CitySummary[] {
   }));
 }
 
-export async function getCitySummaries(): Promise<CitySummary[]> {
+export async function getCitySummaries(releasedOnly?: boolean, excludeRed?: boolean, excludeUnscored?: boolean): Promise<CitySummary[]> {
   if (!isSupabaseConfigured || !supabase) {
-    return getMockCitySummaries();
+    return getMockCitySummaries(releasedOnly, excludeRed, excludeUnscored);
   }
 
   try {
-    const { data, error } = await supabase.rpc("get_location_cities");
+    const { data, error } = await supabase.rpc("get_location_cities", {
+      released_only: releasedOnly ?? false,
+      exclude_red: excludeRed ?? false,
+      exclude_unscored: excludeUnscored ?? false,
+    });
     if (error) {
       console.error("Error fetching city summaries:", error);
-      return getMockCitySummaries();
+      return getMockCitySummaries(releasedOnly, excludeRed, excludeUnscored);
     }
     return (data || []).map((row: Record<string, unknown>) => ({
       city: row.city as string,
@@ -307,14 +327,15 @@ export async function getCitySummaries(): Promise<CitySummary[]> {
     }));
   } catch (error) {
     console.error("Failed to fetch city summaries:", error);
-    return getMockCitySummaries();
+    return getMockCitySummaries(releasedOnly, excludeRed, excludeUnscored);
   }
 }
 
-export async function getNearbyLocations(centerLat: number, centerLng: number, limit: number = 500): Promise<Location[]> {
+export async function getNearbyLocations(centerLat: number, centerLng: number, limit: number = 500, releasedOnly?: boolean): Promise<Location[]> {
   if (!isSupabaseConfigured || !supabase) {
-    // Mock fallback: return all mockLocations (50 fit in 500 limit)
-    return mockLocations;
+    // Mock fallback: filter by released if needed
+    const locs = releasedOnly ? mockLocations.filter(l => l.released === true) : mockLocations;
+    return locs;
   }
 
   try {
@@ -322,6 +343,7 @@ export async function getNearbyLocations(centerLat: number, centerLng: number, l
       center_lat: centerLat,
       center_lng: centerLng,
       max_results: limit,
+      released_only: releasedOnly ?? false,
     });
     if (error) {
       console.error("Error fetching nearby locations:", error);
@@ -337,6 +359,7 @@ export async function getNearbyLocations(centerLat: number, centerLng: number, l
       lng: Number(row.lng),
       votes: Number(row.vote_count),
       suggested: (row.source as string) === "parent_suggested",
+      released: row.released as boolean | undefined,
       scores: mapRowToScores(row),
     }));
   } catch (error) {

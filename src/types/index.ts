@@ -26,6 +26,7 @@ export interface Location {
   lng: number;
   votes: number;
   suggested?: boolean;
+  released?: boolean;
   scores?: LocationScores;
 }
 
