@@ -12,7 +12,7 @@ import { AUSTIN_CENTER } from "@/lib/locations";
 
 export default function Home() {
   const [panelExpanded, setPanelExpanded] = useState(false);
-  const { locations, citySummaries, zoomLevel, loadCitySummaries, setReferencePoint, setIsAdmin, releasedFilter, showRedLocations, viewAsParent } = useVotesStore();
+  const { locations, citySummaries, zoomLevel, loadCitySummaries, setReferencePoint, setIsAdmin, releasedFilter, showRedLocations, showUnscored, viewAsParent } = useVotesStore();
   const { isAdmin } = useAuth();
 
   // Sync isAdmin from AuthProvider into Zustand store
@@ -33,7 +33,7 @@ export default function Home() {
   // Refetch city summaries when filters change (admin released filter, non-admin red toggle, view-as-parent)
   useEffect(() => {
     loadCitySummaries();
-  }, [releasedFilter, isAdmin, showRedLocations, viewAsParent, loadCitySummaries]);
+  }, [releasedFilter, isAdmin, showRedLocations, showUnscored, viewAsParent, loadCitySummaries]);
 
   return (
     <div className="relative h-screen w-screen overflow-hidden">

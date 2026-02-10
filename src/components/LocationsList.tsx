@@ -43,6 +43,8 @@ interface ScoreFilterPanelProps {
   setExpanded: (v: boolean) => void;
   releasedFilter: ReleasedFilter;
   setReleasedFilter: (filter: ReleasedFilter) => void;
+  showUnscored: boolean;
+  setShowUnscored: (show: boolean) => void;
 }
 
 function ScoreFilterPanel({
@@ -54,6 +56,8 @@ function ScoreFilterPanel({
   setExpanded,
   releasedFilter,
   setReleasedFilter,
+  showUnscored,
+  setShowUnscored,
 }: ScoreFilterPanelProps) {
   const count = activeFilterCount();
 
@@ -106,6 +110,28 @@ function ScoreFilterPanel({
                 );
               })}
             </div>
+          </div>
+
+          {/* Unscored toggle */}
+          <div className="flex items-center gap-1.5">
+            <span className="text-[10px] font-medium text-muted-foreground w-[72px] shrink-0">Unscored</span>
+            <label className="flex items-center gap-1.5 cursor-pointer select-none">
+              <div
+                className={`relative w-7 h-4 rounded-full transition-colors ${
+                  showUnscored ? "bg-blue-500" : "bg-gray-300"
+                }`}
+                onClick={() => setShowUnscored(!showUnscored)}
+              >
+                <div
+                  className={`absolute top-0.5 w-3 h-3 rounded-full bg-white shadow transition-transform ${
+                    showUnscored ? "translate-x-[13px]" : "translate-x-0.5"
+                  }`}
+                />
+              </div>
+              <span className="text-[9px] text-muted-foreground">
+                {showUnscored ? "Showing" : "Hidden"}
+              </span>
+            </label>
           </div>
 
           {/* Color score categories */}
@@ -243,6 +269,8 @@ export function LocationsList() {
     setReleasedFilter,
     viewAsParent,
     setViewAsParent,
+    showUnscored,
+    setShowUnscored,
   } = useVotesStore(useShallow((s) => ({
     filteredLocations: s.filteredLocations,
     selectedLocationId: s.selectedLocationId,
@@ -266,6 +294,8 @@ export function LocationsList() {
     setReleasedFilter: s.setReleasedFilter,
     viewAsParent: s.viewAsParent,
     setViewAsParent: s.setViewAsParent,
+    showUnscored: s.showUnscored,
+    setShowUnscored: s.setShowUnscored,
     locations: s.locations,
   })));
 
@@ -331,6 +361,8 @@ export function LocationsList() {
               setExpanded={setFiltersExpanded}
               releasedFilter={releasedFilter}
               setReleasedFilter={setReleasedFilter}
+              showUnscored={showUnscored}
+              setShowUnscored={setShowUnscored}
             />
             <ViewAsParentToggle active={false} onToggle={() => setViewAsParent(true)} />
           </>

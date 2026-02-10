@@ -77,6 +77,29 @@ See [`docs/schema-design.md`](docs/schema-design.md) for complete Supabase schem
 - RLS policies
 - SQL setup script and seed data
 
+## Deploying SQL Migrations
+
+SQL migrations are **never auto-deployed**. When SQL files in `sql/` are modified, you must run them against the live Supabase DB. Use the Supabase Management API via CLI:
+
+```bash
+# 1. Extract access token from macOS Keychain
+RAW=$(security find-generic-password -a "supabase" -s "Supabase CLI" -w)
+SUPABASE_TOKEN=$(echo "$RAW" | sed 's/go-keyring-base64://' | base64 -d)
+
+# 2. Run SQL against the project (project ref from .env.local SUPABASE_URL)
+jq -n --rawfile sql path/to/migration.sql '{"query": $sql}' | \
+  curl -s -X POST "https://api.supabase.com/v1/projects/mnxgkozrutvylzeogphh/database/query" \
+    -H "Authorization: Bearer $SUPABASE_TOKEN" \
+    -H "Content-Type: application/json" \
+    -d @-
+```
+
+**Key points:**
+- Empty array `[]` in response = success
+- Always verify function signatures after deploying: query `pg_proc` to confirm
+- The `supabase link` command must have been run once (project ref stored in `supabase/.temp/project-ref`)
+- SQL files in `sql/` are the source of truth for DB function definitions
+
 ## State Management
 
 **Zustand store** (`src/lib/votes.ts`) - Central state management for:

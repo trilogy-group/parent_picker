@@ -47,6 +47,7 @@ interface VotesState {
   isAdmin: boolean;
   viewAsParent: boolean;           // Admin toggle: preview parent experience
   showRedLocations: boolean;       // Non-admin toggle: "I want to help!"
+  showUnscored: boolean;           // Admin toggle: show locations without scores
   releasedFilter: ReleasedFilter;  // Admin: all/released/unreleased
 
   setLocations: (locations: Location[]) => void;
@@ -69,6 +70,7 @@ interface VotesState {
   setIsAdmin: (isAdmin: boolean) => void;
   setViewAsParent: (viewAsParent: boolean) => void;
   setShowRedLocations: (show: boolean) => void;
+  setShowUnscored: (show: boolean) => void;
   setReleasedFilter: (filter: ReleasedFilter) => void;
   loadCitySummaries: () => Promise<void>;
   fetchNearby: (center: { lat: number; lng: number }) => Promise<void>;
@@ -104,6 +106,7 @@ export const useVotesStore = create<VotesState>((set, get) => ({
   isAdmin: false,
   viewAsParent: false,
   showRedLocations: false,
+  showUnscored: false,
   releasedFilter: "all",
 
   toggleScoreFilter: (category, value) => {
@@ -160,16 +163,20 @@ export const useVotesStore = create<VotesState>((set, get) => ({
 
   setShowRedLocations: (showRedLocations) => set({ showRedLocations }),
 
+  setShowUnscored: (showUnscored) => set({ showUnscored }),
+
   setReleasedFilter: (releasedFilter) => set({ releasedFilter }),
 
   loadCitySummaries: async () => {
-    const { isAdmin, viewAsParent, releasedFilter, showRedLocations } = get();
+    const { isAdmin, viewAsParent, releasedFilter, showRedLocations, showUnscored } = get();
     const effectiveAdmin = isAdmin && !viewAsParent;
     // Non-admins (or view-as-parent): always released only. Admins: based on filter.
     const releasedOnly = !effectiveAdmin ? true : releasedFilter === "released" ? true : releasedFilter === "unreleased" ? false : undefined;
     // Non-admins with red toggle off: exclude RED from bubble counts
     const excludeRed = !effectiveAdmin && !showRedLocations;
-    const rawSummaries = await getCitySummaries(releasedOnly, excludeRed);
+    // Parents always exclude unscored; admins based on toggle
+    const excludeUnscored = !effectiveAdmin || !showUnscored;
+    const rawSummaries = await getCitySummaries(releasedOnly, excludeRed, excludeUnscored);
     // Consolidate to metro-level bubbles
     const summaries = consolidateToMetros(rawSummaries);
     set({ citySummaries: summaries, isLoading: false });
@@ -312,7 +319,7 @@ export const useVotesStore = create<VotesState>((set, get) => ({
   setReferencePoint: (coords) => set({ referencePoint: coords }),
 
   filteredLocations: () => {
-    const { locations, scoreFilters, isAdmin, viewAsParent, showRedLocations, releasedFilter } = get();
+    const { locations, scoreFilters, isAdmin, viewAsParent, showRedLocations, showUnscored, releasedFilter } = get();
     const effectiveAdmin = isAdmin && !viewAsParent;
 
     // Step 1: Apply released filter (belt-and-suspenders; server already filters)
@@ -328,7 +335,8 @@ export const useVotesStore = create<VotesState>((set, get) => ({
 
     // Step 2: Apply score/size filters based on admin status
     if (!effectiveAdmin) {
-      // Non-admin: simple red toggle
+      // Non-admin: always hide unscored + apply red toggle
+      filtered = filtered.filter((loc) => loc.scores?.overallColor != null);
       if (!showRedLocations) {
         return filtered.filter((loc) => {
           const color = loc.scores?.overallColor;
@@ -337,6 +345,11 @@ export const useVotesStore = create<VotesState>((set, get) => ({
         });
       }
       return filtered;
+    }
+
+    // Admin: hide unscored unless toggled on
+    if (!showUnscored) {
+      filtered = filtered.filter((loc) => loc.scores?.overallColor != null);
     }
 
     // Admin (effective): full filter logic

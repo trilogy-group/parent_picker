@@ -47,7 +47,8 @@ WHERE state = 'FL' AND city IN (
 -- ============================================================
 CREATE OR REPLACE FUNCTION get_location_cities(
   released_only boolean DEFAULT false,
-  exclude_red boolean DEFAULT false
+  exclude_red boolean DEFAULT false,
+  exclude_unscored boolean DEFAULT false
 )
 RETURNS TABLE (
   city text, state text,
@@ -68,6 +69,7 @@ BEGIN
       COALESCE(s.overall_color, '') != 'RED'
       AND COALESCE(s.size_classification, '') != 'Red (Reject)'
     ))
+    AND (NOT exclude_unscored OR s.overall_color IS NOT NULL)
   GROUP BY l.city, l.state;
 END;
 $$ LANGUAGE plpgsql STABLE SECURITY DEFINER;

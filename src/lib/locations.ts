@@ -271,10 +271,13 @@ function mapRows(rows: Record<string, unknown>[]): Location[] {
   }));
 }
 
-function getMockCitySummaries(releasedOnly?: boolean, excludeRed?: boolean): CitySummary[] {
+function getMockCitySummaries(releasedOnly?: boolean, excludeRed?: boolean, excludeUnscored?: boolean): CitySummary[] {
   let locs = releasedOnly ? mockLocations.filter(l => l.released === true) : mockLocations;
   if (excludeRed) {
     locs = locs.filter(l => l.scores?.overallColor !== "RED" && l.scores?.sizeClassification !== "Red (Reject)");
+  }
+  if (excludeUnscored) {
+    locs = locs.filter(l => l.scores?.overallColor != null);
   }
   const map = new Map<string, { city: string; state: string; lats: number[]; lngs: number[]; count: number; votes: number }>();
   for (const loc of locs) {
@@ -299,19 +302,20 @@ function getMockCitySummaries(releasedOnly?: boolean, excludeRed?: boolean): Cit
   }));
 }
 
-export async function getCitySummaries(releasedOnly?: boolean, excludeRed?: boolean): Promise<CitySummary[]> {
+export async function getCitySummaries(releasedOnly?: boolean, excludeRed?: boolean, excludeUnscored?: boolean): Promise<CitySummary[]> {
   if (!isSupabaseConfigured || !supabase) {
-    return getMockCitySummaries(releasedOnly, excludeRed);
+    return getMockCitySummaries(releasedOnly, excludeRed, excludeUnscored);
   }
 
   try {
     const { data, error } = await supabase.rpc("get_location_cities", {
       released_only: releasedOnly ?? false,
       exclude_red: excludeRed ?? false,
+      exclude_unscored: excludeUnscored ?? false,
     });
     if (error) {
       console.error("Error fetching city summaries:", error);
-      return getMockCitySummaries(releasedOnly, excludeRed);
+      return getMockCitySummaries(releasedOnly, excludeRed, excludeUnscored);
     }
     return (data || []).map((row: Record<string, unknown>) => ({
       city: row.city as string,
@@ -323,7 +327,7 @@ export async function getCitySummaries(releasedOnly?: boolean, excludeRed?: bool
     }));
   } catch (error) {
     console.error("Failed to fetch city summaries:", error);
-    return getMockCitySummaries(releasedOnly, excludeRed);
+    return getMockCitySummaries(releasedOnly, excludeRed, excludeUnscored);
   }
 }
 

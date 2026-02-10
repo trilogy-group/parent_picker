@@ -50,6 +50,7 @@ export function MapView() {
     fetchNearbyForce: s.fetchNearbyForce,
     // Include filter-related state so map re-renders when filters change
     showRedLocations: s.showRedLocations,
+    showUnscored: s.showUnscored,
     releasedFilter: s.releasedFilter,
     isAdmin: s.isAdmin,
     viewAsParent: s.viewAsParent,
