@@ -3375,6 +3375,189 @@ def run_tests():
             assert "government contacts" in content.lower(), "Government contacts action item not found"
         _()
 
+        # ============================================================
+        print("\n## 29. Mobile UX")
+        # ============================================================
+
+        @test("TC-29.1.1", "Mobile bottom sheet has AuthButton")
+        def _():
+            import os
+            page_path = os.path.join(os.path.dirname(__file__), "..", "src", "app", "page.tsx")
+            with open(page_path) as f:
+                content = f.read()
+            # Check that AuthButton appears inside the mobile bottom sheet section
+            mobile_section = content[content.index("mobile-bottom-sheet"):]
+            assert "AuthButton" in mobile_section, "AuthButton not found in mobile bottom sheet"
+        _()
+
+        @test("TC-29.1.2", "Mobile collapsed view has HelpModal")
+        def _():
+            import os
+            page_path = os.path.join(os.path.dirname(__file__), "..", "src", "app", "page.tsx")
+            with open(page_path) as f:
+                content = f.read()
+            # The collapsed summary section is between "Collapsed summary" and "Expanded panel"
+            collapsed_start = content.index("Collapsed summary")
+            collapsed_end = content.index("Expanded panel")
+            collapsed = content[collapsed_start:collapsed_end]
+            assert "HelpModal" in collapsed, "HelpModal not found in mobile collapsed view"
+        _()
+
+        @test("TC-29.1.3", "Mobile collapsed view has Suggest button")
+        def _():
+            import os
+            page_path = os.path.join(os.path.dirname(__file__), "..", "src", "app", "page.tsx")
+            with open(page_path) as f:
+                content = f.read()
+            collapsed_start = content.index("Collapsed summary")
+            collapsed_end = content.index("Expanded panel")
+            collapsed = content[collapsed_start:collapsed_end]
+            assert "Suggest a Location" in collapsed, "Suggest button not found in mobile collapsed view"
+        _()
+
+        @test("TC-29.1.4", "AuthButton accepts darkBg prop")
+        def _():
+            import os
+            auth_path = os.path.join(os.path.dirname(__file__), "..", "src", "components", "AuthButton.tsx")
+            with open(auth_path) as f:
+                content = f.read()
+            assert "darkBg" in content, "darkBg prop not found in AuthButton"
+            assert "darkBg = true" in content or "darkBg=true" in content, "darkBg default not set to true"
+        _()
+
+        @test("TC-29.1.5", "Mobile expanded panel is max-h-[50vh]")
+        def _():
+            import os
+            page_path = os.path.join(os.path.dirname(__file__), "..", "src", "app", "page.tsx")
+            with open(page_path) as f:
+                content = f.read()
+            assert "max-h-[50vh]" in content, "max-h-[50vh] not found in page.tsx"
+            assert "max-h-[70vh]" not in content, "Old max-h-[70vh] still present in page.tsx"
+        _()
+
+        @test("TC-29.2.1", "VoteButton has min-h-[44px] on mobile")
+        def _():
+            import os
+            vote_path = os.path.join(os.path.dirname(__file__), "..", "src", "components", "VoteButton.tsx")
+            with open(vote_path) as f:
+                content = f.read()
+            assert "min-h-[44px]" in content, "min-h-[44px] not found in VoteButton"
+            assert "lg:min-h-0" in content, "lg:min-h-0 not found in VoteButton"
+        _()
+
+        @test("TC-29.2.2", "SizeLabel uses text-[11px] on mobile")
+        def _():
+            import os
+            score_path = os.path.join(os.path.dirname(__file__), "..", "src", "components", "ScoreBadge.tsx")
+            with open(score_path) as f:
+                content = f.read()
+            assert "text-[11px]" in content, "text-[11px] not found in ScoreBadge"
+            assert "lg:text-[10px]" in content, "lg:text-[10px] not found in ScoreBadge"
+        _()
+
+        @test("TC-29.2.3", "ScoreLegend uses fixed positioning on mobile")
+        def _():
+            import os
+            score_path = os.path.join(os.path.dirname(__file__), "..", "src", "components", "ScoreBadge.tsx")
+            with open(score_path) as f:
+                content = f.read()
+            assert "lg:hidden fixed inset-0" in content, "Mobile fixed legend not found in ScoreBadge"
+            assert "hidden lg:block absolute" in content, "Desktop absolute legend not found in ScoreBadge"
+        _()
+
+        @test("TC-29.2.4", "flyToCoords includes bottom padding on mobile")
+        def _():
+            import os
+            map_path = os.path.join(os.path.dirname(__file__), "..", "src", "components", "MapView.tsx")
+            with open(map_path) as f:
+                content = f.read()
+            assert "window.innerWidth < 1024" in content, "Mobile detection not found in flyToCoords"
+            assert "bottom: 120" in content, "Bottom padding not found in flyToCoords"
+        _()
+
+        # ============================================================
+        # Section 30: Vote Comments
+        # ============================================================
+
+        @test("TC-30.1.1", "VoteButton shows comment dialog on authenticated vote click")
+        def _():
+            import os
+            vb_path = os.path.join(os.path.dirname(__file__), "..", "src", "components", "VoteButton.tsx")
+            with open(vb_path) as f:
+                content = f.read()
+            assert "showComment" in content, "showComment state not found in VoteButton"
+            assert "setShowComment(true)" in content, "Comment dialog not opened on vote click"
+        _()
+
+        @test("TC-30.1.2", "Comment textarea has 500 character max with counter")
+        def _():
+            import os
+            vb_path = os.path.join(os.path.dirname(__file__), "..", "src", "components", "VoteButton.tsx")
+            with open(vb_path) as f:
+                content = f.read()
+            assert "maxLength={500}" in content, "maxLength={500} not found on textarea"
+            assert "/500" in content, "Character counter not found"
+        _()
+
+        @test("TC-30.1.3", "Just vote button votes without comment")
+        def _():
+            import os
+            vb_path = os.path.join(os.path.dirname(__file__), "..", "src", "components", "VoteButton.tsx")
+            with open(vb_path) as f:
+                content = f.read()
+            assert "handleSkip" in content, "handleSkip not found in VoteButton"
+            assert "Just vote" in content, "Just vote button label not found"
+        _()
+
+        @test("TC-30.1.4", "Vote with comment sends comment through onVote")
+        def _():
+            import os
+            vb_path = os.path.join(os.path.dirname(__file__), "..", "src", "components", "VoteButton.tsx")
+            with open(vb_path) as f:
+                content = f.read()
+            assert "handleVoteWithComment" in content, "handleVoteWithComment not found"
+            assert "Vote with comment" in content, "Vote with comment button label not found"
+        _()
+
+        @test("TC-30.1.5", "onVote accepts optional comment parameter threaded through stack")
+        def _():
+            import os
+            votes_path = os.path.join(os.path.dirname(__file__), "..", "src", "lib", "votes.ts")
+            with open(votes_path) as f:
+                content = f.read()
+            assert "vote: (locationId: string, comment?: string)" in content, "vote() signature missing comment param"
+            assert "if (comment) row.comment = comment" in content, "comment not passed to Supabase insert"
+        _()
+
+        @test("TC-30.2.1", "Likes API returns voter_comments array")
+        def _():
+            import os
+            likes_path = os.path.join(os.path.dirname(__file__), "..", "src", "app", "api", "admin", "likes", "route.ts")
+            with open(likes_path) as f:
+                content = f.read()
+            assert "voter_comments" in content, "voter_comments not returned from likes API"
+            assert "comment" in content, "comment field not selected in likes API"
+        _()
+
+        @test("TC-30.2.2", "Admin likes tab shows comments alongside voter emails")
+        def _():
+            import os
+            card_path = os.path.join(os.path.dirname(__file__), "..", "src", "components", "AdminLocationCard.tsx")
+            with open(card_path) as f:
+                content = f.read()
+            assert "voter_comments" in content, "voter_comments not referenced in AdminLocationCard"
+        _()
+
+        @test("TC-30.2.3", "Votes without comments display email only")
+        def _():
+            import os
+            card_path = os.path.join(os.path.dirname(__file__), "..", "src", "components", "AdminLocationCard.tsx")
+            with open(card_path) as f:
+                content = f.read()
+            assert "vc.comment" in content, "Comment conditional check not found"
+            assert ".filter(vc => vc.comment)" in content, "Filter for comments not found — only votes with comments should show"
+        _()
+
         # Cleanup
         desktop.close()
         mobile.close()

@@ -14,7 +14,7 @@ interface LocationCardProps {
   hasVoted: boolean;
   isAuthenticated: boolean;
   onSelect: () => void;
-  onVote: () => void;
+  onVote: (comment?: string) => void;
   onUnvote: () => void;
 }
 

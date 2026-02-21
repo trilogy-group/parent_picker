@@ -66,5 +66,6 @@ export interface AdminLocation {
 export interface LikedLocation extends AdminLocation {
   vote_count: number;
   voter_emails: string[];
+  voter_comments: { email: string; comment: string | null }[];
 }
 

@@ -990,6 +990,51 @@ The help guide email template includes location-specific and general variants wi
 
 ---
 
+## 29. Mobile UX
+
+### REQ-29.1: Mobile Collapsed View
+The mobile bottom sheet collapsed view includes auth, help, and suggest controls matching the desktop panel.
+
+**Test Cases:**
+- [ ] `TC-29.1.1`: Mobile bottom sheet has AuthButton (code review: page.tsx)
+- [ ] `TC-29.1.2`: Mobile collapsed view has HelpModal (code review: page.tsx)
+- [ ] `TC-29.1.3`: Mobile collapsed view has Suggest button (code review: page.tsx)
+- [ ] `TC-29.1.4`: AuthButton accepts darkBg prop (code review: AuthButton.tsx)
+- [ ] `TC-29.1.5`: Mobile expanded panel is max-h-[50vh] (code review: page.tsx)
+
+### REQ-29.2: Mobile Touch & Readability
+Mobile-specific improvements for touch targets, text sizing, popup positioning, and map padding.
+
+**Test Cases:**
+- [ ] `TC-29.2.1`: VoteButton has min-h-[44px] on mobile (code review: VoteButton.tsx)
+- [ ] `TC-29.2.2`: SizeLabel uses text-[11px] on mobile (code review: ScoreBadge.tsx)
+- [ ] `TC-29.2.3`: ScoreLegend uses fixed positioning on mobile (code review: ScoreBadge.tsx)
+- [ ] `TC-29.2.4`: flyToCoords includes bottom padding on mobile (code review: MapView.tsx)
+
+---
+
+## Section 30: Vote Comments
+
+### REQ-30.1: Vote Comment Dialog
+When an authenticated parent clicks the heart button to vote, a dialog appears asking "Want to tell us why you like this spot?" with an optional textarea (500 char max). The parent can either "Just vote" (no comment) or "Vote with comment". Closing the dialog without action still fires the vote.
+
+**Test Cases:**
+- [ ] `TC-30.1.1`: VoteButton shows comment dialog on authenticated vote click (code review: VoteButton.tsx showComment state)
+- [ ] `TC-30.1.2`: Comment textarea has 500 character max with counter (code review: VoteButton.tsx maxLength={500})
+- [ ] `TC-30.1.3`: "Just vote" button votes without comment (code review: VoteButton.tsx handleSkip)
+- [ ] `TC-30.1.4`: "Vote with comment" sends comment through onVote (code review: VoteButton.tsx handleVoteWithComment)
+- [ ] `TC-30.1.5`: onVote prop accepts optional comment parameter threaded through LocationCard → LocationsList → Zustand (code review: votes.ts vote signature)
+
+### REQ-30.2: Admin Comment Display
+The admin Likes tab shows voter comments alongside voter emails. The API returns `voter_comments` with email and comment for each vote. Votes without comments show email only.
+
+**Test Cases:**
+- [ ] `TC-30.2.1`: Likes API returns voter_comments array with email and comment (code review: admin/likes/route.ts)
+- [ ] `TC-30.2.2`: Admin likes tab shows comments alongside voter emails (code review: AdminLocationCard.tsx voter comments section)
+- [ ] `TC-30.2.3`: Votes without comments display email only, no empty quotes (code review: AdminLocationCard.tsx filter for vc.comment)
+
+---
+
 ## Test Execution Summary
 
 | # | Category | Total TCs |
@@ -1022,7 +1067,9 @@ The help guide email template includes location-specific and general variants wi
 | 26 | Released/Unreleased Locations | 14 |
 | 27 | Suggest Form Validation & Sanitization | 43 |
 | 28 | Help Requests | 13 |
-| | **TOTAL** | **386** |
+| 29 | Mobile UX | 9 |
+| 30 | Vote Comments | 8 |
+| | **TOTAL** | **403** |
 
 ---
 
@@ -1040,6 +1087,8 @@ The help guide email template includes location-specific and general variants wi
 | 1.7.0 | 2026-02-21 | Added suggest form validation & XSS sanitization (Section 27): required field validation, state auto-uppercase, sqft numeric check, notes length, HTML tag stripping, error banners, 25 TCs, total 358 TCs |
 | 1.8.0 | 2026-02-21 | Added school type tabs (REQ-27.7/27.8/27.9): Micro/Growth/Flagship tabs on suggest page and modal, school type in notes, admin badge parsing, 21 TCs, total 379 TCs |
 | 1.9.0 | 2026-02-21 | Added help requests (Section 28): DB storage, API endpoint, help guide email, admin tab, 13 TCs, total 386 TCs |
+| 2.0.0 | 2026-02-21 | Added mobile UX (Section 29): auth/help/suggest in collapsed view, 50vh panel, touch targets, score legend positioning, flyTo padding, 9 TCs, total 395 TCs |
+| 2.1.0 | 2026-02-21 | Added vote comments (Section 30): optional comment on vote, DB column + constraint, admin display, 8 TCs, total 403 TCs |
 
 ---
 

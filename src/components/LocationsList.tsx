@@ -459,7 +459,7 @@ export function LocationsList() {
                   isAuthenticated={canVote}
 
                   onSelect={() => setSelectedLocation(location.id)}
-                  onVote={() => vote(location.id)}
+                  onVote={(comment?: string) => vote(location.id, comment)}
                   onUnvote={() => unvote(location.id)}
                 />
             ))}

@@ -224,6 +224,18 @@ export function AdminLocationCard({ location, token, onRemove, mode = "suggestio
           </div>
         </div>
 
+        {/* Voter comments (like mode) */}
+        {isLikeMode && likedLocation?.voter_comments?.some(vc => vc.comment) && (
+          <div className="space-y-1 bg-muted/30 rounded px-3 py-2">
+            {likedLocation.voter_comments.filter(vc => vc.comment).map((vc, i) => (
+              <div key={i} className="text-sm">
+                <span className="font-medium text-muted-foreground">{vc.email}</span>
+                <span className="italic ml-1">&mdash; &ldquo;{vc.comment}&rdquo;</span>
+              </div>
+            ))}
+          </div>
+        )}
+
         {/* School type badge + Notes */}
         {(() => {
           const { schoolType, remainingNotes } = parseSchoolType(location.notes);

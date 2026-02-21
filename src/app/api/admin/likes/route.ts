@@ -45,7 +45,7 @@ export async function GET(request: NextRequest) {
   // Get active locations that have votes, with vote counts
   const { data: votedLocations, error: voteError } = await supabase
     .from("pp_votes")
-    .select("location_id, user_id");
+    .select("location_id, user_id, comment");
 
   if (voteError) {
     return NextResponse.json({ error: voteError.message }, { status: 500 });
@@ -55,11 +55,11 @@ export async function GET(request: NextRequest) {
     return NextResponse.json([]);
   }
 
-  // Group votes by location_id
-  const voteMap = new Map<string, string[]>();
+  // Group votes by location_id (track user_id + comment)
+  const voteMap = new Map<string, { user_id: string; comment: string | null }[]>();
   for (const vote of votedLocations) {
     const existing = voteMap.get(vote.location_id) || [];
-    existing.push(vote.user_id);
+    existing.push({ user_id: vote.user_id, comment: vote.comment ?? null });
     voteMap.set(vote.location_id, existing);
   }
 
@@ -86,14 +86,15 @@ export async function GET(request: NextRequest) {
         .eq("location_id", loc.id)
         .maybeSingle();
 
-      // Get voter emails
-      const voterUserIds = voteMap.get(loc.id) || [];
+      // Get voter emails and comments
+      const voters = voteMap.get(loc.id) || [];
       const voterEmails: string[] = [];
-      for (const uid of voterUserIds) {
-        const { data: userData } = await supabase.auth.admin.getUserById(uid);
-        if (userData?.user?.email) {
-          voterEmails.push(userData.user.email);
-        }
+      const voterComments: { email: string; comment: string | null }[] = [];
+      for (const v of voters) {
+        const { data: userData } = await supabase.auth.admin.getUserById(v.user_id);
+        const email = userData?.user?.email || "unknown";
+        voterEmails.push(email);
+        voterComments.push({ email, comment: v.comment });
       }
 
       return {
@@ -110,8 +111,9 @@ export async function GET(request: NextRequest) {
         suggested_by: loc.suggested_by,
         created_at: loc.created_at,
         scores: mapScores(scoreData),
-        vote_count: voterUserIds.length,
+        vote_count: voters.length,
         voter_emails: voterEmails,
+        voter_comments: voterComments,
       };
     })
   );
