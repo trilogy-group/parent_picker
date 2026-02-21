@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, CheckCircle2, Building2, TreePine, DollarSign, MapPin, Upload as UploadIcon, Clock, School, Rocket, Crown } from "lucide-react";
@@ -16,7 +16,7 @@ import { useAuth } from "@/components/AuthProvider";
 import { SignInPrompt } from "@/components/SignInPrompt";
 import { validateSuggestForm, hasErrors, sanitizeText, FormErrors } from "@/lib/validation";
 
-export default function SuggestPage() {
+function SuggestPageInner() {
   const searchParams = useSearchParams();
   const standalone = searchParams.get("standalone") === "true";
   const { addLocation, setSelectedLocation, userId } = useVotesStore();
@@ -476,5 +476,13 @@ export default function SuggestPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function SuggestPage() {
+  return (
+    <Suspense>
+      <SuggestPageInner />
+    </Suspense>
   );
 }
