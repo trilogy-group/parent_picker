@@ -2,6 +2,7 @@
 
 import { Card } from "@/components/ui/card";
 import { VoteButton } from "./VoteButton";
+import { HelpModal } from "./HelpModal";
 import { SizeLabel, ScoreDetails, overallCardBg, overallCardBorder } from "./ScoreBadge";
 import { Location } from "@/types";
 import { cn } from "@/lib/utils";
@@ -12,8 +13,9 @@ interface LocationCardProps {
   isSelected: boolean;
   hasVoted: boolean;
   isAuthenticated: boolean;
+  isTop10?: boolean;
   onSelect: () => void;
-  onVote: () => void;
+  onVote: (comment?: string) => void;
   onUnvote: () => void;
 }
 
@@ -22,6 +24,7 @@ export function LocationCard({
   isSelected,
   hasVoted,
   isAuthenticated,
+  isTop10,
   onSelect,
   onVote,
   onUnvote,
@@ -59,14 +62,33 @@ export function LocationCard({
         </div>
       </div>
 
-      {location.suggested && (
-        <span className="inline-block text-[10px] px-1.5 py-0.5 bg-amber-100 text-amber-800 rounded-full">
-          Parent Suggested
-        </span>
+      {/* Badges row */}
+      {(location.suggested || isTop10) && (
+        <div className="flex items-center gap-1.5">
+          {isTop10 && (
+            <span className="inline-block text-[10px] px-1.5 py-0.5 bg-blue-100 text-blue-700 font-semibold rounded-full">
+              Top 10
+            </span>
+          )}
+          {location.suggested && (
+            <span className="inline-block text-[10px] px-1.5 py-0.5 bg-amber-100 text-amber-800 rounded-full">
+              Parent Suggested
+            </span>
+          )}
+        </div>
       )}
 
       {/* Row 2: Sub-scores with info + legend */}
       <ScoreDetails scores={location.scores} />
+
+      {/* Row 3: I can help */}
+      <div className="flex items-center justify-between pt-0.5">
+        <HelpModal
+          variant="card"
+          locationName={location.name}
+          locationAddress={`${location.address}, ${location.city}, ${location.state}`}
+        />
+      </div>
     </Card>
   );
 }

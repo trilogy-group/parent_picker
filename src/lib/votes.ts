@@ -55,7 +55,7 @@ interface VotesState {
   clearScoreFilters: () => void;
   activeFilterCount: () => number;
   addLocation: (location: Location) => void;
-  vote: (locationId: string) => void;
+  vote: (locationId: string, comment?: string) => void;
   unvote: (locationId: string) => void;
   setSelectedLocation: (id: string | null) => void;
   setSearchQuery: (query: string) => void;
@@ -233,7 +233,7 @@ export const useVotesStore = create<VotesState>((set, get) => ({
       locations: [...state.locations, location],
     })),
 
-  vote: (locationId) => {
+  vote: (locationId, comment) => {
     const state = get();
     if (state.votedLocationIds.has(locationId)) return;
 
@@ -247,9 +247,11 @@ export const useVotesStore = create<VotesState>((set, get) => ({
 
     // Persist to database if logged in and Supabase is configured
     if (state.userId && isSupabaseConfigured && supabase) {
+      const row: Record<string, string> = { location_id: locationId, user_id: state.userId };
+      if (comment) row.comment = comment;
       supabase
         .from("pp_votes")
-        .insert({ location_id: locationId, user_id: state.userId })
+        .insert(row)
         .then(({ error }) => {
           if (error) {
             console.error("Error persisting vote:", error);

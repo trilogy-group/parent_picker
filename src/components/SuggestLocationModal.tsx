@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Plus } from "lucide-react";
+import { Plus, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -30,6 +30,8 @@ export function SuggestLocationModal() {
     lng: number;
   } | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
+  const [submittedAddress, setSubmittedAddress] = useState("");
 
   const { addLocation, setSelectedLocation, setPreviewLocation, userId } = useVotesStore();
   const { user, isOfflineMode } = useAuth();
@@ -57,6 +59,8 @@ export function SuggestLocationModal() {
         coords = await geocodeAddress(address, city, state);
       }
 
+      const fullAddress = `${address}, ${city}, ${state}`;
+
       const newLocation = await suggestLocation(
         address,
         city,
@@ -67,8 +71,8 @@ export function SuggestLocationModal() {
       );
       addLocation(newLocation);
       setSelectedLocation(newLocation.id);
-      setOpen(false);
-      resetForm();
+      setSubmittedAddress(fullAddress);
+      setSubmitted(true);
     } finally {
       setIsSubmitting(false);
     }
@@ -87,6 +91,9 @@ export function SuggestLocationModal() {
     setOpen(isOpen);
     if (!isOpen) {
       setPreviewLocation(null);
+      setSubmitted(false);
+      setSubmittedAddress("");
+      resetForm();
     }
   };
 
@@ -99,10 +106,32 @@ export function SuggestLocationModal() {
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-md" draggable position="top-right">
+        {submitted ? (
+          <div className="py-6 text-center">
+            <CheckCircle2 className="w-12 h-12 text-green-500 mx-auto mb-3" />
+            <h3 className="text-lg font-bold mb-2">Location Submitted!</h3>
+            <p className="text-sm text-muted-foreground mb-4">
+              Thank you for suggesting <strong>{submittedAddress}</strong>.
+            </p>
+            <div className="bg-blue-50 rounded-lg p-4 text-left text-sm space-y-2 mb-4">
+              <p className="font-medium text-blue-900">What happens next:</p>
+              <ol className="text-blue-800 space-y-1.5 ml-4 list-decimal">
+                <li>Our team will evaluate this location for school use</li>
+                <li>We&apos;ll check zoning, neighborhood, pricing, and building suitability</li>
+                <li>We&apos;ll email you the results with a detailed report</li>
+              </ol>
+              <p className="text-blue-700 text-xs mt-2 italic">
+                Evaluation typically takes just minutes.
+              </p>
+            </div>
+            <Button onClick={() => handleOpenChange(false)}>Done</Button>
+          </div>
+        ) : (
+        <>
         <DialogHeader draggable>
           <DialogTitle>Suggest a New Location</DialogTitle>
           <DialogDescription>
-            Know a great spot for a micro school? Share it with other parents.
+            Know a great spot for a school? We can evaluate it in minutes and email you the results.
           </DialogDescription>
         </DialogHeader>
         {canSuggest ? (
@@ -176,6 +205,8 @@ export function SuggestLocationModal() {
             title="Sign in to suggest"
             description="Sign in with your email to suggest new locations for micro schools."
           />
+        )}
+        </>
         )}
       </DialogContent>
     </Dialog>

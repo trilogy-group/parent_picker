@@ -342,6 +342,12 @@ export function LocationsList() {
     return onScreen;
   }, [locations, mapBounds, mapCenter]);
 
+  // Compute top-10 IDs by votes in current viewport
+  const top10Ids = useMemo(() => {
+    const byVotes = [...sorted].sort((a, b) => b.votes - a.votes);
+    return new Set(byVotes.slice(0, 10).filter((l) => l.votes > 0).map((l) => l.id));
+  }, [sorted]);
+
   const PAGE_SIZE = 25;
   const showCount = (page + 1) * PAGE_SIZE;
   const visible = sorted.slice(0, showCount);
@@ -430,9 +436,9 @@ export function LocationsList() {
                   isSelected={selectedLocationId === location.id}
                   hasVoted={votedLocationIds.has(location.id)}
                   isAuthenticated={canVote}
-
+                  isTop10={top10Ids.has(location.id)}
                   onSelect={() => setSelectedLocation(location.id)}
-                  onVote={() => vote(location.id)}
+                  onVote={(comment?: string) => vote(location.id, comment)}
                   onUnvote={() => unvote(location.id)}
                 />
             ))}
