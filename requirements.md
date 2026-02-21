@@ -257,35 +257,32 @@ A suggest button appears below the "How It Works" section in the blue panel head
 - [ ] `TC-6.1.3`: Button is amber/yellow colored (bg-amber-400)
 - [ ] `TC-6.1.4`: Button is visible in panel (desktop) and bottom sheet (mobile)
 
-### REQ-6.2: Suggest Modal
-Clicking the button opens a modal dialog.
+### REQ-6.2: Suggest Page Navigation
+Clicking the suggest button navigates to the `/suggest` full-page form.
 
 **Test Cases:**
-- [ ] `TC-6.2.1`: Modal opens on button click
-- [ ] `TC-6.2.2`: Modal has title "Suggest a New Location"
-- [ ] `TC-6.2.3`: Modal has description text
-- [ ] `TC-6.2.4`: Modal can be closed with X button
-- [ ] `TC-6.2.5`: Modal can be closed with Escape key
-- [ ] `TC-6.2.6`: Modal has backdrop overlay
+- [ ] `TC-6.2.1`: Suggest button links to /suggest page
+- [ ] `TC-6.2.2`: /suggest page has title "Suggest a New Location"
+- [ ] `TC-6.2.3`: /suggest page has "Back to Map" link
 
 ### REQ-6.3: Suggest Form
-The modal contains a form for location details.
+The `/suggest` page contains a form for location details.
 
 **Test Cases:**
 - [ ] `TC-6.3.1`: Form has Street Address field (required)
 - [ ] `TC-6.3.2`: Form has City field (required)
 - [ ] `TC-6.3.3`: Form has State field (required, 2 char max)
 - [ ] `TC-6.3.4`: Form has Notes field (optional)
-- [ ] `TC-6.3.5`: Form has Cancel button
+- [ ] `TC-6.3.5`: Form has Back to Map link
 - [ ] `TC-6.3.6`: Form has Submit button
 - [ ] `TC-6.3.7`: Submit is disabled while submitting
 
 ### REQ-6.4: Suggest Submission
-Submitting the form adds a new suggested location.
+Submitting the form adds a new suggested location and shows success state.
 
 **Test Cases:**
-- [ ] `TC-6.4.1`: Valid submission closes modal
-- [ ] `TC-6.4.2`: New location appears in list with "Parent Suggested" badge
+- [ ] `TC-6.4.1`: Valid submission shows success message
+- [ ] `TC-6.4.2`: Success state has "Parent Suggested" or confirmation text
 - [ ] `TC-6.4.3`: New location appears on map with amber marker
 - [ ] `TC-6.4.4`: Map centers on new location after submission
 - [ ] `TC-6.4.5`: Form fields are cleared after successful submission
@@ -869,6 +866,98 @@ Admin users can toggle between released, unreleased, or all locations.
 
 ---
 
+## 27. Suggest Form Validation & Sanitization
+
+### REQ-27.1: Required Field Validation
+Submitting the suggest form with empty required fields shows inline error messages.
+
+**Test Cases:**
+- [ ] `TC-27.1.1`: Empty submit shows errors on address, city, state
+- [ ] `TC-27.1.2`: Address error says "Street address is required"
+- [ ] `TC-27.1.3`: City error says "City is required"
+- [ ] `TC-27.1.4`: State error says "State is required"
+- [ ] `TC-27.1.5`: Fixing fields and resubmitting clears errors
+- [ ] `TC-27.1.6`: Errors render as red text below field
+
+### REQ-27.2: State Field Validation
+State field enforces 2 uppercase letters and auto-uppercases input.
+
+**Test Cases:**
+- [ ] `TC-27.2.1`: State "TX" accepted
+- [ ] `TC-27.2.2`: State "tx" auto-uppercased to "TX"
+- [ ] `TC-27.2.3`: State "T" shows error
+- [ ] `TC-27.2.4`: State "123" shows error
+- [ ] `TC-27.2.5`: State field has maxLength=2
+
+### REQ-27.3: Square Footage Validation
+Square footage is optional but must be numeric when provided.
+
+**Test Cases:**
+- [ ] `TC-27.3.1`: Sqft "3500" accepted
+- [ ] `TC-27.3.2`: Sqft "3,500" accepted
+- [ ] `TC-27.3.3`: Sqft "abc" shows error
+- [ ] `TC-27.3.4`: Empty sqft accepted (optional)
+
+### REQ-27.4: Notes Length Validation
+Notes must be under 2000 characters.
+
+**Test Cases:**
+- [ ] `TC-27.4.1`: Notes under 2000 chars accepted
+- [ ] `TC-27.4.2`: Notes over 2000 chars shows error
+
+### REQ-27.5: XSS Sanitization
+All text inputs are sanitized to strip HTML tags before storage.
+
+**Test Cases:**
+- [ ] `TC-27.5.1`: `<script>` tags stripped from input
+- [ ] `TC-27.5.2`: `<b>bold</b>` stripped to "bold"
+- [ ] `TC-27.5.3`: Normal text unchanged
+- [ ] `TC-27.5.4`: suggestLocation() sanitizes before DB insert
+
+### REQ-27.6: Server Error Handling
+Network/server errors display a user-visible error banner.
+
+**Test Cases:**
+- [ ] `TC-27.6.1`: Network error shows error banner
+- [ ] `TC-27.6.2`: Error banner has red styling
+- [ ] `TC-27.6.3`: Error clears on next submit attempt
+- [ ] `TC-27.6.4`: Submit button re-enables after failure
+
+### REQ-27.7: School Type Tabs on Suggest Page
+The `/suggest` page displays three school type tabs (Micro, Growth, Flagship) that replace the static criteria section. Each tab shows type-specific criteria.
+
+**Test Cases:**
+- [ ] `TC-27.7.1`: Three school type tab buttons visible (Micro, Growth, Flagship)
+- [ ] `TC-27.7.2`: Micro tab is selected by default (has active styling)
+- [ ] `TC-27.7.3`: Micro tab has "FOCUS" badge
+- [ ] `TC-27.7.4`: Clicking Growth tab switches content to Growth criteria
+- [ ] `TC-27.7.5`: Clicking Flagship tab switches content to Flagship criteria
+- [ ] `TC-27.7.6`: Each tab shows criteria sections (Physical, Neighborhood, Economics)
+- [ ] `TC-27.7.7`: Each tab shows tagline in colored callout
+- [ ] `TC-27.7.8`: Each tab shows a timeline
+- [ ] `TC-27.7.9`: Submitted notes start with "School type: Micro" when Micro tab active
+- [ ] `TC-27.7.10`: Submitted notes start with "School type: Growth" when Growth tab active
+- [ ] `TC-27.7.11`: Submitted notes start with "School type: Flagship" when Flagship tab active
+
+### REQ-27.8: Suggest Button Links to /suggest Page
+The main page suggest button navigates directly to the `/suggest` full form page (modal removed).
+
+**Test Cases:**
+- [ ] `TC-27.8.1`: Main page suggest button links to /suggest (no modal)
+- [ ] `TC-27.8.2`: Suggest button has amber styling and plus icon
+
+### REQ-27.9: School Type Badge on Admin Cards
+Admin location cards parse the school type from notes and display it as a colored badge.
+
+**Test Cases:**
+- [ ] `TC-27.9.1`: parseSchoolType extracts school type from "School type: Micro\nrest"
+- [ ] `TC-27.9.2`: parseSchoolType returns null for notes without school type prefix
+- [ ] `TC-27.9.3`: parseSchoolType returns null for empty/null notes
+- [ ] `TC-27.9.4`: AdminLocationCard source includes parseSchoolType import
+- [ ] `TC-27.9.5`: AdminLocationCard renders school type badge with color classes (blue/purple/amber)
+
+---
+
 ## Test Execution Summary
 
 | # | Category | Total TCs |
@@ -878,7 +967,7 @@ Admin users can toggle between released, unreleased, or all locations.
 | 3 | Map Functionality | 19 |
 | 4 | Locations List | 31 |
 | 5 | Voting System | 12 |
-| 6 | Suggest Location | 23 |
+| 6 | Suggest Location | 20 |
 | 7 | How It Works | 4 |
 | 8 | Responsive Design | 11 |
 | 9 | Data Layer | 18 |
@@ -899,7 +988,8 @@ Admin users can toggle between released, unreleased, or all locations.
 | 24 | Admin vs Non-Admin Filters | 13 |
 | 25 | Metro City Bubbles | 13 |
 | 26 | Released/Unreleased Locations | 14 |
-| | **TOTAL** | **333** |
+| 27 | Suggest Form Validation & Sanitization | 43 |
+| | **TOTAL** | **373** |
 
 ---
 
@@ -914,6 +1004,8 @@ Admin users can toggle between released, unreleased, or all locations.
 | 1.4.0 | 2026-02-06 | Added TODO-based parent assistance emails (Section 23): zoning/demographics/pricing TODOs with scenario-specific messaging, 19 TCs |
 | 1.5.0 | 2026-02-07 | TDD audit: Updated REQ-4.2 (search→filters), REQ-4.5 (on-screen only), REQ-18 (score display redesign: 4 subscores, card tint, artifact link, size label, popup redesign), updated tagline, 293 total TCs |
 | 1.6.0 | 2026-02-09 | Added admin/non-admin filters (Section 24), metro city bubbles (Section 25), released/unreleased locations (Section 26), view-as-parent toggle, 40 TCs, total 333 TCs |
+| 1.7.0 | 2026-02-21 | Added suggest form validation & XSS sanitization (Section 27): required field validation, state auto-uppercase, sqft numeric check, notes length, HTML tag stripping, error banners, 25 TCs, total 358 TCs |
+| 1.8.0 | 2026-02-21 | Added school type tabs (REQ-27.7/27.8/27.9): Micro/Growth/Flagship tabs on suggest page and modal, school type in notes, admin badge parsing, 21 TCs, total 379 TCs |
 
 ---
 

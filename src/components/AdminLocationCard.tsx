@@ -6,6 +6,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ScoreBadge } from "./ScoreBadge";
 import { AdminLocation, LikedLocation, LocationScores } from "@/types";
+import { parseSchoolType } from "@/lib/school-types";
 
 interface AdminLocationCardProps {
   location: AdminLocation | LikedLocation;
@@ -223,12 +224,29 @@ export function AdminLocationCard({ location, token, onRemove, mode = "suggestio
           </div>
         </div>
 
-        {/* Notes */}
-        {location.notes && (
-          <p className="text-sm text-muted-foreground bg-muted/50 rounded px-3 py-2 italic">
-            &ldquo;{location.notes}&rdquo;
-          </p>
-        )}
+        {/* School type badge + Notes */}
+        {(() => {
+          const { schoolType, remainingNotes } = parseSchoolType(location.notes);
+          const badgeColors: Record<string, string> = {
+            Micro: "bg-blue-100 text-blue-700",
+            Growth: "bg-purple-100 text-purple-700",
+            Flagship: "bg-amber-100 text-amber-700",
+          };
+          return (
+            <>
+              {schoolType && (
+                <span className={`inline-block text-xs font-medium px-2 py-0.5 rounded-full ${badgeColors[schoolType] || "bg-gray-100 text-gray-700"}`}>
+                  {schoolType}
+                </span>
+              )}
+              {remainingNotes && (
+                <p className="text-sm text-muted-foreground bg-muted/50 rounded px-3 py-2 italic">
+                  &ldquo;{remainingNotes}&rdquo;
+                </p>
+              )}
+            </>
+          );
+        })()}
 
         {/* Scores */}
         <div>
