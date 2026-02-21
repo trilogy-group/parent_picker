@@ -5,6 +5,7 @@ import Link from "next/link";
 import { ChevronUp, ChevronDown, Plus } from "lucide-react";
 import { Map } from "@/components/Map";
 import { LocationsList } from "@/components/LocationsList";
+import { HelpModal } from "@/components/HelpModal";
 import { Button } from "@/components/ui/button";
 import { AuthButton } from "@/components/AuthButton";
 import { useVotesStore } from "@/lib/votes";
@@ -46,48 +47,52 @@ export default function Home() {
       {/* Desktop: Left overlay panel */}
       <div data-testid="desktop-panel" className="hidden lg:flex flex-col absolute top-4 left-4 bottom-4 w-[380px] bg-blue-600 rounded-xl shadow-2xl overflow-hidden">
         {/* Panel Header */}
-        <div className="p-4 pb-2 text-white">
-          <div className="flex items-center gap-1.5 mb-1">
-            <svg className="w-5 h-5 shrink-0" fill="currentColor" viewBox="0 0 24 24">
-              <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
-            </svg>
-            <h1 className="text-lg font-bold leading-tight">Alpha School Locations</h1>
+        <div className="px-4 pt-4 pb-2 text-white">
+          <div className="flex items-center justify-between mb-1">
+            <div className="flex items-center gap-1.5">
+              <svg className="w-5 h-5 shrink-0" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
+              </svg>
+              <h1 className="text-lg font-bold leading-tight">Alpha School Locations</h1>
+            </div>
+            <AuthButton />
           </div>
-          <p className="text-blue-100 text-sm mb-1">Find &amp; vote on micro school sites</p>
-          <AuthButton />
+          <p className="text-blue-100 text-sm">Help us find the perfect space in your area</p>
         </div>
 
-        {/* Stats */}
-        <div className="px-5 pb-4 text-white border-b border-blue-500">
-          <div className="flex items-center gap-2">
-            <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-              <path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/>
-            </svg>
-            <span className="text-2xl font-bold">{totalVotes}</span>
-            <span className="text-blue-100">Votes from Parents</span>
+        {/* How you can help */}
+        <div className="px-4 pb-3 text-white">
+          <ul className="text-xs space-y-1 text-blue-100 mb-3">
+            <li className="flex gap-1.5">
+              <span className="text-amber-300 mt-0.5">&#8226;</span>
+              <span>Suggest a space you know — we can evaluate it in minutes</span>
+            </li>
+            <li className="flex gap-1.5">
+              <span className="text-amber-300 mt-0.5">&#8226;</span>
+              <span>Vote for locations you&apos;d want your kids to attend</span>
+            </li>
+            <li className="flex gap-1.5">
+              <span className="text-amber-300 mt-0.5">&#8226;</span>
+              <span>Connect us with landlords or property owners</span>
+            </li>
+          </ul>
+          <div className="flex gap-2">
+            <HelpModal variant="panel" />
+            <Link href="/suggest" className="flex-1">
+              <button className="w-full flex items-center justify-center gap-1.5 bg-amber-400 hover:bg-amber-500 text-amber-950 font-semibold text-xs py-2 px-3 rounded-lg transition-colors shadow-md">
+                <Plus className="w-3.5 h-3.5" />
+                Suggest a Location
+              </button>
+            </Link>
           </div>
         </div>
 
-        {/* How it works */}
-        <div className="px-5 pb-3">
-          <h3 className="text-white font-semibold text-sm mb-2">How It Works</h3>
-          <ol className="text-blue-100 text-xs space-y-1.5">
-            <li className="flex gap-2">
-              <span className="bg-blue-500 text-white rounded-full w-4 h-4 flex items-center justify-center text-[10px] flex-shrink-0">1</span>
-              <span>Browse locations on the map or list below</span>
-            </li>
-            <li className="flex gap-2">
-              <span className="bg-blue-500 text-white rounded-full w-4 h-4 flex items-center justify-center text-[10px] flex-shrink-0">2</span>
-              <span>Vote for locations near you</span>
-            </li>
-            <li className="flex gap-2">
-              <span className="bg-blue-500 text-white rounded-full w-4 h-4 flex items-center justify-center text-[10px] flex-shrink-0">3</span>
-              <span>Top-voted locations will be prioritized for development</span>
-            </li>
-          </ol>
-          <div className="mt-3">
-            <Link href="/suggest"><Button className="gap-2 bg-amber-400 hover:bg-amber-500 text-amber-950 font-semibold"><Plus className="h-4 w-4" />Or Suggest New Location</Button></Link>
-          </div>
+        {/* Vote counter */}
+        <div className="px-4 pb-3 flex items-center gap-2 text-white border-b border-blue-500">
+          <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+            <path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/>
+          </svg>
+          <span className="text-sm"><strong>{totalVotes}</strong> votes from parents</span>
         </div>
 
         {/* Locations List */}

@@ -2,6 +2,7 @@
 
 import { Card } from "@/components/ui/card";
 import { VoteButton } from "./VoteButton";
+import { HelpModal } from "./HelpModal";
 import { SizeLabel, ScoreDetails, overallCardBg, overallCardBorder } from "./ScoreBadge";
 import { Location } from "@/types";
 import { cn } from "@/lib/utils";
@@ -67,6 +68,15 @@ export function LocationCard({
 
       {/* Row 2: Sub-scores with info + legend */}
       <ScoreDetails scores={location.scores} />
+
+      {/* Row 3: I can help */}
+      <div className="flex items-center justify-between pt-0.5">
+        <HelpModal
+          variant="card"
+          locationName={location.name}
+          locationAddress={`${location.address}, ${location.city}, ${location.state}`}
+        />
+      </div>
     </Card>
   );
 }

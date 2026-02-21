@@ -4,6 +4,7 @@ import { useEffect, useRef, useCallback, useState, useMemo } from "react";
 import Map, { Source, Layer, NavigationControl, Popup, Marker } from "react-map-gl/mapbox";
 import { MapPin } from "lucide-react";
 import { SizeLabel, ScoreDetails, overallCardBorder, overallCardBg } from "./ScoreBadge";
+import { HelpModal } from "./HelpModal";
 import { extractStreet, extractZip, formatCityLine, hasDistinctName } from "@/lib/address";
 import { useVotesStore } from "@/lib/votes";
 import { useShallow } from "zustand/react/shallow";
@@ -438,6 +439,13 @@ export function MapView() {
             )}
             <div className="mt-2">
               <ScoreDetails scores={selectedLocation.scores} />
+            </div>
+            <div className="flex items-center pt-1">
+              <HelpModal
+                variant="card"
+                locationName={selectedLocation.name}
+                locationAddress={`${selectedLocation.address}, ${selectedLocation.city}, ${selectedLocation.state}`}
+              />
             </div>
           </div>
         </Popup>
