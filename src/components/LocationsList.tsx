@@ -7,6 +7,29 @@ import { useVotesStore, ScoreFilterCategory, ReleasedFilter } from "@/lib/votes"
 import { useShallow } from "zustand/react/shallow";
 import { getDistanceMiles } from "@/lib/locations";
 import { useAuth } from "./AuthProvider";
+import { Location } from "@/types";
+
+// Score-based sort: GREEN first, then YELLOW (most green subscores first), then AMBER, then RED, then unscored
+const COLOR_RANK: Record<string, number> = { GREEN: 0, YELLOW: 1, AMBER: 2, RED: 3 };
+
+function countGreenSubscores(loc: Location): number {
+  if (!loc.scores) return 0;
+  let count = 0;
+  for (const key of ["neighborhood", "zoning", "building", "price"] as const) {
+    if (loc.scores[key]?.color === "GREEN") count++;
+  }
+  return count;
+}
+
+function scoreSort(a: Location, b: Location): number {
+  const aColor = a.scores?.overallColor || "";
+  const bColor = b.scores?.overallColor || "";
+  const aRank = COLOR_RANK[aColor] ?? 99;
+  const bRank = COLOR_RANK[bColor] ?? 99;
+  if (aRank !== bRank) return aRank - bRank;
+  // Within same overall color, sort by green subscore count descending
+  return countGreenSubscores(b) - countGreenSubscores(a);
+}
 
 // Check if a location is within viewport bounds
 function isInViewport(
@@ -320,6 +343,8 @@ export function LocationsList() {
   // Memoize sorted list: on-screen only, votes desc then distance asc
   const sorted = useMemo(() => {
     if (!mapBounds) return [...locations].sort((a, b) => {
+      const s = scoreSort(a, b);
+      if (s !== 0) return s;
       if (b.votes !== a.votes) return b.votes - a.votes;
       if (mapCenter) {
         return getDistanceMiles(mapCenter.lat, mapCenter.lng, a.lat, a.lng)
@@ -331,6 +356,8 @@ export function LocationsList() {
     const onScreen = locations.filter(loc => isInViewport(loc.lat, loc.lng, mapBounds));
 
     onScreen.sort((a, b) => {
+      const s = scoreSort(a, b);
+      if (s !== 0) return s;
       if (b.votes !== a.votes) return b.votes - a.votes;
       if (mapCenter) {
         return getDistanceMiles(mapCenter.lat, mapCenter.lng, a.lat, a.lng)

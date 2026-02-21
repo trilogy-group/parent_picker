@@ -958,6 +958,38 @@ Admin location cards parse the school type from notes and display it as a colore
 
 ---
 
+## 28. Help Requests
+
+### REQ-28.1: Help Request Submission
+The HelpModal submits help requests to a backend API that persists them and sends a help guide email.
+
+**Test Cases:**
+- [ ] `TC-28.1.1`: HelpModal calls fetch to POST /api/help-request on submit (code review)
+- [ ] `TC-28.1.2`: API route inserts row into pp_help_requests table (code review)
+- [ ] `TC-28.1.3`: API route calls sendEmail with generateHelpGuideHtml (code review)
+- [ ] `TC-28.1.4`: Unauthenticated user provides email in form (code review: email input exists)
+- [ ] `TC-28.1.5`: Authenticated user uses session email (code review: user.email fallback)
+
+### REQ-28.2: Admin Help Requests Tab
+The admin page has a third tab "Help Requests" that shows all help requests.
+
+**Test Cases:**
+- [ ] `TC-28.2.1`: Admin page has three tabs (Suggestions, Likes, Help Requests)
+- [ ] `TC-28.2.2`: Help Requests tab shows count badge
+- [ ] `TC-28.2.3`: Each card shows email and date (code review: AdminHelpRequestCard)
+- [ ] `TC-28.2.4`: Location-specific requests show address (code review)
+- [ ] `TC-28.2.5`: Empty state when no requests (code review)
+
+### REQ-28.3: Help Guide Email
+The help guide email template includes location-specific and general variants with 4 help action items.
+
+**Test Cases:**
+- [ ] `TC-28.3.1`: generateHelpGuideHtml exists with location-specific variant (code review)
+- [ ] `TC-28.3.2`: generateHelpGuideHtml exists with general variant (code review)
+- [ ] `TC-28.3.3`: Email includes 4 help action items (property owners, zoning, parents, government)
+
+---
+
 ## Test Execution Summary
 
 | # | Category | Total TCs |
@@ -989,7 +1021,8 @@ Admin location cards parse the school type from notes and display it as a colore
 | 25 | Metro City Bubbles | 13 |
 | 26 | Released/Unreleased Locations | 14 |
 | 27 | Suggest Form Validation & Sanitization | 43 |
-| | **TOTAL** | **373** |
+| 28 | Help Requests | 13 |
+| | **TOTAL** | **386** |
 
 ---
 
@@ -1006,6 +1039,7 @@ Admin location cards parse the school type from notes and display it as a colore
 | 1.6.0 | 2026-02-09 | Added admin/non-admin filters (Section 24), metro city bubbles (Section 25), released/unreleased locations (Section 26), view-as-parent toggle, 40 TCs, total 333 TCs |
 | 1.7.0 | 2026-02-21 | Added suggest form validation & XSS sanitization (Section 27): required field validation, state auto-uppercase, sqft numeric check, notes length, HTML tag stripping, error banners, 25 TCs, total 358 TCs |
 | 1.8.0 | 2026-02-21 | Added school type tabs (REQ-27.7/27.8/27.9): Micro/Growth/Flagship tabs on suggest page and modal, school type in notes, admin badge parsing, 21 TCs, total 379 TCs |
+| 1.9.0 | 2026-02-21 | Added help requests (Section 28): DB storage, API endpoint, help guide email, admin tab, 13 TCs, total 386 TCs |
 
 ---
 

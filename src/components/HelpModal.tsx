@@ -13,7 +13,6 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "./AuthProvider";
-import { SignInPrompt } from "./SignInPrompt";
 
 interface HelpModalProps {
   /** Location-specific mode — shows on a card */
@@ -27,14 +26,51 @@ export function HelpModal({ locationName, locationAddress, variant = "panel" }: 
   const [open, setOpen] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [email, setEmail] = useState("");
-  const { user } = useAuth();
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const { user, session } = useAuth();
 
   const isLocationSpecific = !!locationAddress;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Mockup: just show confirmation
-    setSubmitted(true);
+    setSubmitting(true);
+    setError(null);
+
+    const submitEmail = user?.email || email.trim();
+    if (!submitEmail) {
+      setError("Email is required");
+      setSubmitting(false);
+      return;
+    }
+
+    try {
+      const headers: Record<string, string> = { "Content-Type": "application/json" };
+      if (session?.access_token) {
+        headers["Authorization"] = `Bearer ${session.access_token}`;
+      }
+
+      const res = await fetch("/api/help-request", {
+        method: "POST",
+        headers,
+        body: JSON.stringify({
+          email: submitEmail,
+          locationAddress: locationAddress || undefined,
+          locationName: locationName || undefined,
+        }),
+      });
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || "Failed to submit");
+      }
+
+      setSubmitted(true);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Something went wrong. Please try again.");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const handleOpenChange = (isOpen: boolean) => {
@@ -42,6 +78,7 @@ export function HelpModal({ locationName, locationAddress, variant = "panel" }: 
     if (!isOpen) {
       setSubmitted(false);
       setEmail("");
+      setError(null);
     }
   };
 
@@ -138,9 +175,15 @@ export function HelpModal({ locationName, locationAddress, variant = "panel" }: 
                   </div>
                 </div>
 
+                {error && (
+                  <div className="bg-red-50 text-red-700 rounded-lg px-3 py-2 text-sm">{error}</div>
+                )}
+
                 <div className="flex justify-end gap-3 pt-2">
-                  <Button variant="outline" onClick={() => handleOpenChange(false)}>Cancel</Button>
-                  <Button onClick={handleSubmit}>Send Me the Guide</Button>
+                  <Button variant="outline" onClick={() => handleOpenChange(false)} disabled={submitting}>Cancel</Button>
+                  <Button onClick={handleSubmit} disabled={submitting}>
+                    {submitting ? "Sending..." : "Send Me the Guide"}
+                  </Button>
                 </div>
               </div>
             ) : (
@@ -170,9 +213,15 @@ export function HelpModal({ locationName, locationAddress, variant = "panel" }: 
                   </div>
                 )}
 
+                {error && (
+                  <div className="bg-red-50 text-red-700 rounded-lg px-3 py-2 text-sm">{error}</div>
+                )}
+
                 <div className="flex justify-end gap-3 pt-2">
-                  <Button variant="outline" type="button" onClick={() => handleOpenChange(false)}>Cancel</Button>
-                  <Button type="submit" disabled={!email.trim()}>Send Me the Guide</Button>
+                  <Button variant="outline" type="button" onClick={() => handleOpenChange(false)} disabled={submitting}>Cancel</Button>
+                  <Button type="submit" disabled={!email.trim() || submitting}>
+                    {submitting ? "Sending..." : "Send Me the Guide"}
+                  </Button>
                 </div>
               </form>
             )}

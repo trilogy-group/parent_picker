@@ -80,6 +80,50 @@ export function generateRejectionHtml(location: EmailLocationInfo, scores?: Emai
   `;
 }
 
+export function generateHelpGuideHtml(location?: { address: string; name?: string | null }): string {
+  const heading = location
+    ? `Here's how you can help with ${location.name || location.address}`
+    : "Here's how you can help bring Alpha to your area";
+
+  const locationLine = location
+    ? `<p style="background:#f0f9ff;padding:12px;border-radius:8px;font-size:14px;">📍 <strong>${location.address}</strong></p>`
+    : "";
+
+  return `
+    <h2>${heading}</h2>
+    <p>Thank you for volunteering to help! Parents have 100x the local knowledge we do, and your involvement makes a real difference.</p>
+    ${locationLine}
+    <h3 style="margin-top:24px;">4 Ways You Can Help</h3>
+    <table style="border-collapse:collapse;width:100%;">
+      <tr>
+        <td style="padding:12px;vertical-align:top;border-bottom:1px solid #eee;">
+          <strong>🏢 Connect us with property owners</strong><br/>
+          <span style="font-size:13px;color:#666;">Know the landlord or property manager? An intro goes a long way. Even just the name of the building owner helps us reach out.</span>
+        </td>
+      </tr>
+      <tr>
+        <td style="padding:12px;vertical-align:top;border-bottom:1px solid #eee;">
+          <strong>📋 Help with zoning &amp; permitting</strong><br/>
+          <span style="font-size:13px;color:#666;">Know someone at city hall? A local attorney who handles zoning? School use often needs special permits — local connections are invaluable.</span>
+        </td>
+      </tr>
+      <tr>
+        <td style="padding:12px;vertical-align:top;border-bottom:1px solid #eee;">
+          <strong>👥 Rally other parents</strong><br/>
+          <span style="font-size:13px;color:#666;">Share the Parent Picker link with parents in your area. More votes = stronger signal that this location has real demand.</span>
+        </td>
+      </tr>
+      <tr>
+        <td style="padding:12px;vertical-align:top;">
+          <strong>🔑 Introduce us to government contacts</strong><br/>
+          <span style="font-size:13px;color:#666;">Local school board members, city council reps, or planning commission contacts can help smooth the path for a new school.</span>
+        </td>
+      </tr>
+    </table>
+    <p style="margin-top:24px;"><a href="https://parentpicker.vercel.app">View locations on Parent Picker</a></p>
+  `;
+}
+
 export async function sendEmail(to: string, subject: string, html: string) {
   if (!resend) {
     console.log("Resend not configured, skipping email to", to);

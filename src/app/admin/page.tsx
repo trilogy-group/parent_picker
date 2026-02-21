@@ -5,6 +5,7 @@ import { ShieldCheck, Loader2, ArrowLeft } from "lucide-react";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { AdminLocation, LikedLocation } from "@/types";
 import { AdminLocationCard } from "@/components/AdminLocationCard";
+import { AdminHelpRequestCard, HelpRequest } from "@/components/AdminHelpRequestCard";
 import Link from "next/link";
 
 const ADMIN_EMAILS = (process.env.NEXT_PUBLIC_ADMIN_EMAILS || "")
@@ -12,7 +13,7 @@ const ADMIN_EMAILS = (process.env.NEXT_PUBLIC_ADMIN_EMAILS || "")
   .map((e) => e.trim().toLowerCase())
   .filter(Boolean);
 
-type Tab = "suggestions" | "likes";
+type Tab = "suggestions" | "likes" | "help";
 
 export default function AdminPage() {
   // Start as not-loading if Supabase isn't configured (nothing to check)
@@ -22,9 +23,11 @@ export default function AdminPage() {
   const [activeTab, setActiveTab] = useState<Tab>("suggestions");
   const [locations, setLocations] = useState<AdminLocation[]>([]);
   const [likedLocations, setLikedLocations] = useState<LikedLocation[]>([]);
+  const [helpRequests, setHelpRequests] = useState<HelpRequest[]>([]);
   const [fetchError, setFetchError] = useState<string | null>(null);
   const hasFetchedSuggestions = useRef(false);
   const hasFetchedLikes = useRef(false);
+  const hasFetchedHelpRequests = useRef(false);
 
   // Check auth on mount — all setState calls happen in the .then callback (async)
   useEffect(() => {
@@ -82,6 +85,26 @@ export default function AdminPage() {
       });
   }, [isAdmin, token, activeTab]);
 
+  // Fetch help requests when switching to help tab
+  useEffect(() => {
+    if (!isAdmin || !token || activeTab !== "help" || hasFetchedHelpRequests.current) return;
+    hasFetchedHelpRequests.current = true;
+
+    fetch("/api/admin/help-requests", {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then((res) => {
+        if (!res.ok) throw new Error("Failed to load");
+        return res.json();
+      })
+      .then((data) => {
+        setHelpRequests(data);
+      })
+      .catch(() => {
+        setFetchError("Failed to load help requests");
+      });
+  }, [isAdmin, token, activeTab]);
+
   const handleRemoveSuggestion = (id: string) => {
     setLocations((prev) => prev.filter((loc) => loc.id !== id));
   };
@@ -113,10 +136,12 @@ export default function AdminPage() {
     );
   }
 
-  const tabCount = activeTab === "suggestions" ? locations.length : likedLocations.length;
+  const tabCount = activeTab === "suggestions" ? locations.length : activeTab === "likes" ? likedLocations.length : helpRequests.length;
   const tabLabel = activeTab === "suggestions"
     ? `${tabCount} pending suggestion${tabCount !== 1 ? "s" : ""}`
-    : `${tabCount} liked location${tabCount !== 1 ? "s" : ""}`;
+    : activeTab === "likes"
+    ? `${tabCount} liked location${tabCount !== 1 ? "s" : ""}`
+    : `${tabCount} help request${tabCount !== 1 ? "s" : ""}`;
 
   return (
     <div className="min-h-screen bg-background">
@@ -170,6 +195,21 @@ export default function AdminPage() {
               </span>
             )}
           </button>
+          <button
+            onClick={() => setActiveTab("help")}
+            className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
+              activeTab === "help"
+                ? "border-primary text-primary"
+                : "border-transparent text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            Help Requests
+            {helpRequests.length > 0 && (
+              <span className="ml-2 text-xs bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded-full">
+                {helpRequests.length}
+              </span>
+            )}
+          </button>
         </div>
       </div>
 
@@ -219,6 +259,22 @@ export default function AdminPage() {
                 onRemove={handleRemoveLike}
                 mode="like"
               />
+            ))}
+          </>
+        )}
+
+        {activeTab === "help" && (
+          <>
+            {helpRequests.length === 0 && !fetchError && (
+              <div className="text-center py-12 text-muted-foreground">
+                <ShieldCheck className="h-10 w-10 mx-auto mb-3 opacity-50" />
+                <p className="font-medium">No help requests yet</p>
+                <p className="text-sm mt-1">Parent help offers will appear here.</p>
+              </div>
+            )}
+
+            {helpRequests.map((req) => (
+              <AdminHelpRequestCard key={req.id} request={req} />
             ))}
           </>
         )}

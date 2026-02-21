@@ -3239,6 +3239,142 @@ def run_tests():
                 def _(): pass
                 _()
 
+        # ============================================================
+        print("\n## 28. Help Requests")
+        # ============================================================
+
+        @test("TC-28.1.1", "HelpModal calls fetch to POST /api/help-request on submit")
+        def _():
+            import os
+            modal_path = os.path.join(os.path.dirname(__file__), "..", "src", "components", "HelpModal.tsx")
+            with open(modal_path) as f:
+                content = f.read()
+            assert "fetch(" in content, "fetch call not found in HelpModal"
+            assert "/api/help-request" in content, "API endpoint not found in HelpModal"
+            assert "POST" in content, "POST method not found in HelpModal"
+        _()
+
+        @test("TC-28.1.2", "API route inserts row into pp_help_requests table")
+        def _():
+            import os
+            route_path = os.path.join(os.path.dirname(__file__), "..", "src", "app", "api", "help-request", "route.ts")
+            with open(route_path) as f:
+                content = f.read()
+            assert "pp_help_requests" in content, "pp_help_requests table not referenced in route"
+            assert ".insert(" in content, "insert call not found in route"
+        _()
+
+        @test("TC-28.1.3", "API route calls sendEmail with generateHelpGuideHtml")
+        def _():
+            import os
+            route_path = os.path.join(os.path.dirname(__file__), "..", "src", "app", "api", "help-request", "route.ts")
+            with open(route_path) as f:
+                content = f.read()
+            assert "sendEmail" in content, "sendEmail not found in route"
+            assert "generateHelpGuideHtml" in content, "generateHelpGuideHtml not found in route"
+        _()
+
+        @test("TC-28.1.4", "Unauthenticated user provides email in form")
+        def _():
+            import os
+            modal_path = os.path.join(os.path.dirname(__file__), "..", "src", "components", "HelpModal.tsx")
+            with open(modal_path) as f:
+                content = f.read()
+            assert 'type="email"' in content, "Email input field not found"
+            assert "help-email" in content, "Email input id not found"
+        _()
+
+        @test("TC-28.1.5", "Authenticated user uses session email")
+        def _():
+            import os
+            modal_path = os.path.join(os.path.dirname(__file__), "..", "src", "components", "HelpModal.tsx")
+            with open(modal_path) as f:
+                content = f.read()
+            assert "user?.email" in content or "user.email" in content, "user.email reference not found"
+        _()
+
+        @test("TC-28.2.1", "Admin page has three tabs (Suggestions, Likes, Help Requests)")
+        def _():
+            import os
+            admin_path = os.path.join(os.path.dirname(__file__), "..", "src", "app", "admin", "page.tsx")
+            with open(admin_path) as f:
+                content = f.read()
+            assert "Suggestions" in content, "Suggestions tab not found"
+            assert "Likes" in content, "Likes tab not found"
+            assert "Help Requests" in content, "Help Requests tab not found"
+            assert '"help"' in content, "help tab type not found"
+        _()
+
+        @test("TC-28.2.2", "Help Requests tab shows count badge")
+        def _():
+            import os
+            admin_path = os.path.join(os.path.dirname(__file__), "..", "src", "app", "admin", "page.tsx")
+            with open(admin_path) as f:
+                content = f.read()
+            assert "helpRequests.length" in content, "helpRequests.length not found for badge"
+            assert "bg-blue-100" in content, "Blue badge styling not found for help tab"
+        _()
+
+        @test("TC-28.2.3", "Each card shows email and date (AdminHelpRequestCard)")
+        def _():
+            import os
+            card_path = os.path.join(os.path.dirname(__file__), "..", "src", "components", "AdminHelpRequestCard.tsx")
+            with open(card_path) as f:
+                content = f.read()
+            assert "request.email" in content, "email display not found in card"
+            assert "created_at" in content or "dateStr" in content, "date display not found in card"
+        _()
+
+        @test("TC-28.2.4", "Location-specific requests show address")
+        def _():
+            import os
+            card_path = os.path.join(os.path.dirname(__file__), "..", "src", "components", "AdminHelpRequestCard.tsx")
+            with open(card_path) as f:
+                content = f.read()
+            assert "location_address" in content, "location_address not found in card"
+            assert "MapPin" in content, "MapPin icon not found for location display"
+        _()
+
+        @test("TC-28.2.5", "Empty state when no requests")
+        def _():
+            import os
+            admin_path = os.path.join(os.path.dirname(__file__), "..", "src", "app", "admin", "page.tsx")
+            with open(admin_path) as f:
+                content = f.read()
+            assert "No help requests yet" in content, "Empty state text not found"
+        _()
+
+        @test("TC-28.3.1", "generateHelpGuideHtml exists with location-specific variant")
+        def _():
+            import os
+            email_path = os.path.join(os.path.dirname(__file__), "..", "src", "lib", "email.ts")
+            with open(email_path) as f:
+                content = f.read()
+            assert "generateHelpGuideHtml" in content, "generateHelpGuideHtml not found"
+            assert "location.address" in content or "location?.address" in content, "Location-specific variant not found"
+        _()
+
+        @test("TC-28.3.2", "generateHelpGuideHtml exists with general variant")
+        def _():
+            import os
+            email_path = os.path.join(os.path.dirname(__file__), "..", "src", "lib", "email.ts")
+            with open(email_path) as f:
+                content = f.read()
+            assert "bring Alpha to your area" in content, "General variant text not found"
+        _()
+
+        @test("TC-28.3.3", "Email includes 4 help action items")
+        def _():
+            import os
+            email_path = os.path.join(os.path.dirname(__file__), "..", "src", "lib", "email.ts")
+            with open(email_path) as f:
+                content = f.read()
+            assert "property owners" in content.lower(), "Property owners action item not found"
+            assert "zoning" in content.lower(), "Zoning action item not found"
+            assert "Rally other parents" in content or "rally other parents" in content.lower(), "Rally parents action item not found"
+            assert "government contacts" in content.lower(), "Government contacts action item not found"
+        _()
+
         # Cleanup
         desktop.close()
         mobile.close()
