@@ -1,5 +1,6 @@
 import { Location, LocationScores, CitySummary } from "@/types";
 import { supabase, isSupabaseConfigured } from "./supabase";
+import { sanitizeText } from "./validation";
 
 // Generate a color from a 0-1 sub-score
 function colorFromScore(score: number | null): string | null {
@@ -411,6 +412,12 @@ export async function suggestLocation(
   coordinates?: { lat: number; lng: number } | null,
   userId?: string
 ): Promise<Location> {
+  // Defense-in-depth: sanitize all text inputs before DB insert
+  address = sanitizeText(address);
+  city = sanitizeText(city);
+  state = sanitizeText(state);
+  if (notes) notes = sanitizeText(notes);
+
   // Geocode the address
   const coords = await geocodeAddress(address, city, state);
 

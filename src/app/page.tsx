@@ -1,10 +1,11 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { ChevronUp, ChevronDown } from "lucide-react";
+import Link from "next/link";
+import { ChevronUp, ChevronDown, Plus } from "lucide-react";
 import { Map } from "@/components/Map";
 import { LocationsList } from "@/components/LocationsList";
-import { SuggestLocationModal } from "@/components/SuggestLocationModal";
+import { Button } from "@/components/ui/button";
 import { AuthButton } from "@/components/AuthButton";
 import { useVotesStore } from "@/lib/votes";
 import { useAuth } from "@/components/AuthProvider";
@@ -85,7 +86,7 @@ export default function Home() {
             </li>
           </ol>
           <div className="mt-3">
-            <SuggestLocationModal />
+            <Link href="/suggest"><Button className="gap-2 bg-amber-400 hover:bg-amber-500 text-amber-950 font-semibold"><Plus className="h-4 w-4" />Or Suggest New Location</Button></Link>
           </div>
         </div>
 
@@ -126,7 +127,7 @@ export default function Home() {
                 <h2 className="font-bold">Alpha School Locations</h2>
                 <p className="text-sm text-muted-foreground">{totalVotes} Votes from Parents</p>
               </div>
-              <SuggestLocationModal />
+              <Link href="/suggest"><Button className="gap-2 bg-amber-400 hover:bg-amber-500 text-amber-950 font-semibold"><Plus className="h-4 w-4" />Or Suggest New Location</Button></Link>
             </div>
           </div>
         )}
@@ -139,7 +140,7 @@ export default function Home() {
                 <h2 className="font-bold">Alpha School Locations</h2>
                 <p className="text-sm text-muted-foreground">{totalVotes} Votes from Parents</p>
               </div>
-              <SuggestLocationModal />
+              <Link href="/suggest"><Button className="gap-2 bg-amber-400 hover:bg-amber-500 text-amber-950 font-semibold"><Plus className="h-4 w-4" />Or Suggest New Location</Button></Link>
             </div>
             <div className="flex-1 overflow-hidden">
               <LocationsList />
