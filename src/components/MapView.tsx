@@ -11,6 +11,7 @@ import { useVotesStore } from "@/lib/votes";
 import { useShallow } from "zustand/react/shallow";
 import { useAuth } from "./AuthProvider";
 import { getInitialMapView, US_CENTER, US_ZOOM } from "@/lib/locations";
+import { fetchIsochrone } from "@/lib/isochrone";
 import "mapbox-gl/dist/mapbox-gl.css";
 import type { MapMouseEvent } from "react-map-gl/mapbox";
 
@@ -82,6 +83,22 @@ export function MapView() {
   selectedLocationRef.current = selectedLocation ? { lat: selectedLocation.lat, lng: selectedLocation.lng } : null;
 
   const showCities = zoomLevel < 9;
+
+  // Isochrone drive-time polygon
+  const [isochroneData, setIsochroneData] = useState<GeoJSON.FeatureCollection | null>(null);
+  const emptyGeojson = useMemo<GeoJSON.FeatureCollection>(() => ({ type: "FeatureCollection", features: [] }), []);
+
+  useEffect(() => {
+    if (!selectedLocation) {
+      setIsochroneData(null);
+      return;
+    }
+    let cancelled = false;
+    fetchIsochrone(selectedLocation.lng, selectedLocation.lat, 30).then((data) => {
+      if (!cancelled) setIsochroneData(data);
+    });
+    return () => { cancelled = true; };
+  }, [selectedLocation?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // GeoJSON for city bubbles
   const cityGeojson = useMemo(() => ({
@@ -425,6 +442,29 @@ export function MapView() {
               "circle-radius": 6,
               "circle-stroke-width": 2,
               "circle-stroke-color": "#ffffff",
+            }}
+          />
+        </Source>
+      )}
+
+      {/* Isochrone drive-time polygon */}
+      {!showCities && (
+        <Source id="isochrone" type="geojson" data={isochroneData ?? emptyGeojson}>
+          <Layer
+            id="isochrone-fill"
+            type="fill"
+            paint={{
+              "fill-color": "#2563eb",
+              "fill-opacity": 0.12,
+            }}
+          />
+          <Layer
+            id="isochrone-outline"
+            type="line"
+            paint={{
+              "line-color": "#2563eb",
+              "line-width": 2,
+              "line-opacity": 0.6,
             }}
           />
         </Source>
