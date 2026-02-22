@@ -19,7 +19,7 @@ interface HelpModalProps {
   locationName?: string;
   locationAddress?: string;
   /** Compact button for cards vs. full button for intro panel */
-  variant?: "card" | "panel";
+  variant?: "card" | "card-compact" | "panel";
 }
 
 export function HelpModal({ locationName, locationAddress, variant = "panel" }: HelpModalProps) {
@@ -85,7 +85,14 @@ export function HelpModal({ locationName, locationAddress, variant = "panel" }: 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
-        {variant === "card" ? (
+        {variant === "card-compact" ? (
+          <button
+            onClick={(e) => e.stopPropagation()}
+            className="text-[10px] text-blue-600 hover:text-blue-800 font-medium hover:underline"
+          >
+            I can help
+          </button>
+        ) : variant === "card" ? (
           <button
             onClick={(e) => e.stopPropagation()}
             className="flex items-center gap-1 text-[11px] text-blue-600 hover:text-blue-800 font-medium hover:underline"

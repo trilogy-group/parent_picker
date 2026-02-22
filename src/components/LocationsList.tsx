@@ -207,7 +207,7 @@ function ScoreFilterPanel({
                     }`}
                     onClick={() => toggleScoreFilter("size", size)}
                   >
-                    {size === "Full Size" ? "Full" : size === "Red (Reject)" ? "N/A" : size}
+                    {size === "Full Size" ? "Flagship" : size === "Red (Reject)" ? "N/A" : size}
                   </button>
                 );
               })}
@@ -215,38 +215,6 @@ function ScoreFilterPanel({
           </div>
         </div>
       )}
-    </div>
-  );
-}
-
-interface SimpleRedToggleProps {
-  showRedLocations: boolean;
-  setShowRedLocations: (show: boolean) => void;
-}
-
-function SimpleRedToggle({ showRedLocations, setShowRedLocations }: SimpleRedToggleProps) {
-  return (
-    <div className="mt-2">
-      <label className="flex items-center gap-2 cursor-pointer select-none">
-        <div
-          className={`relative w-8 h-[18px] rounded-full transition-colors ${
-            showRedLocations ? "bg-red-500" : "bg-gray-300"
-          }`}
-          onClick={() => setShowRedLocations(!showRedLocations)}
-        >
-          <div
-            className={`absolute top-0.5 w-3.5 h-3.5 rounded-full bg-white shadow transition-transform ${
-              showRedLocations ? "translate-x-[15px]" : "translate-x-0.5"
-            }`}
-          />
-        </div>
-        <span
-          className="text-xs text-muted-foreground"
-          onClick={() => setShowRedLocations(!showRedLocations)}
-        >
-          I want to help! Show me red locations too.
-        </span>
-      </label>
     </div>
   );
 }
@@ -286,14 +254,14 @@ export function LocationsList() {
     toggleScoreFilter,
     clearScoreFilters,
     activeFilterCount,
-    showRedLocations,
-    setShowRedLocations,
     releasedFilter,
     setReleasedFilter,
     viewAsParent,
     setViewAsParent,
     showUnscored,
     setShowUnscored,
+    cardVersion,
+    setCardVersion,
   } = useVotesStore(useShallow((s) => ({
     filteredLocations: s.filteredLocations,
     selectedLocationId: s.selectedLocationId,
@@ -311,14 +279,14 @@ export function LocationsList() {
     toggleScoreFilter: s.toggleScoreFilter,
     clearScoreFilters: s.clearScoreFilters,
     activeFilterCount: s.activeFilterCount,
-    showRedLocations: s.showRedLocations,
-    setShowRedLocations: s.setShowRedLocations,
     releasedFilter: s.releasedFilter,
     setReleasedFilter: s.setReleasedFilter,
     viewAsParent: s.viewAsParent,
     setViewAsParent: s.setViewAsParent,
     showUnscored: s.showUnscored,
     setShowUnscored: s.setShowUnscored,
+    cardVersion: s.cardVersion,
+    setCardVersion: s.setCardVersion,
     locations: s.locations,
   })));
 
@@ -391,22 +359,29 @@ export function LocationsList() {
               showUnscored={showUnscored}
               setShowUnscored={setShowUnscored}
             />
-            <ViewAsParentToggle active={false} onToggle={() => setViewAsParent(true)} />
+            <div className="flex items-center gap-2">
+              <ViewAsParentToggle active={false} onToggle={() => setViewAsParent(true)} />
+              <button
+                type="button"
+                onClick={() => setCardVersion(cardVersion === "v1" ? "v2" : "v1")}
+                className="mt-2 text-[11px] font-medium px-2 py-1 rounded-md bg-gray-100 text-gray-500 hover:bg-gray-200 transition-colors"
+              >
+                Card {cardVersion.toUpperCase()}
+              </button>
+            </div>
           </>
         ) : isAdmin && viewAsParent ? (
-          <>
-            <SimpleRedToggle
-              showRedLocations={showRedLocations}
-              setShowRedLocations={setShowRedLocations}
-            />
+          <div className="flex items-center gap-2">
             <ViewAsParentToggle active={true} onToggle={() => setViewAsParent(false)} />
-          </>
-        ) : (
-          <SimpleRedToggle
-            showRedLocations={showRedLocations}
-            setShowRedLocations={setShowRedLocations}
-          />
-        )}
+            <button
+              type="button"
+              onClick={() => setCardVersion(cardVersion === "v1" ? "v2" : "v1")}
+              className="mt-2 text-[11px] font-medium px-2 py-1 rounded-md bg-gray-100 text-gray-500 hover:bg-gray-200 transition-colors"
+            >
+              Card {cardVersion.toUpperCase()}
+            </button>
+          </div>
+        ) : null}
       </div>
       <div className="flex-1 overflow-y-auto px-3 py-2 space-y-2">
         {zoomLevel < 9 ? (
@@ -450,14 +425,15 @@ export function LocationsList() {
           </p>
         ) : (
           <>
-            {visible.map((location) => (
+            {visible.map((location, index) => (
                 <LocationCard
                   key={location.id}
                   location={location}
+                  rank={index + 1}
+                  cardVersion={isAdmin ? cardVersion : "v1"}
                   isSelected={selectedLocationId === location.id}
                   hasVoted={votedLocationIds.has(location.id)}
                   isAuthenticated={canVote}
-
                   onSelect={() => setSelectedLocation(location.id)}
                   onVote={(comment?: string) => vote(location.id, comment)}
                   onUnvote={() => unvote(location.id)}

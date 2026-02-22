@@ -613,7 +613,8 @@ Scored locations display their overall score as a card background tint and 4 ico
 - Demographics sub-score is NOT displayed (only used internally)
 - Sub-scores are always visible (no expand/collapse)
 - ArtifactLink (external link icon) shown in card header when overall details URL exists
-- SizeLabel (e.g. "Micro", "Growth") shown in card header row
+- SizeLabel shown in card header with student counts: Micro (25), Micro2 (50-100), Growth (250), Flagship (1000)
+- Rank number (#1, #2, etc.) displayed before street address in each card
 - Score legend popup (? icon) explains what each icon means
 
 **Test Cases:**
@@ -624,8 +625,9 @@ Scored locations display their overall score as a card background tint and 4 ico
 - [ ] `TC-18.1.5`: Each sub-score has a colored dot (green/yellow/red/gray)
 - [ ] `TC-18.1.6`: Score legend popup opens on ? icon click
 - [ ] `TC-18.1.7`: ArtifactLink (ExternalLink icon) shown when overall details URL exists
-- [ ] `TC-18.1.8`: SizeLabel shown in card header (e.g. "Micro", "Growth", "Full Size")
+- [ ] `TC-18.1.8`: SizeLabel shown with student counts: "Micro (25)", "Micro2 (50-100)", "Growth (250)", "Flagship (1000)"
 - [ ] `TC-18.1.9`: ArtifactLink opens in new tab and stops click propagation
+- [ ] `TC-18.1.10`: Rank number (#1, #2, etc.) shown before street address
 
 ### REQ-18.2: Score-Colored Map Markers
 Individual location dots on the map are colored by their overall score.
@@ -779,16 +781,14 @@ The full score filter panel (5 color categories + size + released) is only visib
 - [ ] `TC-24.1.2`: Non-admin user does not see score category filters
 - [ ] `TC-24.1.3`: Non-admin user does not see size filter buttons
 
-### REQ-24.2: Non-Admin Red Toggle
-Non-admin users see a single toggle: "I want to help! Show me red locations too."
+### REQ-24.2: Non-Admin Sees All Scored Locations (No Red Toggle)
+Non-admin users always see all scored locations including RED. There is no toggle — red locations are shown by default so parents can see the full picture and potentially help with difficult locations.
 
 **Test Cases:**
-- [ ] `TC-24.2.1`: Non-admin user sees "I want to help! Show me red locations too." toggle
-- [ ] `TC-24.2.2`: Toggle is OFF by default (red locations hidden)
-- [ ] `TC-24.2.3`: When ON, locations with RED overall score become visible
-- [ ] `TC-24.2.4`: When ON, locations with "Red (Reject)" size become visible
-- [ ] `TC-24.2.5`: When OFF, both RED score and Red (Reject) size locations are hidden
-- [ ] `TC-24.2.6`: Admin user does not see the help toggle (they use full filters)
+- [ ] `TC-24.2.1`: Non-admin user sees RED-scored locations in the list
+- [ ] `TC-24.2.2`: Non-admin user does NOT see a red toggle or filter controls
+- [ ] `TC-24.2.3`: Non-admin sees only scored + released locations (unscored hidden)
+- [ ] `TC-24.2.4`: Admin user sees full filter panel (not affected by this change)
 
 ### REQ-24.3: Client-Side Admin Detection
 Admin status is determined by checking the user's email against NEXT_PUBLIC_ADMIN_EMAILS.

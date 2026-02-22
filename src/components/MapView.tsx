@@ -3,7 +3,7 @@
 import { useEffect, useRef, useCallback, useState, useMemo } from "react";
 import Map, { Source, Layer, NavigationControl, Popup, Marker } from "react-map-gl/mapbox";
 import { MapPin } from "lucide-react";
-import { SizeLabel, ScoreDetails, overallCardBorder, overallCardBg } from "./ScoreBadge";
+import { ScoreDetails, DetailedInfoLink, SizeLabel, overallCardBorder, overallCardBg } from "./ScoreBadge";
 import { HelpModal } from "./HelpModal";
 import { extractStreet, extractZip, formatCityLine, hasDistinctName } from "@/lib/address";
 import { useVotesStore } from "@/lib/votes";
@@ -33,6 +33,7 @@ export function MapView() {
     setReferencePoint,
     fetchNearby,
     fetchNearbyForce,
+    cardVersion,
   } = useVotesStore(useShallow((s) => ({
     filteredLocations: s.filteredLocations,
     selectedLocationId: s.selectedLocationId,
@@ -50,11 +51,11 @@ export function MapView() {
     fetchNearby: s.fetchNearby,
     fetchNearbyForce: s.fetchNearbyForce,
     // Include filter-related state so map re-renders when filters change
-    showRedLocations: s.showRedLocations,
     showUnscored: s.showUnscored,
     releasedFilter: s.releasedFilter,
     isAdmin: s.isAdmin,
     viewAsParent: s.viewAsParent,
+    cardVersion: s.cardVersion,
   })));
 
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
@@ -140,14 +141,17 @@ export function MapView() {
     const { center, zoom } = getInitialMapView(
       userLocation?.lat ?? null,
       userLocation?.lng ?? null,
-      locations
+      citySummaries
     );
 
     setReferencePoint(center);
 
+    const isMobile = typeof window !== "undefined" && window.innerWidth < 1024;
+    const adjustedZoom = isMobile && zoom < 9 ? zoom - 0.5 : zoom;
+
     mapRef.current?.flyTo({
       center: [center.lng, center.lat],
-      zoom,
+      zoom: adjustedZoom,
       duration: 1500,
     });
 
@@ -178,10 +182,12 @@ export function MapView() {
     flyingRef.current = true;
     const targetZoom = zoom ?? 14;
     setZoomLevel(targetZoom);  // Switch layers immediately
+    const isMobile = typeof window !== "undefined" && window.innerWidth < 1024;
     mapRef.current?.flyTo({
       center: [coords.lng, coords.lat],
       zoom: targetZoom,
       duration: 1000,
+      ...(isMobile ? { padding: { top: 0, bottom: 120, left: 0, right: 0 } } : {}),
     });
   }, [setZoomLevel]);
 
@@ -292,7 +298,7 @@ export function MapView() {
       initialViewState={{
         latitude: US_CENTER.lat,
         longitude: US_CENTER.lng,
-        zoom: US_ZOOM,
+        zoom: typeof window !== "undefined" && window.innerWidth < 1024 ? US_ZOOM - 0.5 : US_ZOOM,
       }}
       style={{ width: "100%", height: "100%" }}
       mapStyle="mapbox://styles/mapbox/streets-v12"
@@ -424,29 +430,54 @@ export function MapView() {
           onClose={() => setSelectedLocation(null)}
           offset={[0, 8]}
         >
-          <div className={`p-3 rounded-lg border-[3px] ${selectedLocation.scores?.overallColor ? `${overallCardBorder[selectedLocation.scores.overallColor] || ""} ${overallCardBg[selectedLocation.scores.overallColor] || "bg-white"}` : "bg-white"}`}>
-            <div className="flex items-center justify-between gap-2">
-              <p className="font-semibold text-sm truncate">{extractStreet(selectedLocation.address, selectedLocation.city)}</p>
-              <div className="flex items-center gap-1.5 shrink-0">
-                <SizeLabel scores={selectedLocation.scores} />
-              </div>
-            </div>
-            <p className="text-xs text-muted-foreground -mt-0.5 leading-tight">
-              {formatCityLine(selectedLocation.city, selectedLocation.state, extractZip(selectedLocation.address))}
-            </p>
-            {hasDistinctName(selectedLocation.name, extractStreet(selectedLocation.address, selectedLocation.city)) && (
-              <p className="text-xs text-muted-foreground leading-tight">{selectedLocation.name}</p>
+          <div className={`p-3 rounded-lg border-[3px] min-w-[260px] ${selectedLocation.scores?.overallColor ? `${overallCardBorder[selectedLocation.scores.overallColor] || ""} ${overallCardBg[selectedLocation.scores.overallColor] || "bg-white"}` : "bg-white"}`}>
+            {cardVersion === "v2" ? (
+              /* Popup V2 — identical to V1 for now, will diverge later */
+              <>
+                <div className="flex items-center justify-between gap-2">
+                  <p className="font-semibold text-sm truncate">{extractStreet(selectedLocation.address, selectedLocation.city)}</p>
+                </div>
+                <p className="text-xs text-muted-foreground -mt-0.5 leading-tight">
+                  {formatCityLine(selectedLocation.city, selectedLocation.state, extractZip(selectedLocation.address))}
+                </p>
+                {hasDistinctName(selectedLocation.name, extractStreet(selectedLocation.address, selectedLocation.city)) && (
+                  <p className="text-xs text-muted-foreground leading-tight">{selectedLocation.name}</p>
+                )}
+                <div className="mt-2">
+                  <ScoreDetails scores={selectedLocation.scores} />
+                </div>
+                <div className="flex items-center justify-between pt-1">
+                  <HelpModal
+                    variant="card"
+                    locationName={selectedLocation.name}
+                    locationAddress={`${selectedLocation.address}, ${selectedLocation.city}, ${selectedLocation.state}`}
+                  />
+                  <DetailedInfoLink scores={selectedLocation.scores} />
+                </div>
+              </>
+            ) : (
+              /* Popup V1 — no score icons, size in bottom row */
+              <>
+                <div className="flex items-center justify-between gap-2">
+                  <p className="font-semibold text-sm truncate">{extractStreet(selectedLocation.address, selectedLocation.city)}</p>
+                </div>
+                <p className="text-xs text-muted-foreground -mt-0.5 leading-tight">
+                  {formatCityLine(selectedLocation.city, selectedLocation.state, extractZip(selectedLocation.address))}
+                </p>
+                {hasDistinctName(selectedLocation.name, extractStreet(selectedLocation.address, selectedLocation.city)) && (
+                  <p className="text-xs text-muted-foreground leading-tight">{selectedLocation.name}</p>
+                )}
+                <div className="flex items-center justify-between pt-0.5 gap-3 whitespace-nowrap">
+                  <SizeLabel scores={selectedLocation.scores} />
+                  <HelpModal
+                    variant="card-compact"
+                    locationName={selectedLocation.name}
+                    locationAddress={`${selectedLocation.address}, ${selectedLocation.city}, ${selectedLocation.state}`}
+                  />
+                  <DetailedInfoLink scores={selectedLocation.scores} />
+                </div>
+              </>
             )}
-            <div className="mt-2">
-              <ScoreDetails scores={selectedLocation.scores} />
-            </div>
-            <div className="flex items-center pt-1">
-              <HelpModal
-                variant="card"
-                locationName={selectedLocation.name}
-                locationAddress={`${selectedLocation.address}, ${selectedLocation.city}, ${selectedLocation.state}`}
-              />
-            </div>
           </div>
         </Popup>
       )}

@@ -203,14 +203,23 @@ export function findNearbyLocations(
   );
 }
 
-// Get initial map view based on user location and available locations
+// Get initial map view based on user location and nearby cities
 export function getInitialMapView(
   userLat: number | null,
   userLng: number | null,
-  locations: Location[]
+  citySummaries: { lat: number; lng: number }[]
 ): { center: { lat: number; lng: number }; zoom: number } {
   // If no user location, show US-wide city bubbles view
   if (userLat === null || userLng === null) {
+    return { center: US_CENTER, zoom: US_ZOOM };
+  }
+
+  // Check if any city with locations is within 100 miles of user
+  const hasNearby = citySummaries.some(
+    (c) => getDistanceMiles(userLat, userLng, c.lat, c.lng) <= 100
+  );
+  if (!hasNearby) {
+    // Nothing near user — show US-wide so they can pick from the city list
     return { center: US_CENTER, zoom: US_ZOOM };
   }
 

@@ -6,7 +6,6 @@ import { ChevronUp, ChevronDown, Plus } from "lucide-react";
 import { Map } from "@/components/Map";
 import { LocationsList } from "@/components/LocationsList";
 import { HelpModal } from "@/components/HelpModal";
-import { Button } from "@/components/ui/button";
 import { AuthButton } from "@/components/AuthButton";
 import { useVotesStore } from "@/lib/votes";
 import { useAuth } from "@/components/AuthProvider";
@@ -14,7 +13,7 @@ import { AUSTIN_CENTER } from "@/lib/locations";
 
 export default function Home() {
   const [panelExpanded, setPanelExpanded] = useState(false);
-  const { locations, citySummaries, zoomLevel, loadCitySummaries, setReferencePoint, setIsAdmin, releasedFilter, showRedLocations, showUnscored, viewAsParent } = useVotesStore();
+  const { locations, citySummaries, zoomLevel, loadCitySummaries, setReferencePoint, setIsAdmin, releasedFilter, showUnscored, viewAsParent } = useVotesStore();
   const { isAdmin } = useAuth();
 
   // Sync isAdmin from AuthProvider into Zustand store
@@ -35,7 +34,7 @@ export default function Home() {
   // Refetch city summaries when filters change (admin released filter, non-admin red toggle, view-as-parent)
   useEffect(() => {
     loadCitySummaries();
-  }, [releasedFilter, isAdmin, showRedLocations, showUnscored, viewAsParent, loadCitySummaries]);
+  }, [releasedFilter, isAdmin, showUnscored, viewAsParent, loadCitySummaries]);
 
   return (
     <div className="relative h-screen w-screen overflow-hidden">
@@ -132,20 +131,43 @@ export default function Home() {
                 <h2 className="font-bold">Alpha School Locations</h2>
                 <p className="text-sm text-muted-foreground">{totalVotes} Votes from Parents</p>
               </div>
-              <Link href="/suggest"><Button className="gap-2 bg-amber-400 hover:bg-amber-500 text-amber-950 font-semibold"><Plus className="h-4 w-4" />Or Suggest New Location</Button></Link>
+              <AuthButton darkBg={false} />
+            </div>
+            <ul className="text-xs space-y-1 text-gray-500 mb-3">
+              <li className="flex gap-1.5">
+                <span className="text-amber-500 mt-0.5">&#8226;</span>
+                <span>Suggest a space you know — we can evaluate it in minutes</span>
+              </li>
+              <li className="flex gap-1.5">
+                <span className="text-amber-500 mt-0.5">&#8226;</span>
+                <span>Vote for locations you&apos;d want your kids to attend</span>
+              </li>
+              <li className="flex gap-1.5">
+                <span className="text-amber-500 mt-0.5">&#8226;</span>
+                <span>Connect us with landlords or property owners</span>
+              </li>
+            </ul>
+            <div className="flex gap-2">
+              <HelpModal variant="panel" />
+              <Link href="/suggest" className="flex-1">
+                <button className="w-full flex items-center justify-center gap-1.5 bg-amber-400 hover:bg-amber-500 text-amber-950 font-semibold text-xs py-2 px-3 rounded-lg transition-colors shadow-md">
+                  <Plus className="w-3.5 h-3.5" />
+                  Suggest a Location
+                </button>
+              </Link>
             </div>
           </div>
         )}
 
         {/* Expanded panel */}
         {panelExpanded && (
-          <div className="bg-white max-h-[70vh] overflow-hidden flex flex-col">
+          <div className="bg-white max-h-[50vh] overflow-hidden flex flex-col">
             <div className="px-4 py-3 border-b flex items-center justify-between">
               <div>
                 <h2 className="font-bold">Alpha School Locations</h2>
                 <p className="text-sm text-muted-foreground">{totalVotes} Votes from Parents</p>
               </div>
-              <Link href="/suggest"><Button className="gap-2 bg-amber-400 hover:bg-amber-500 text-amber-950 font-semibold"><Plus className="h-4 w-4" />Or Suggest New Location</Button></Link>
+              <AuthButton darkBg={false} />
             </div>
             <div className="flex-1 overflow-hidden">
               <LocationsList />

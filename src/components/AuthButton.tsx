@@ -14,7 +14,7 @@ import { Input } from "@/components/ui/input";
 import { useAuth } from "./AuthProvider";
 import { signInWithMagicLink, signOut } from "@/lib/auth";
 
-export function AuthButton() {
+export function AuthButton({ darkBg = true }: { darkBg?: boolean }) {
   const { user, isLoading, isOfflineMode } = useAuth();
   const [showSignIn, setShowSignIn] = useState(false);
   const [email, setEmail] = useState("");
@@ -51,10 +51,13 @@ export function AuthButton() {
     setError(null);
   };
 
+  const textColor = darkBg ? "text-blue-200" : "text-gray-600";
+  const hoverColor = darkBg ? "hover:text-white" : "hover:text-gray-900";
+
   // In offline mode, show a demo mode badge
   if (isOfflineMode) {
     return (
-      <span className="text-xs text-blue-200 bg-blue-700 px-2 py-1 rounded">
+      <span className={`text-xs px-2 py-1 rounded ${darkBg ? "text-blue-200 bg-blue-700" : "text-gray-600 bg-gray-100"}`}>
         Demo Mode
       </span>
     );
@@ -71,13 +74,13 @@ export function AuthButton() {
   if (user) {
     return (
       <div className="flex items-center gap-2 relative z-10">
-        <span className="text-xs text-blue-200 truncate max-w-[200px]">
+        <span className={`text-xs ${textColor} truncate max-w-[200px]`}>
           {user.email}
         </span>
         <button
           type="button"
           onClick={handleSignOut}
-          className="flex items-center gap-1 text-xs text-blue-200 hover:text-white shrink-0"
+          className={`flex items-center gap-1 text-xs ${textColor} ${hoverColor} shrink-0`}
         >
           <LogOut className="h-3.5 w-3.5" />
           Sign Out
@@ -91,7 +94,7 @@ export function AuthButton() {
       <button
         type="button"
         onClick={() => setShowSignIn(true)}
-        className="flex items-center gap-1 text-xs text-blue-200 hover:text-white"
+        className={`flex items-center gap-1 text-xs ${textColor} ${hoverColor}`}
       >
         <LogIn className="h-3.5 w-3.5" />
         Sign In
