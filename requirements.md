@@ -1049,6 +1049,37 @@ The admin Likes tab shows voter comments alongside voter emails. The API returns
 
 ---
 
+## 31. REBL Integration & Suggestion Lifecycle
+
+### REQ-31.1: Suggestion Status Lifecycle
+Parent-suggested locations follow the status lifecycle: `pending_scoring` → `pending_review` → `active` (or `rejected`).
+
+**Test Cases:**
+- [ ] `TC-31.1.1`: `suggestLocation()` inserts with `status: 'pending_scoring'` (not `pending_review`)
+- [ ] `TC-31.1.2`: Admin review queue only shows `pending_review` locations (not `pending_scoring`)
+- [ ] `TC-31.1.3`: Approve only works on `pending_review` locations
+- [ ] `TC-31.1.4`: Reject only works on `pending_review` locations
+
+### REQ-31.2: Deep Link to Location
+The app supports `?location=<id>` query parameter to fly to and select a specific location.
+
+**Test Cases:**
+- [ ] `TC-31.2.1`: `/?location=<id>` flies map to the location and selects it
+- [ ] `TC-31.2.2`: Location card is highlighted/selected when deep-linked
+- [ ] `TC-31.2.3`: No error when `?location=<invalid-id>` — gracefully ignored
+
+### REQ-31.3: Scored Notification Email
+When REBL finishes scoring a parent suggestion (status transitions from `pending_scoring` to `pending_review`), an email is sent to the suggesting parent.
+
+**Test Cases:**
+- [ ] `TC-31.3.1`: Email includes location address
+- [ ] `TC-31.3.2`: Email includes score summary table when scores exist
+- [ ] `TC-31.3.3`: Email includes "View on Map" link with `?location=<id>`
+- [ ] `TC-31.3.4`: Email includes "View Full Score Details" link when `detailsUrl` exists
+- [ ] `TC-31.3.5`: Email omits details link gracefully when `detailsUrl` is null
+
+---
+
 ## Test Execution Summary
 
 | # | Category | Total TCs |
@@ -1069,13 +1100,13 @@ The admin Likes tab shows voter comments alongside voter emails. The API returns
 | 14 | Tech Stack | 9 |
 | 15 | Address Autocomplete & Geocoding | 17 |
 | 16 | Authentication | 10 |
-| 17 | Admin Review Workflow | 23 |
+| 17 | Admin Review Workflow | 19 |
 | 18 | Score Display | 21 |
 | 19 | Two-Tier Zoom Model | 12 |
 | 20 | City Summaries List | 6 |
 | 21 | Geolocation | 5 |
 | 22 | List Pagination | 6 |
-| 23 | TODO-Based Parent Assistance Emails | 19 |
+| 23 | TODO-Based Parent Assistance Emails | 18 |
 | 24 | Admin vs Non-Admin Filters | 13 |
 | 25 | Metro City Bubbles | 13 |
 | 26 | Released/Unreleased Locations | 14 |
@@ -1083,7 +1114,8 @@ The admin Likes tab shows voter comments alongside voter emails. The API returns
 | 28 | Help Requests | 13 |
 | 29 | Mobile UX | 9 |
 | 30 | Vote Comments | 8 |
-| | **TOTAL** | **403** |
+| 31 | REBL Integration & Suggestion Lifecycle | 12 |
+| | **TOTAL** | **416** |
 
 ---
 
@@ -1103,6 +1135,7 @@ The admin Likes tab shows voter comments alongside voter emails. The API returns
 | 1.9.0 | 2026-02-21 | Added help requests (Section 28): DB storage, API endpoint, help guide email, admin tab, 13 TCs, total 386 TCs |
 | 2.0.0 | 2026-02-21 | Added mobile UX (Section 29): auth/help/suggest in collapsed view, 50vh panel, touch targets, score legend positioning, flyTo padding, 9 TCs, total 395 TCs |
 | 2.1.0 | 2026-02-21 | Added vote comments (Section 30): optional comment on vote, DB column + constraint, admin display, 8 TCs, total 403 TCs |
+| 2.2.0 | 2026-02-22 | REBL integration (Section 31): `pending_scoring` status, deep-link `?location=id`, scored notification email, removed upstream sync-scores; removed REQ-17.3 + TC-23.4.5; 12 new TCs, total 416 TCs |
 
 ---
 
@@ -1113,7 +1146,7 @@ See `docs/brainlift-location-selection.md` for full strategic context.
 - **Moody's data ETL:** Filter commercial RE listings by size tier (Micro 2.5-7.5K SF, Growth 15-50K SF, Flagship 50-150K SF) and load into pp_locations + pp_listings
 - **Location and Zoning scoring:** Enrollment Score (ES), Wealth Score (WS), and Relative Scores per brainlift thresholds (>2,500 ideal, <1,250 exclude); Microschools require zoned-by-right; larger schools accept CUP/SUP; reject if school use prohibited
 - **Score display:** ~~Show consumer-level scoring on location cards~~ DONE — scores in `pp_location_scores`, displayed on cards and map popups. REBL (v3 lite) populates scores directly into pp_* tables.
-- **Scoring trigger:** Auto-score when parent suggests a location (separate agent)
+- **Scoring trigger:** ~~Auto-score when parent suggests a location (separate agent)~~ DONE — parent suggestions insert with `status: pending_scoring`; REBL picks up via DB trigger, scores, advances to `pending_review`; PP edge function sends scored-notification email to parent
 - **Parent assistance solicitation:** ~~Low-scoring locations prompt parents for help (zoning contacts, local knowledge, capacity commitments)~~ DONE — TODO-enhanced approval emails with zoning/demographics/pricing action items (Section 18)
 - **Admin review workflow:** ~~UI to review/approve parent-suggested locations~~ DONE — `/admin` page with approve/reject, email notifications via Resend
 - **Dealing with listings:** Right now we are only showing the best score per listing, and our scheme only supports having one. This should be addressed eventually, though scores don't vary much at the same location so we punted for now.

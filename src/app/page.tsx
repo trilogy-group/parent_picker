@@ -36,7 +36,8 @@ function DeepLinkHandler() {
       .then((res) => (res.ok ? res.json() : null))
       .then((data) => {
         if (!data) return;
-        const scores = data.pp_location_scores?.[0];
+        const raw = data.pp_location_scores;
+        const scores = Array.isArray(raw) ? raw[0] : raw;
         addLocation({
           id: data.id,
           name: data.name,

@@ -3,7 +3,7 @@
  * Uses driving-traffic profile with Monday 8am departure for realistic commute times.
  */
 
-const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
+const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN?.trim();
 
 // Session cache: key = "lng,lat,minutes" → GeoJSON FeatureCollection
 const cache = new Map<string, GeoJSON.FeatureCollection>();

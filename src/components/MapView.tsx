@@ -15,7 +15,7 @@ import { fetchIsochrone } from "@/lib/isochrone";
 import "mapbox-gl/dist/mapbox-gl.css";
 import type { MapMouseEvent } from "react-map-gl/mapbox";
 
-const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
+const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN?.trim();
 
 export function MapView() {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any

@@ -188,23 +188,33 @@ export const useVotesStore = create<VotesState>((set, get) => ({
   },
 
   fetchNearby: async (center) => {
-    const { lastFetchCenter, isAdmin, viewAsParent, releasedFilter } = get();
+    const { lastFetchCenter, isAdmin, viewAsParent, releasedFilter, selectedLocationId, locations: prev } = get();
     const effectiveAdmin = isAdmin && !viewAsParent;
     if (lastFetchCenter) {
       const dist = getDistanceMiles(lastFetchCenter.lat, lastFetchCenter.lng, center.lat, center.lng);
       if (dist < 5) return;
     }
     const releasedOnly = !effectiveAdmin ? true : releasedFilter === "released" ? true : releasedFilter === "unreleased" ? false : undefined;
-    const locations = await getNearbyLocations(center.lat, center.lng, 500, releasedOnly);
-    set({ locations, lastFetchCenter: center });
+    const fetched = await getNearbyLocations(center.lat, center.lng, 500, releasedOnly);
+    // Preserve the deep-linked / selected location if it wasn't in the fetch results
+    if (selectedLocationId && !fetched.some((l) => l.id === selectedLocationId)) {
+      const kept = prev.find((l) => l.id === selectedLocationId);
+      if (kept) fetched.push(kept);
+    }
+    set({ locations: fetched, lastFetchCenter: center });
   },
 
   fetchNearbyForce: async (center) => {
-    const { isAdmin, viewAsParent, releasedFilter } = get();
+    const { isAdmin, viewAsParent, releasedFilter, selectedLocationId, locations: prev } = get();
     const effectiveAdmin = isAdmin && !viewAsParent;
     const releasedOnly = !effectiveAdmin ? true : releasedFilter === "released" ? true : releasedFilter === "unreleased" ? false : undefined;
-    const locations = await getNearbyLocations(center.lat, center.lng, 500, releasedOnly);
-    set({ locations, lastFetchCenter: center });
+    const fetched = await getNearbyLocations(center.lat, center.lng, 500, releasedOnly);
+    // Preserve the deep-linked / selected location if it wasn't in the fetch results
+    if (selectedLocationId && !fetched.some((l) => l.id === selectedLocationId)) {
+      const kept = prev.find((l) => l.id === selectedLocationId);
+      if (kept) fetched.push(kept);
+    }
+    set({ locations: fetched, lastFetchCenter: center });
   },
 
   loadUserVotes: async (userId: string) => {
