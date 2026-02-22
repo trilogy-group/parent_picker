@@ -612,10 +612,12 @@ Scored locations display their overall score as a card background tint and 4 ico
 - 4 sub-scores displayed as colored dots with icons: Neighborhood (MapPin), Regulatory (Landmark), Building (Building2), Price (DollarSign)
 - Demographics sub-score is NOT displayed (only used internally)
 - Sub-scores are always visible (no expand/collapse)
-- ArtifactLink (external link icon) shown in card header when overall details URL exists
-- SizeLabel shown in card header with student counts: Micro (25), Micro2 (50-100), Growth (250), Flagship (1000)
-- Rank number (#1, #2, etc.) displayed before street address in each card
-- Score legend popup (? icon) explains what each icon means
+- "Detailed Info" blue hyperlink in bottom row (replaces artifact link icon) when details URL exists
+- SizeLabel with student counts: Micro (25 students), Micro2 (50-100 students), Growth (250 students), Flagship (1000 students)
+- Rank number (#1, #2, etc.) displayed before street address in each left-panel card
+- V1 cards: 2-row layout (address+vote, then size/help/details) — no score icons
+- V2 cards: 3-row layout with sub-score icons, legend (? icon), and details
+- Score legend popup (? icon) explains what each icon means (V2 only)
 
 **Test Cases:**
 - [ ] `TC-18.1.1`: Scored location cards have background tint matching overall score color
@@ -639,17 +641,39 @@ Individual location dots on the map are colored by their overall score.
 - [ ] `TC-18.2.4`: Dots with RED score are red (#ef4444)
 - [ ] `TC-18.2.5`: Dots with no score are dark gray (#475569)
 
-### REQ-18.3: Map Popup
-Selected location popup displays score information matching card layout.
+### REQ-18.3: Map Popup (V1/V2 Card Versions)
+Map popup supports two card layouts. Parents always see V1; admins can toggle between V1 and V2.
+
+**V1 (default, parent-facing):**
+- Street View image at top (Google Maps Street View Static API, constructed from lat/lng)
+- Vote button overlaid top-right on image
+- Address + city/state below image
+- Bottom row: Size label | "I can help" (compact, no icon) | "Detailed Info" link
+
+**V2 (admin toggle):**
+- Full scores layout with sub-score icons, legend, and details
+- "I can help here" with icon + "Detailed Info" link
 
 **Test Cases:**
-- [ ] `TC-18.3.1`: Popup shows location name, size label, and artifact link
-- [ ] `TC-18.3.2`: Popup shows address
-- [ ] `TC-18.3.3`: Popup shows sub-scores row with 4 icons
-- [ ] `TC-18.3.4`: Popup background tinted by overall score color
+- [ ] `TC-18.3.1`: V1 popup shows Street View image
+- [ ] `TC-18.3.2`: V1 popup shows address and city/state
+- [ ] `TC-18.3.3`: V1 popup shows "Detailed Info" blue hyperlink (when details URL exists)
+- [ ] `TC-18.3.4`: Popup border tinted by overall score color
 - [ ] `TC-18.3.5`: Popup dismissed by clicking dot again
 - [ ] `TC-18.3.6`: Popup dismissed by clicking map background
 - [ ] `TC-18.3.7`: Popup dismissed by close button
+- [ ] `TC-18.3.8`: V1 popup does NOT show sub-score icons row
+- [ ] `TC-18.3.9`: V1 popup shows size label with student counts
+- [ ] `TC-18.3.10`: V2 popup shows sub-score icons row (admin only)
+
+### REQ-18.4: Card V1/V2 Toggle
+Admin users can toggle between card V1 and V2 layouts. Parents always see V1.
+
+**Test Cases:**
+- [ ] `TC-18.4.1`: Non-admin always sees V1 card layout (code review: LocationsList passes cardVersion)
+- [ ] `TC-18.4.2`: "Detailed Info" link on cards opens details URL in new tab
+- [ ] `TC-18.4.3`: V1 left-panel card has no sub-score icons row (code review: CardContentV1)
+- [ ] `TC-18.4.4`: V1 left-panel card bottom row: Size | I can help | Detailed Info
 
 ---
 

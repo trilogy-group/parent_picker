@@ -3,11 +3,13 @@
 import { useEffect, useRef, useCallback, useState, useMemo } from "react";
 import Map, { Source, Layer, NavigationControl, Popup, Marker } from "react-map-gl/mapbox";
 import { MapPin } from "lucide-react";
-import { ScoreDetails, DetailedInfoLink, SizeLabel, overallCardBorder, overallCardBg } from "./ScoreBadge";
+import { ScoreDetails, DetailedInfoLink, SizeLabel, overallCardBorder } from "./ScoreBadge";
+import { VoteButton } from "./VoteButton";
 import { HelpModal } from "./HelpModal";
 import { extractStreet, extractZip, formatCityLine, hasDistinctName } from "@/lib/address";
 import { useVotesStore } from "@/lib/votes";
 import { useShallow } from "zustand/react/shallow";
+import { useAuth } from "./AuthProvider";
 import { getInitialMapView, US_CENTER, US_ZOOM } from "@/lib/locations";
 import "mapbox-gl/dist/mapbox-gl.css";
 import type { MapMouseEvent } from "react-map-gl/mapbox";
@@ -34,10 +36,16 @@ export function MapView() {
     fetchNearby,
     fetchNearbyForce,
     cardVersion,
+    votedLocationIds,
+    vote,
+    unvote,
   } = useVotesStore(useShallow((s) => ({
     filteredLocations: s.filteredLocations,
     selectedLocationId: s.selectedLocationId,
     setSelectedLocation: s.setSelectedLocation,
+    votedLocationIds: s.votedLocationIds,
+    vote: s.vote,
+    unvote: s.unvote,
     locations: s.locations,
     citySummaries: s.citySummaries,
     zoomLevel: s.zoomLevel,
@@ -57,6 +65,9 @@ export function MapView() {
     viewAsParent: s.viewAsParent,
     cardVersion: s.cardVersion,
   })));
+
+  const { user, isOfflineMode } = useAuth();
+  const canVote = isOfflineMode || !!user;
 
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
   // Start false — the geolocation useEffect will set true on client once resolved/unavailable
@@ -430,10 +441,10 @@ export function MapView() {
           onClose={() => setSelectedLocation(null)}
           offset={[0, 8]}
         >
-          <div className={`p-3 rounded-lg border-[3px] min-w-[260px] ${selectedLocation.scores?.overallColor ? `${overallCardBorder[selectedLocation.scores.overallColor] || ""} ${overallCardBg[selectedLocation.scores.overallColor] || "bg-white"}` : "bg-white"}`}>
+          <div className={`rounded-lg border-[3px] min-w-[280px] max-w-[320px] overflow-hidden ${selectedLocation.scores?.overallColor ? `${overallCardBorder[selectedLocation.scores.overallColor] || ""} bg-white` : "bg-white"}`}>
             {cardVersion === "v2" ? (
-              /* Popup V2 — identical to V1 for now, will diverge later */
-              <>
+              /* Popup V2 — full scores layout */
+              <div className="p-3">
                 <div className="flex items-center justify-between gap-2">
                   <p className="font-semibold text-sm truncate">{extractStreet(selectedLocation.address, selectedLocation.city)}</p>
                 </div>
@@ -454,27 +465,46 @@ export function MapView() {
                   />
                   <DetailedInfoLink scores={selectedLocation.scores} />
                 </div>
-              </>
+              </div>
             ) : (
-              /* Popup V1 — no score icons, size in bottom row */
+              /* Popup V1 — Street View image card (Zillow-style) */
               <>
-                <div className="flex items-center justify-between gap-2">
-                  <p className="font-semibold text-sm truncate">{extractStreet(selectedLocation.address, selectedLocation.city)}</p>
-                </div>
-                <p className="text-xs text-muted-foreground -mt-0.5 leading-tight">
-                  {formatCityLine(selectedLocation.city, selectedLocation.state, extractZip(selectedLocation.address))}
-                </p>
-                {hasDistinctName(selectedLocation.name, extractStreet(selectedLocation.address, selectedLocation.city)) && (
-                  <p className="text-xs text-muted-foreground leading-tight">{selectedLocation.name}</p>
+                {/* Street View image */}
+                {process.env.NEXT_PUBLIC_GOOGLE_MAPS_KEY && (
+                  <div className="w-full h-[160px] bg-gray-100 relative">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={`https://maps.googleapis.com/maps/api/streetview?size=640x320&location=${selectedLocation.lat},${selectedLocation.lng}&fov=90&key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_KEY}`}
+                      alt={`Street view of ${extractStreet(selectedLocation.address, selectedLocation.city)}`}
+                      className="w-full h-full object-cover"
+                    />
+                    {/* Vote button overlay top-right */}
+                    <div className="absolute top-2 right-2" onClick={(e) => e.stopPropagation()}>
+                      <VoteButton
+                        votes={selectedLocation.votes}
+                        hasVoted={votedLocationIds.has(selectedLocation.id)}
+                        isAuthenticated={canVote}
+                        onVote={(comment?: string) => vote(selectedLocation.id, comment)}
+                        onUnvote={() => unvote(selectedLocation.id)}
+                      />
+                    </div>
+                  </div>
                 )}
-                <div className="flex items-center justify-between pt-0.5 gap-3 whitespace-nowrap">
-                  <SizeLabel scores={selectedLocation.scores} />
-                  <HelpModal
-                    variant="card-compact"
-                    locationName={selectedLocation.name}
-                    locationAddress={`${selectedLocation.address}, ${selectedLocation.city}, ${selectedLocation.state}`}
-                  />
-                  <DetailedInfoLink scores={selectedLocation.scores} />
+                {/* Info below image */}
+                <div className="px-3 py-2">
+                  <p className="font-semibold text-sm">{extractStreet(selectedLocation.address, selectedLocation.city)}</p>
+                  <p className="text-xs text-muted-foreground leading-tight">
+                    {formatCityLine(selectedLocation.city, selectedLocation.state, extractZip(selectedLocation.address))}
+                  </p>
+                  <div className="flex items-center justify-between pt-1 gap-3 whitespace-nowrap">
+                    <SizeLabel scores={selectedLocation.scores} />
+                    <HelpModal
+                      variant="card-compact"
+                      locationName={selectedLocation.name}
+                      locationAddress={`${selectedLocation.address}, ${selectedLocation.city}, ${selectedLocation.state}`}
+                    />
+                    <DetailedInfoLink scores={selectedLocation.scores} />
+                  </div>
                 </div>
               </>
             )}

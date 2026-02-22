@@ -68,59 +68,48 @@ Duplicate the Sports Academy facilities map functionality:
 
 **Current branch:** `main`
 **Deployed:** https://parentpicker.vercel.app
-**Last deploy:** 2026-02-06 — score display redesign (4 subscores, color-only, card shading, no expand/collapse)
+**Last deploy:** 2026-02-21 — parent UX polish + Street View popup
 
-### Workstreams 1-8: DONE (merged to main)
+### Workstreams 1-10: DONE (merged to main)
 
-### Workstream 9: Score & Size Filters — DONE
-
-**What was built:**
-- Collapsible filter panel in left panel (full category names: Demographics, Price, Regulatory, Neighborhood, Building)
-- Color chip toggles (G/Y/R) for 6 categories + size tier buttons (Micro, Micro2, Growth, Full Size, N/A)
-- AND across categories, OR within; Red (Reject) excluded by default, 4 non-reject sizes selected by default
-- Search bar removed — filters only
-- Filters cascade to map (via `filteredLocations()` in Zustand store)
-- `size_classification` added to `pp_location_scores` table, synced from upstream (normalized)
-
-### Workstream 10: Card & Score Display Polish — DONE
+### Workstream 11: Parent UX Polish — DONE
 
 **What was built:**
-- 4 subscores only: Neighborhood (MapPin), Regulatory (Landmark), Building (Building2), Price (DollarSign) — demographics removed
-- Colors only, no numeric scores — overall shown as card background tint (green/yellow/amber/red)
-- Card shading: `overallCardBg` maps GREEN→bg-green-50, YELLOW→bg-yellow-50, etc.
-- ArtifactLink (external link icon) only for overall score details URL
-- SizeLabel moved to header row (left of ArtifactLink and vote button)
-- Sub-scores always visible (no expand/collapse toggle)
-- Score legend popup (? icon) — icons only, no color thresholds
-- Map popup matches card layout: name + size + artifact link, address, sub-scores row
-- Card whitespace fix: overrode shadcn Card's built-in `gap-6` with `gap-0`
-- Icon alignment fix: `<div flex h-4>` with `[&>svg]:block` instead of `<span inline-flex>`
-- Removed blue left border (isInViewport indicator) — all on-screen locations shown
-- Suggest button moved below "How It Works", label: "+ Or Suggest New Location"
-- Map popup dismiss: click dot again, click map, or close button
+- Red toggle removed — non-admin always sees all scored locations (including RED), no toggle needed
+- SimpleRedToggle component removed entirely from LocationsList
+- Rank numbers (#1, #2, etc.) shown before street address on left-panel cards
+- Size labels with student counts: Micro (25), Micro2 (50-100), Growth (250), Flagship (1000)
+- "Full Size" renamed to "Flagship" in size filter buttons
+- "Detailed Info" blue hyperlink replaces (i) icon — opens score details in new tab
+- Card V1/V2 system: parents always get V1, admins can toggle (button in admin panel)
+  - V1 cards: 2-row layout (rank+address+vote, size|help|details) — no score icons
+  - V2 cards: 3-row layout with sub-score icons, legend (? icon), and details
+- HelpModal `card-compact` variant: text-only "I can help" (10px, no icon, no padding)
+- Map popup V1 redesign (Zillow-style):
+  - Google Street View image at top (640x320, from lat/lng via Static API)
+  - Vote button overlaid top-right on image
+  - Address + city/state below image
+  - Bottom row: Size label | "I can help" | "Detailed Info"
+  - Score-colored border (3px), min-w-[280px] max-w-[320px]
+- Map popup V2: full scores layout with sub-score icons (admin only)
 
-**DB changes:**
-- `pp_location_scores.size_classification` column added
-- `sync_scores_from_listings()` now syncs size_classification with normalization
-- `get_nearby_locations()` returns `size_classification`
-- `pp_locations_with_votes` view includes `size_classification`
-- 1,026 of 1,044 scored locations have size data (628 Micro, 151 Reject, 130 Micro2, 87 Growth, 28 Full)
+**Env var added:**
+- `NEXT_PUBLIC_GOOGLE_MAPS_KEY` — Google Street View Static API key (added to .env.local + Vercel)
 
 **Key files modified:**
-- `src/components/ScoreBadge.tsx` — ScoreCell, SubScoresRow, ArtifactLink, SizeLabel, ScoreDetails, ScoreLegend, overallCardBg
-- `src/components/LocationCard.tsx` — card shading via overallCardBg, SizeLabel+ArtifactLink in header, gap-0
-- `src/components/MapView.tsx` — popup shading via overallCardBg, ArtifactLink+SizeLabel+ScoreDetails
-- `src/components/LocationsList.tsx` — ScoreFilterPanel (no demographics), tighter list spacing
-- `src/lib/votes.ts` — ScoreFilters (no demographics), filter state, filteredLocations() logic
-- `src/types/index.ts` — sizeClassification on LocationScores
-- `src/components/AuthButton.tsx` — compact sign-in/sign-out styling
-- `src/app/page.tsx` — header layout, suggest button moved
+- `src/components/MapView.tsx` — V1/V2 popup, Street View image, VoteButton overlay
+- `src/components/LocationCard.tsx` — CardContentV1/V2, rank prop, SizeLabel in V1
+- `src/components/ScoreBadge.tsx` — SizeLabel with students, DetailedInfoLink, ScoreDetails
+- `src/components/LocationsList.tsx` — removed SimpleRedToggle, rank, card version toggle
+- `src/components/HelpModal.tsx` — card-compact variant
+- `src/lib/votes.ts` — cardVersion state, removed red toggle for non-admin
+- `src/app/page.tsx` — removed showRedLocations dependency
 
 ### Pending / Next steps
 - **Upstream scoring agent bug**: `overall_color` wrong for ~74% of rows — agent artifacts show correct color but DB has wrong value. Needs fix in scoring agent, then re-sync: `SELECT sync_scores_from_listings();`
 - Scoring agent needs to score 1,166 unscored locations in `real_estate_listings`
 - Fill sub-score gaps (especially Price: 140 missing) for the 734 already-scored locations
-- Vercel env vars already set: `SUPABASE_SERVICE_ROLE_KEY`, `RESEND_API_KEY`, `ADMIN_EMAILS`, `NEXT_PUBLIC_ADMIN_EMAILS`
+- Vercel env vars already set: `SUPABASE_SERVICE_ROLE_KEY`, `RESEND_API_KEY`, `ADMIN_EMAILS`, `NEXT_PUBLIC_ADMIN_EMAILS`, `NEXT_PUBLIC_GOOGLE_MAPS_KEY`
 
 ## SQL Functions (in Supabase)
 
