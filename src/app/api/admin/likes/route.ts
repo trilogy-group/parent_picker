@@ -2,32 +2,16 @@ import { NextRequest, NextResponse } from "next/server";
 import { verifyAdmin } from "@/lib/admin";
 import { getSupabaseAdmin } from "@/lib/supabase-admin";
 
-// Map Supabase row to score fields
-function colorFromScore(score: number | null): string | null {
-  if (score === null) return null;
-  if (score >= 0.75) return "GREEN";
-  if (score >= 0.5) return "YELLOW";
-  if (score >= 0.25) return "AMBER";
-  return "RED";
-}
-
 function mapScores(s: Record<string, unknown> | null) {
-  if (!s || s.overall_score == null) return undefined;
-  const overall = Number(s.overall_score);
-  const demo = s.demographics_score != null ? Number(s.demographics_score) : null;
-  const price = s.price_score != null ? Number(s.price_score) : null;
-  const zoning = s.zoning_score != null ? Number(s.zoning_score) : null;
-  const nbhd = s.neighborhood_score != null ? Number(s.neighborhood_score) : null;
-  const bldg = s.building_score != null ? Number(s.building_score) : null;
+  if (!s || s.overall_color == null) return undefined;
   return {
-    overall,
     overallColor: (s.overall_color as string) || null,
     overallDetailsUrl: (s.overall_details_url as string) || null,
-    demographics: { score: demo, color: (s.demographics_color as string) || colorFromScore(demo), detailsUrl: (s.demographics_details_url as string) || null },
-    price: { score: price, color: (s.price_color as string) || colorFromScore(price), detailsUrl: (s.price_details_url as string) || null },
-    zoning: { score: zoning, color: (s.zoning_color as string) || colorFromScore(zoning), detailsUrl: (s.zoning_details_url as string) || null },
-    neighborhood: { score: nbhd, color: (s.neighborhood_color as string) || colorFromScore(nbhd), detailsUrl: (s.neighborhood_details_url as string) || null },
-    building: { score: bldg, color: (s.building_color as string) || colorFromScore(bldg), detailsUrl: (s.building_details_url as string) || null },
+    price: { color: (s.price_color as string) || null },
+    zoning: { color: (s.zoning_color as string) || null },
+    neighborhood: { color: (s.neighborhood_color as string) || null },
+    building: { color: (s.building_color as string) || null },
+    sizeClassification: (s.size_classification as string) || null,
   };
 }
 

@@ -326,8 +326,15 @@ export const useVotesStore = create<VotesState>((set, get) => ({
   setReferencePoint: (coords) => set({ referencePoint: coords }),
 
   filteredLocations: () => {
-    const { locations, scoreFilters, isAdmin, viewAsParent, showUnscored, releasedFilter } = get();
+    const { locations, scoreFilters, isAdmin, viewAsParent, showUnscored, releasedFilter, selectedLocationId } = get();
     const effectiveAdmin = isAdmin && !viewAsParent;
+
+    // Deep-linked / selected location always passes through filters
+    const ensureSelected = (result: typeof locations) => {
+      if (!selectedLocationId || result.some((l) => l.id === selectedLocationId)) return result;
+      const sel = locations.find((l) => l.id === selectedLocationId);
+      return sel ? [...result, sel] : result;
+    };
 
     // Step 1: Apply released filter (belt-and-suspenders; server already filters)
     let filtered = locations;
@@ -343,7 +350,7 @@ export const useVotesStore = create<VotesState>((set, get) => ({
     // Step 2: Apply score/size filters based on admin status
     if (!effectiveAdmin) {
       // Non-admin: always hide unscored, show all scored (including RED)
-      return filtered.filter((loc) => loc.scores?.overallColor != null);
+      return ensureSelected(filtered.filter((loc) => loc.scores?.overallColor != null));
     }
 
     // Admin: hide unscored unless toggled on
@@ -366,13 +373,13 @@ export const useVotesStore = create<VotesState>((set, get) => ({
 
     if (!anyFilter) {
       // Default: exclude Red (Reject) size locations
-      return filtered.filter((loc) => {
+      return ensureSelected(filtered.filter((loc) => {
         const size = loc.scores?.sizeClassification;
         return size !== "Red (Reject)";
-      });
+      }));
     }
 
-    return filtered.filter((loc) => {
+    return ensureSelected(filtered.filter((loc) => {
       const scores = loc.scores;
 
       // Color filter categories: location must match each active category
@@ -402,6 +409,6 @@ export const useVotesStore = create<VotesState>((set, get) => ({
       }
 
       return true;
-    });
+    }));
   },
 }));

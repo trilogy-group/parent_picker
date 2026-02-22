@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { ChevronUp, ChevronDown, Plus } from "lucide-react";
 import { Map } from "@/components/Map";
@@ -10,6 +11,59 @@ import { AuthButton } from "@/components/AuthButton";
 import { useVotesStore } from "@/lib/votes";
 import { useAuth } from "@/components/AuthProvider";
 import { AUSTIN_CENTER } from "@/lib/locations";
+function DeepLinkHandler() {
+  const searchParams = useSearchParams();
+  const locationId = searchParams.get("location");
+  const { locations, setSelectedLocation, setFlyToTarget, addLocation } = useVotesStore();
+  const fetchedRef = useRef(false);
+
+  useEffect(() => {
+    if (!locationId) return;
+
+    // Check if already in loaded locations
+    const loc = locations.find((l) => l.id === locationId);
+    if (loc) {
+      setFlyToTarget({ lat: loc.lat, lng: loc.lng, zoom: 15 });
+      setSelectedLocation(loc.id);
+      return;
+    }
+
+    // Not in loaded set (e.g. pending_review) — fetch via API (bypasses RLS)
+    if (fetchedRef.current) return;
+    fetchedRef.current = true;
+
+    fetch(`/api/locations/${locationId}`)
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (!data) return;
+        const scores = data.pp_location_scores?.[0];
+        addLocation({
+          id: data.id,
+          name: data.name,
+          address: data.address,
+          city: data.city,
+          state: data.state,
+          lat: Number(data.lat),
+          lng: Number(data.lng),
+          votes: 0,
+          suggested: data.source === "parent_suggested",
+          scores: scores?.overall_color != null ? {
+            overallColor: scores.overall_color || null,
+            overallDetailsUrl: scores.overall_details_url || null,
+            price: { color: scores.price_color || null },
+            zoning: { color: scores.zoning_color || null },
+            neighborhood: { color: scores.neighborhood_color || null },
+            building: { color: scores.building_color || null },
+            sizeClassification: scores.size_classification || null,
+          } : undefined,
+        });
+        setFlyToTarget({ lat: Number(data.lat), lng: Number(data.lng), zoom: 15 });
+        setSelectedLocation(data.id);
+      });
+  }, [locationId, locations.length]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  return null;
+}
 
 export default function Home() {
   const [panelExpanded, setPanelExpanded] = useState(false);
@@ -38,6 +92,7 @@ export default function Home() {
 
   return (
     <div className="relative h-screen w-screen overflow-hidden">
+      <Suspense><DeepLinkHandler /></Suspense>
       {/* Full-screen Map */}
       <div className="absolute inset-0">
         <Map />

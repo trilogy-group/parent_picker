@@ -163,8 +163,11 @@ export function MapView() {
   }, []);
 
   // Set initial map view based on user location and nearby listings
+  // Skip if a deep link is present — let DeepLinkHandler control the view
   useEffect(() => {
     if (initialViewSetRef.current || !geoResolved || !mapReady || citySummaries.length === 0) return;
+    const hasDeepLink = typeof window !== "undefined" && new URLSearchParams(window.location.search).has("location");
+    if (hasDeepLink || flyToTarget) { initialViewSetRef.current = true; return; }
 
     const { center, zoom } = getInitialMapView(
       userLocation?.lat ?? null,

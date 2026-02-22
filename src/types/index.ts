@@ -1,14 +1,10 @@
 export interface SubScore {
-  score: number | null;
   color: string | null;
-  detailsUrl: string | null;
 }
 
 export interface LocationScores {
-  overall: number | null;
   overallColor: string | null;
   overallDetailsUrl: string | null;
-  demographics: SubScore;
   price: SubScore;
   zoning: SubScore;
   neighborhood: SubScore;

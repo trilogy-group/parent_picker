@@ -2,15 +2,6 @@ import { Location, LocationScores, CitySummary } from "@/types";
 import { supabase, isSupabaseConfigured } from "./supabase";
 import { sanitizeText } from "./validation";
 
-// Generate a color from a 0-1 sub-score
-function colorFromScore(score: number | null): string | null {
-  if (score === null) return null;
-  if (score >= 0.75) return "GREEN";
-  if (score >= 0.5) return "YELLOW";
-  if (score >= 0.25) return "AMBER";
-  return "RED";
-}
-
 // Seeded pseudo-random for deterministic mock scores
 function seededRandom(seed: number): () => number {
   let s = seed;
@@ -20,66 +11,32 @@ function seededRandom(seed: number): () => number {
   };
 }
 
+const COLORS = ["GREEN", "YELLOW", "AMBER", "RED"] as const;
+
 // Generate deterministic mock scores from a location index
 function mockScores(index: number): LocationScores {
   const rand = seededRandom(index * 7919 + 42);
-  const demo = Math.round(rand() * 100) / 100;
-  const price = Math.round(rand() * 100) / 100;
-  const zoning = Math.round(rand() * 100) / 100;
-  const nbhd = Math.round(rand() * 100) / 100;
-  const bldg = Math.round(rand() * 100) / 100;
-  const overall = Math.round((demo * 20 + price * 20 + zoning * 20 + nbhd * 20 + bldg * 20) * 100) / 100;
   return {
-    overall,
-    overallColor: null,
+    overallColor: COLORS[Math.floor(rand() * 4)],
     overallDetailsUrl: null,
-    demographics: { score: demo, color: colorFromScore(demo), detailsUrl: null },
-    price: { score: price, color: colorFromScore(price), detailsUrl: null },
-    zoning: { score: zoning, color: colorFromScore(zoning), detailsUrl: null },
-    neighborhood: { score: nbhd, color: colorFromScore(nbhd), detailsUrl: null },
-    building: { score: bldg, color: colorFromScore(bldg), detailsUrl: null },
+    price: { color: COLORS[Math.floor(rand() * 4)] },
+    zoning: { color: COLORS[Math.floor(rand() * 4)] },
+    neighborhood: { color: COLORS[Math.floor(rand() * 4)] },
+    building: { color: COLORS[Math.floor(rand() * 4)] },
     sizeClassification: ["Micro", "Micro2", "Growth", "Full Size"][Math.floor(rand() * 4)],
   };
 }
 
-// Map Supabase view row to LocationScores
+// Map Supabase row to LocationScores
 function mapRowToScores(row: Record<string, unknown>): LocationScores | undefined {
-  if (row.overall_score == null) return undefined;
-  const overall = Number(row.overall_score);
-  const demo = row.demographics_score != null ? Number(row.demographics_score) : null;
-  const price = row.price_score != null ? Number(row.price_score) : null;
-  const zoning = row.zoning_score != null ? Number(row.zoning_score) : null;
-  const nbhd = row.neighborhood_score != null ? Number(row.neighborhood_score) : null;
-  const bldg = row.building_score != null ? Number(row.building_score) : null;
+  if (row.overall_color == null) return undefined;
   return {
-    overall,
     overallColor: (row.overall_color as string) || null,
     overallDetailsUrl: (row.overall_details_url as string) || null,
-    demographics: {
-      score: demo,
-      color: (row.demographics_color as string) || colorFromScore(demo),
-      detailsUrl: (row.demographics_details_url as string) || null,
-    },
-    price: {
-      score: price,
-      color: (row.price_color as string) || colorFromScore(price),
-      detailsUrl: (row.price_details_url as string) || null,
-    },
-    zoning: {
-      score: zoning,
-      color: (row.zoning_color as string) || colorFromScore(zoning),
-      detailsUrl: (row.zoning_details_url as string) || null,
-    },
-    neighborhood: {
-      score: nbhd,
-      color: (row.neighborhood_color as string) || colorFromScore(nbhd),
-      detailsUrl: (row.neighborhood_details_url as string) || null,
-    },
-    building: {
-      score: bldg,
-      color: (row.building_color as string) || colorFromScore(bldg),
-      detailsUrl: (row.building_details_url as string) || null,
-    },
+    price: { color: (row.price_color as string) || null },
+    zoning: { color: (row.zoning_color as string) || null },
+    neighborhood: { color: (row.neighborhood_color as string) || null },
+    building: { color: (row.building_color as string) || null },
     sizeClassification: (row.size_classification as string) || null,
   };
 }
@@ -448,7 +405,7 @@ export async function suggestLocation(
           state,
           lat,
           lng,
-          status: "pending_review",
+          status: "pending_scoring",
           source: "parent_suggested",
           notes: notes || null,
           suggested_by: userId,

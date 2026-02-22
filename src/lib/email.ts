@@ -13,70 +13,45 @@ export interface EmailLocationInfo {
   state: string;
 }
 
-export interface EmailScoreInfo {
-  overall: number | null;
-  demographics: number | null;
-  price: number | null;
-  zoning: number | null;
-  neighborhood: number | null;
-  building: number | null;
-}
-
-function scoreBar(label: string, score: number | null): string {
-  if (score === null) return "";
-  const pct = label === "Overall" ? score : Math.round(score * 100);
-  const color = pct >= 75 ? "#22c55e" : pct >= 50 ? "#eab308" : pct >= 25 ? "#f59e0b" : "#ef4444";
-  return `<tr><td style="padding:4px 8px;font-size:14px;">${label}</td><td style="padding:4px 8px;font-size:14px;font-weight:bold;color:${color};">${pct}</td></tr>`;
-}
-
-export function generateApprovalHtml(location: EmailLocationInfo, scores?: EmailScoreInfo): string {
-  let scoreSection = "";
-  if (scores?.overall != null) {
-    scoreSection = `
-      <h3 style="margin-top:20px;">Location Scores</h3>
-      <table style="border-collapse:collapse;">
-        ${scoreBar("Overall", scores.overall)}
-        ${scoreBar("Demographics", scores.demographics)}
-        ${scoreBar("Price", scores.price)}
-        ${scoreBar("Zoning", scores.zoning)}
-        ${scoreBar("Neighborhood", scores.neighborhood)}
-        ${scoreBar("Building", scores.building)}
-      </table>
-    `;
-  }
-
+export function generateApprovalHtml(location: EmailLocationInfo): string {
   return `
     <h2>Great news!</h2>
     <p>Your suggested location <strong>${location.name}</strong> at ${location.address}, ${location.city}, ${location.state} has been approved and is now live on the Parent Picker map.</p>
-    ${scoreSection}
     <p>Share the link with other parents to rally votes for this location!</p>
     <p><a href="https://parentpicker.vercel.app">View on Parent Picker</a></p>
   `;
 }
 
-export function generateRejectionHtml(location: EmailLocationInfo, scores?: EmailScoreInfo): string {
-  let scoreSection = "";
-  if (scores?.overall != null) {
-    scoreSection = `
-      <h3 style="margin-top:20px;">Location Scores</h3>
-      <table style="border-collapse:collapse;">
-        ${scoreBar("Overall", scores.overall)}
-        ${scoreBar("Demographics", scores.demographics)}
-        ${scoreBar("Price", scores.price)}
-        ${scoreBar("Zoning", scores.zoning)}
-        ${scoreBar("Neighborhood", scores.neighborhood)}
-        ${scoreBar("Building", scores.building)}
-      </table>
-      <p style="font-size:13px;color:#666;">These scores help us evaluate whether a location meets the requirements for a micro school.</p>
-    `;
-  }
-
+export function generateRejectionHtml(location: EmailLocationInfo): string {
   return `
     <h2>Thank you for your suggestion</h2>
     <p>We reviewed <strong>${location.name}</strong> at ${location.address}, ${location.city}, ${location.state} but unfortunately it doesn't meet our current criteria for a micro school location.</p>
-    ${scoreSection}
     <p>We appreciate your help in finding great locations! Feel free to suggest other spots you think would work well.</p>
     <p><a href="https://parentpicker.vercel.app">Suggest another location</a></p>
+  `;
+}
+
+export interface ScoredEmailParams {
+  location: EmailLocationInfo;
+  locationId: string;
+  detailsUrl?: string | null;
+}
+
+export function generateScoredNotificationHtml({ location, locationId, detailsUrl }: ScoredEmailParams): string {
+  const mapUrl = `https://parentpicker.vercel.app/?location=${locationId}`;
+
+  const detailsLink = detailsUrl
+    ? `&nbsp;&nbsp;<a href="${detailsUrl}" style="display:inline-block;padding:12px 24px;background:#2563eb;color:#ffffff;text-decoration:none;border-radius:8px;font-weight:bold;font-size:14px;">View Full Score Details</a>`
+    : "";
+
+  return `
+    <h2>Your suggested location has been evaluated!</h2>
+    <p><strong>${location.address}</strong>, ${location.city}, ${location.state} has been scored by our site selection system.</p>
+    <div style="margin-top:24px;">
+      <a href="${mapUrl}" style="display:inline-block;padding:12px 24px;background:#2563eb;color:#ffffff;text-decoration:none;border-radius:8px;font-weight:bold;font-size:14px;">View on Map</a>
+      ${detailsLink}
+    </div>
+    <p style="margin-top:20px;font-size:13px;color:#666;">Our team is reviewing this location. We'll let you know when it goes live so you can rally other parents to vote for it!</p>
   `;
 }
 
