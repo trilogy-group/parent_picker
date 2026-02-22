@@ -4,27 +4,27 @@
 
 ## Tech Debt
 
-### Upstream Scoring Agent Bug (Critical)
+### REBL Scoring Bug (Critical)
 
 **Issue:** `overall_color` field is wrong for ~74% of locations (1,026 of 1,044 scored locations)
 - Files: `src/lib/locations.ts` lines 45-84 (mapRowToScores function), `src/app/api/admin/locations/route.ts` lines 5-32 (mapScores function)
-- Impact: UI displays incorrect color indicators for most locations; real_estate_listings agent artifacts show correct colors but database has wrong values
+- Impact: UI displays incorrect color indicators for most locations; REBL artifacts show correct colors but `pp_location_scores` has wrong values
 - Current mitigation: Code uses fallback `colorFromScore(demo)` when DB value is null, but null case doesn't apply here since values are written but wrong
 - Fix approach:
-  1. Upstream scoring agent must fix its color calculation logic
-  2. After agent fix, re-sync with `SELECT sync_scores_from_listings();` in Supabase
+  1. REBL must fix its color calculation logic
+  2. REBL re-writes corrected scores into `pp_location_scores`
   3. Verify 1,026 rows update correctly by spot-checking color values match score ranges
 
 ### Scoring Coverage Gaps
 
 **Issue:** Significant unscored location backlog blocks MVP feature completeness
-- Files: upstream `real_estate_listings` table, synced into `pp_location_scores`
+- Files: `pp_location_scores` table (populated by REBL)
 - Impact: Parent filtering experience degraded; non-admin parents cannot see unscored locations; admin has visibility but can't promote them
 - Current state:
-  - 1,044 locations scored out of 2,210 in upstream (47%)
+  - 1,044 locations scored out of 2,210 total (47%)
   - 1,166 locations remain unscored
-  - 734 already-scored locations missing Price sub-scores (especially 140 missing Price: 140 missing)
-- Fix approach: Coordinate with upstream scoring agent to run batch scoring on remaining 1,166 locations; request sub-score completion for the 734 partial-scored rows
+  - 734 already-scored locations missing Price sub-scores (especially 140 missing)
+- Fix approach: REBL needs to batch-score remaining 1,166 locations and fill sub-score gaps for the 734 partial-scored rows
 
 ---
 
@@ -34,10 +34,10 @@
 
 **Symptoms:** 1,026 of 1,044 scored locations have `size_classification` data; 18 rows missing
 - Files: `pp_location_scores.size_classification` column
-- Trigger: Locations imported from upstream without size tier data
+- Trigger: Locations written by REBL without size tier data
 - Current impact: Minimal; filter defaults hide N/A sizes anyway, but coverage incomplete
 - Workaround: Size filter defaults to `["Micro", "Micro2", "Growth", "Full Size"]` and filters via `isDefaultSize` logic in `src/lib/votes.ts` lines 365-368
-- Fix: Upstream agent should populate size_classification for all 1,026 scored rows; coordinate batch re-sync
+- Fix: REBL should populate size_classification for all 1,026 scored rows
 
 ### React SSR/Hydration State Initialization (Fixed but documented)
 
@@ -69,9 +69,9 @@
 ### Admin Endpoint Authorization Gaps
 
 **Risk:** Multiple admin routes verify auth but could be bypassed or exploited
-- Files: `src/app/api/admin/locations/route.ts`, `src/app/api/admin/locations/[id]/approve/route.ts`, `src/app/api/admin/locations/[id]/reject/route.ts`, `src/app/api/admin/locations/[id]/notify-voters/route.ts`, `src/app/api/admin/locations/[id]/sync-scores/route.ts`
+- Files: `src/app/api/admin/locations/route.ts`, `src/app/api/admin/locations/[id]/approve/route.ts`, `src/app/api/admin/locations/[id]/reject/route.ts`, `src/app/api/admin/locations/[id]/notify-voters/route.ts`
 - Current protection: Each route calls `verifyAdmin()` on the Authorization header
-- Gap: No rate limiting; no audit logging of admin actions (approve, reject, notify, sync-scores); no transaction rollback if operation fails mid-way
+- Gap: No rate limiting; no audit logging of admin actions (approve, reject, notify); no transaction rollback if operation fails mid-way
 - Missing: Idempotency keys for approve/reject (repeated submission could double-count votes)
 - Recommendations:
   1. Add request ID / idempotency key validation
@@ -250,7 +250,7 @@
 
 ### Audit Logging for Admin Actions
 
-**Problem:** No audit trail for admin approvals, rejections, notifications, score syncs
+**Problem:** No audit trail for admin approvals, rejections, notifications
 - Blocks: Enterprise compliance; cannot investigate "who changed what when"
 - Files: Admin API routes lack logging
 - Impact: Security gap; no way to rollback unauthorized admin actions
@@ -341,7 +341,7 @@
 - Files: `tests/requirements.test.py` (Playwright suite)
 - Gaps:
   - Admin workflows (approve, reject, notify) have 0 e2e tests
-  - Score sync workflow not tested
+
   - Email notifications never verified
   - Filter combinations tested minimally (only basic toggles)
 - Priority: MEDIUM — MVP works, but edge cases uncovered

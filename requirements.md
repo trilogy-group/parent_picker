@@ -572,15 +572,6 @@ Admin page shows all locations with `status = 'pending_review'`.
 - [ ] `TC-17.2.5`: Score badges are displayed when scores exist
 - [ ] `TC-17.2.6`: Empty state shown when no pending locations
 
-### REQ-17.3: Pull Scores
-Admin can pull scores from upstream `real_estate_listings` for a pending location.
-
-**Test Cases:**
-- [ ] `TC-17.3.1`: "Pull Scores" button triggers sync for the location's address
-- [ ] `TC-17.3.2`: Scores display after successful sync
-- [ ] `TC-17.3.3`: "No scores found" message when address not in upstream data
-- [ ] `TC-17.3.4`: Pull scores does not affect other locations
-
 ### REQ-17.4: Approve Location
 Admin can approve a pending location, making it visible to all parents.
 
@@ -793,7 +784,6 @@ TODO emails integrate with existing admin approval workflow.
 - [ ] `TC-23.4.2`: Email preview shows standard approval email when no RED scores
 - [ ] `TC-23.4.3`: TODO count badge displayed on admin card after score sync
 - [ ] `TC-23.4.4`: Approval email subject changes to "action items inside" when TODOs present
-- [ ] `TC-23.4.5`: Sync-scores API returns upstreamMetrics and metroInfo alongside scores
 
 ## 24. Admin vs Non-Admin Filters
 
@@ -1122,28 +1112,9 @@ See `docs/brainlift-location-selection.md` for full strategic context.
 
 - **Moody's data ETL:** Filter commercial RE listings by size tier (Micro 2.5-7.5K SF, Growth 15-50K SF, Flagship 50-150K SF) and load into pp_locations + pp_listings
 - **Location and Zoning scoring:** Enrollment Score (ES), Wealth Score (WS), and Relative Scores per brainlift thresholds (>2,500 ideal, <1,250 exclude); Microschools require zoned-by-right; larger schools accept CUP/SUP; reject if school use prohibited
-- **Score display:** ~~Show consumer-level scoring on location cards~~ DONE — synced from `real_estate_listings` into `pp_location_scores`, displayed on cards and map popups
-- **TODO: Score locations.** 1,899 active locations. **1,165 have no scores at all** — `overall_score` is NULL in `real_estate_listings` for these addresses. Scoring agent needs to run on them.
-
-  **Unscored locations by metro:**
-
-  | Metro | Unscored |
-  |-------|----------|
-  | New York, NY | **700** |
-  | Brooklyn, NY | **205** |
-  | Boca Raton, FL | 100 |
-  | West Palm Beach, FL | 64 |
-  | Boynton Beach, FL | 25 |
-  | Delray Beach, FL | 21 |
-  | Palm Beach Gardens, FL | 13 |
-  | North Palm Beach, FL | 9 |
-  | Jupiter, FL | 7 |
-  | Other (Lantana, Greenacres, Palm Springs, etc.) | 21 |
-  | **Total** | **1,165** |
-
-  Of the 734 that are scored, 140 are missing Price sub-scores and 50 are missing Neighborhood. Re-sync after scoring agent fills gaps: `SELECT sync_scores_from_listings();`.
+- **Score display:** ~~Show consumer-level scoring on location cards~~ DONE — scores in `pp_location_scores`, displayed on cards and map popups. REBL (v3 lite) populates scores directly into pp_* tables.
 - **Scoring trigger:** Auto-score when parent suggests a location (separate agent)
 - **Parent assistance solicitation:** ~~Low-scoring locations prompt parents for help (zoning contacts, local knowledge, capacity commitments)~~ DONE — TODO-enhanced approval emails with zoning/demographics/pricing action items (Section 18)
-- **Admin review workflow:** ~~UI to review/approve parent-suggested locations~~ DONE — `/admin` page with approve/reject/pull-scores, email notifications via Resend
+- **Admin review workflow:** ~~UI to review/approve parent-suggested locations~~ DONE — `/admin` page with approve/reject, email notifications via Resend
 - **Dealing with listings:** Right now we are only showing the best score per listing, and our scheme only supports having one. This should be addressed eventually, though scores don't vary much at the same location so we punted for now.
 - **New market detection is oversimplified:** Currently uses state-level matching against a hardcoded list of Alpha school locations (e.g., any location in CA/FL/TX/AZ/VA/NC is "existing market"). This is wrong — a location in rural Northern California is not the same market as LA or SF. Needs proper metro-level matching (MSA or similar) to determine if a location is truly in an existing Alpha metro vs. a new market launch. Affects pricing TODO scenarios (P1/P2 vs P3).

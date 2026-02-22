@@ -97,8 +97,6 @@
 - Admin clicks Approve/Reject → POST to `/api/admin/locations/{id}/approve` or `/reject`
 - Approve: updates status to 'approved', optionally notifies suggestor
 - Reject: updates status to 'rejected'
-- Sync Scores: POST to `/api/admin/locations/{id}/sync-scores` → calls SQL function to fetch scores from upstream
-
 **6. Filter & Metro Consolidation:**
 - Parent user toggles filter (e.g., "Price: GREEN") → toggleScoreFilter() updates Zustand
 - Both map dots and location list re-render via `filteredLocations()`
@@ -161,7 +159,7 @@
 - POST `/api/admin/locations/{id}/approve` - Approve suggestion
 - POST `/api/admin/locations/{id}/reject` - Reject suggestion
 - POST `/api/admin/locations/{id}/notify-voters` - Send email to suggestor/voters
-- POST `/api/admin/locations/{id}/sync-scores` - Sync scores from upstream
+
 
 **Auth Callback:**
 - Location: `src/app/auth/callback/route.ts`

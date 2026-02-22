@@ -16,10 +16,11 @@ An interactive, consumer-facing website where parents can vote on and express pr
 - Reference implementation: https://sportsacademy.school/map/facilities (used by 30k parents for facility voting)
 - No humans on central team in the processing loop — design accordingly.
 
-## Terminology
+## Data Boundary
 
-- **App tables** (`pp_*`): Tables owned by this app — `pp_locations`, `pp_votes`, `pp_location_scores`, etc. We control the schema and write to them.
-- **Upstream tables**: Tables populated by other agents/pipelines outside this repo — `real_estate_listings`, etc. We read from them but never write to them. Scores and report URLs originate here and get synced into app tables via `sync_scores_from_listings()`.
+- This app ONLY interacts with `pp_*` tables. Never query or reference non-pp tables (e.g., `real_estate_listings`).
+- **REBL (v3 lite)** populates core data into `pp_locations` and `pp_location_scores`. This app treats that data as read-only.
+- This app may write: `pp_votes`, `pp_help_requests`, and INSERT parent suggestions into `pp_locations` (with `status: pending_review`). It may also update `pp_locations.status` (approve/reject).
 
 ## Test-Driven Development
 
@@ -62,7 +63,6 @@ Duplicate the Sports Academy facilities map functionality:
 - `feedback.md` - User feedback log with root cause analysis and corrective actions
 - `architecture.md` - Technical architecture, commands, tech stack, and file structure
 - `docs/brainlift-location-selection.md` - Location selection brainlift (scoring, zoning, parent override)
-- `sql/import_locations_from_upstream.sql` - SQL function to import from upstream
 
 ## Session State (2026-02-06)
 
@@ -106,16 +106,10 @@ Duplicate the Sports Academy facilities map functionality:
 - `src/app/page.tsx` — removed showRedLocations dependency
 
 ### Pending / Next steps
-- **Upstream scoring agent bug**: `overall_color` wrong for ~74% of rows — agent artifacts show correct color but DB has wrong value. Needs fix in scoring agent, then re-sync: `SELECT sync_scores_from_listings();`
-- Scoring agent needs to score 1,166 unscored locations in `real_estate_listings`
-- Fill sub-score gaps (especially Price: 140 missing) for the 734 already-scored locations
+- **REBL scoring bug**: `overall_color` wrong for ~74% of scored rows — needs fix in REBL, then REBL re-writes to `pp_location_scores`
+- REBL needs to score ~1,166 unscored locations and fill sub-score gaps (Price: 140 missing)
+- DB trigger for parent suggestion → REBL scoring → email notification (not yet built)
 - Vercel env vars already set: `SUPABASE_SERVICE_ROLE_KEY`, `RESEND_API_KEY`, `ADMIN_EMAILS`, `NEXT_PUBLIC_ADMIN_EMAILS`, `NEXT_PUBLIC_GOOGLE_MAPS_KEY`
-
-## SQL Functions (in Supabase)
-
-- `sync_scores_from_listings()` — bulk sync all scores from upstream
-- `sync_scores_for_address(target_address)` — single-address score sync (used by admin pull-scores)
-- `import_locations_from_upstream(city_names[], state_code)` — import locations from upstream by city/state
 
 ## File Structure
 

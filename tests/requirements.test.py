@@ -1692,30 +1692,6 @@ def run_tests():
             pass
         _()
 
-        @test("TC-17.3.1", "Pull Scores button triggers sync")
-        @skip("Requires Supabase admin auth + upstream data")
-        def _():
-            pass
-        _()
-
-        @test("TC-17.3.2", "Scores display after successful sync")
-        @skip("Requires Supabase admin auth")
-        def _():
-            pass
-        _()
-
-        @test("TC-17.3.3", "No scores found message")
-        @skip("Requires Supabase admin auth")
-        def _():
-            pass
-        _()
-
-        @test("TC-17.3.4", "Pull scores does not affect other locations")
-        @skip("Requires Supabase admin auth")
-        def _():
-            pass
-        _()
-
         @test("TC-17.4.1", "Approve changes status to active")
         @skip("Requires Supabase admin auth")
         def _():
@@ -2382,7 +2358,7 @@ def run_tests():
         _()
 
         @test("TC-23.1.2", "Zoning TODO includes zone code when available")
-        @skip("Requires Supabase admin auth + upstream data")
+        @skip("Requires Supabase admin auth + scored data")
         def _():
             pass
         _()
@@ -2400,19 +2376,19 @@ def run_tests():
         _()
 
         @test("TC-23.2.1", "M1 scenario: metro max enrollment >= 2500 AND wealth >= 2500")
-        @skip("Requires Supabase admin auth + upstream metro data")
+        @skip("Requires Supabase admin auth + metro data")
         def _():
             pass
         _()
 
         @test("TC-23.2.2", "M2 scenario: metro max >= 1000 but < 2500")
-        @skip("Requires Supabase admin auth + upstream metro data")
+        @skip("Requires Supabase admin auth + metro data")
         def _():
             pass
         _()
 
         @test("TC-23.2.3", "M3 scenario: metro max < 1000")
-        @skip("Requires Supabase admin auth + upstream metro data")
+        @skip("Requires Supabase admin auth + metro data")
         def _():
             pass
         _()
@@ -2442,7 +2418,7 @@ def run_tests():
         _()
 
         @test("TC-23.3.3", "Dollar math correct: students = space/100")
-        @skip("Requires Supabase admin auth + upstream data")
+        @skip("Requires Supabase admin auth + scored data")
         def _():
             pass
         _()
@@ -2479,12 +2455,6 @@ def run_tests():
 
         @test("TC-23.4.4", "Approval email subject changes with TODOs")
         @skip("Requires Supabase admin auth")
-        def _():
-            pass
-        _()
-
-        @test("TC-23.4.5", "Sync-scores API returns upstreamMetrics and metroInfo")
-        @skip("Requires Supabase admin auth + upstream data")
         def _():
             pass
         _()

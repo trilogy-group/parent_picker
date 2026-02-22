@@ -32,20 +32,15 @@
   - Tables owned by this app:
     - `pp_locations` - Submitted and managed locations (name, address, city, state, lat, lng, status, source, suggested_by, created_at)
     - `pp_votes` - Parent votes (user_id, location_id, timestamp)
-    - `pp_location_scores` - Scoring from upstream agent (location_id, overall_score, demographics_score, price_score, zoning_score, neighborhood_score, building_score, and corresponding color/URL fields, size_classification)
+    - `pp_location_scores` - Scoring data populated by REBL (location_id, overall_score, demographics_score, price_score, zoning_score, neighborhood_score, building_score, and corresponding color/URL fields, size_classification)
     - `pp_profiles` - Parent profiles (minimal, currently unused)
   - Views:
     - `pp_locations_with_votes` - Join locations with vote counts and scores
   - RPC functions:
     - `get_location_cities()` - Aggregate cities by released status and filters
     - `get_nearby_locations()` - Spatial query for locations within radius
-    - `sync_scores_from_listings()` - Bulk sync from upstream `real_estate_listings` table
-    - `sync_scores_for_address()` - Single-address score sync triggered by admin UI
-  - Upstream tables (read-only):
-    - `real_estate_listings` - Populated by external scoring agent, contains scores and size classification that get synced into `pp_location_scores`
-
 **File Storage:**
-- None - Local filesystem or CDN URLs only (artifact links embedded in score data from upstream)
+- None - Local filesystem or CDN URLs only (artifact links embedded in score data from REBL)
 
 **Caching:**
 - None detected - Direct database queries, client-side Zustand store for UI state
@@ -128,10 +123,8 @@
 2. If logged in and Supabase configured → INSERT into `pp_votes` table
 3. On failure → rollback optimistic update, log error
 
-**Score Sync:**
-1. Admin triggers `POST /api/admin/locations/[id]/sync-scores`
-2. Calls RPC `sync_scores_for_address()` → queries `real_estate_listings`, upserts into `pp_location_scores`
-3. Bulk sync via manual `SELECT sync_scores_from_listings()` (documented in architecture.md)
+**Score Population (external — REBL):**
+- REBL writes scores directly into `pp_location_scores`. This app reads them, never writes them.
 
 **Filter + Display Pipeline:**
 1. Page renders → Zustand `loadCitySummaries()` and `fetchNearbyForce()` (if user has location permission)
