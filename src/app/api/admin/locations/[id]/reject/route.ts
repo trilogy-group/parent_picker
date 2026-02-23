@@ -43,14 +43,32 @@ export async function POST(
     return NextResponse.json({ error: updateError.message }, { status: 500 });
   }
 
-  // Send email if HTML provided (best-effort)
+  // Send email if HTML provided
+  let recipientEmail: string | null = null;
+  let emailFailed: string | null = null;
   if (emailHtml && location.suggested_by) {
     const { data: userData } = await supabase.auth.admin.getUserById(location.suggested_by);
-    const email = userData?.user?.email;
-    if (email) {
-      await sendEmail(email, emailSubject || "Update on your suggested location", emailHtml);
+    recipientEmail = userData?.user?.email || null;
+    if (recipientEmail) {
+      const result = await sendEmail(recipientEmail, emailSubject || "Update on your suggested location", emailHtml);
+      if (!result.success) {
+        emailFailed = result.error || "Email send failed";
+      }
     }
   }
 
-  return NextResponse.json({ success: true });
+  // Only record to history if email succeeded (or no email needed)
+  if (!emailFailed) {
+    await supabase.from("pp_admin_actions").insert({
+      location_id: id,
+      action: "rejected",
+      admin_email: auth.email!,
+      recipient_emails: recipientEmail ? [recipientEmail] : [],
+    });
+  }
+
+  return NextResponse.json({
+    success: true,
+    emailFailed: emailFailed || undefined,
+  });
 }

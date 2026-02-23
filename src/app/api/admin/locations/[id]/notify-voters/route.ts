@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifyAdmin } from "@/lib/admin";
+import { getSupabaseAdmin } from "@/lib/supabase-admin";
 import { sendEmail } from "@/lib/email";
 
 export async function POST(
@@ -11,7 +12,7 @@ export async function POST(
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  await params; // consume params (id not needed for sending)
+  const { id } = await params;
 
   const body = await request.json().catch(() => ({}));
   const { emailHtml, emailSubject, voterEmails } = body as {
@@ -30,10 +31,29 @@ export async function POST(
   const subject = emailSubject || "Update on a location you liked";
 
   let sent = 0;
+  const failed: string[] = [];
   for (const email of voterEmails) {
-    await sendEmail(email, subject, emailHtml);
-    sent++;
+    const result = await sendEmail(email, subject, emailHtml);
+    if (result.success) {
+      sent++;
+    } else {
+      failed.push(`${email}: ${result.error}`);
+    }
   }
 
-  return NextResponse.json({ success: true, sent });
+  // Only record to history if at least some emails succeeded
+  if (sent > 0) {
+    const supabase = getSupabaseAdmin();
+    if (supabase) {
+      const successEmails = voterEmails.filter((e) => !failed.some((f) => f.startsWith(e)));
+      await supabase.from("pp_admin_actions").insert({
+        location_id: id,
+        action: "help_requested",
+        admin_email: auth.email!,
+        recipient_emails: successEmails,
+      });
+    }
+  }
+
+  return NextResponse.json({ success: sent > 0, sent, failed });
 }

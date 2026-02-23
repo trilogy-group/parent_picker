@@ -13,24 +13,6 @@ export interface EmailLocationInfo {
   state: string;
 }
 
-export function generateApprovalHtml(location: EmailLocationInfo): string {
-  return `
-    <h2>Great news!</h2>
-    <p>Your suggested location <strong>${location.name}</strong> at ${location.address}, ${location.city}, ${location.state} has been approved and is now live on the Parent Picker map.</p>
-    <p>Share the link with other parents to rally votes for this location!</p>
-    <p><a href="https://parentpicker.vercel.app">View on Parent Picker</a></p>
-  `;
-}
-
-export function generateRejectionHtml(location: EmailLocationInfo): string {
-  return `
-    <h2>Thank you for your suggestion</h2>
-    <p>We reviewed <strong>${location.name}</strong> at ${location.address}, ${location.city}, ${location.state} but unfortunately it doesn't meet our current criteria for a micro school location.</p>
-    <p>We appreciate your help in finding great locations! Feel free to suggest other spots you think would work well.</p>
-    <p><a href="https://parentpicker.vercel.app">Suggest another location</a></p>
-  `;
-}
-
 export interface ScoredEmailParams {
   location: EmailLocationInfo;
   locationId: string;
@@ -55,59 +37,63 @@ export function generateScoredNotificationHtml({ location, locationId, detailsUr
   `;
 }
 
-export function generateHelpGuideHtml(location?: { address: string; name?: string | null }): string {
-  const heading = location
-    ? `Here's how you can help with ${location.name || location.address}`
-    : "Here's how you can help bring Alpha to your area";
-
-  const locationLine = location
-    ? `<p style="background:#f0f9ff;padding:12px;border-radius:8px;font-size:14px;">📍 <strong>${location.address}</strong></p>`
+export function generateLocationHelpHtml(
+  address: string,
+  city: string,
+  state: string,
+  locationId: string,
+  detailsUrl?: string | null
+): string {
+  const mapUrl = `https://parentpicker.vercel.app/?location=${locationId}`;
+  const helpUrl = detailsUrl
+    ? `${detailsUrl}${detailsUrl.includes("?") ? "&" : "?"}tab=help`
+    : null;
+  const helpLink = helpUrl
+    ? `<a href="${helpUrl}" style="display:inline-block;padding:12px 24px;background:#22c55e;color:#ffffff;text-decoration:none;border-radius:8px;font-weight:bold;font-size:14px;">See How You Can Help</a>&nbsp;&nbsp;`
     : "";
 
   return `
-    <h2>${heading}</h2>
-    <p>Thank you for volunteering to help! Parents have 100x the local knowledge we do, and your involvement makes a real difference.</p>
-    ${locationLine}
-    <h3 style="margin-top:24px;">4 Ways You Can Help</h3>
-    <table style="border-collapse:collapse;width:100%;">
-      <tr>
-        <td style="padding:12px;vertical-align:top;border-bottom:1px solid #eee;">
-          <strong>🏢 Connect us with property owners</strong><br/>
-          <span style="font-size:13px;color:#666;">Know the landlord or property manager? An intro goes a long way. Even just the name of the building owner helps us reach out.</span>
-        </td>
-      </tr>
-      <tr>
-        <td style="padding:12px;vertical-align:top;border-bottom:1px solid #eee;">
-          <strong>📋 Help with zoning &amp; permitting</strong><br/>
-          <span style="font-size:13px;color:#666;">Know someone at city hall? A local attorney who handles zoning? School use often needs special permits — local connections are invaluable.</span>
-        </td>
-      </tr>
-      <tr>
-        <td style="padding:12px;vertical-align:top;border-bottom:1px solid #eee;">
-          <strong>👥 Rally other parents</strong><br/>
-          <span style="font-size:13px;color:#666;">Share the Parent Picker link with parents in your area. More votes = stronger signal that this location has real demand.</span>
-        </td>
-      </tr>
-      <tr>
-        <td style="padding:12px;vertical-align:top;">
-          <strong>🔑 Introduce us to government contacts</strong><br/>
-          <span style="font-size:13px;color:#666;">Local school board members, city council reps, or planning commission contacts can help smooth the path for a new school.</span>
-        </td>
-      </tr>
-    </table>
-    <p style="margin-top:24px;"><a href="https://parentpicker.vercel.app">View locations on Parent Picker</a></p>
+    <h2>We need your help with a location you care about</h2>
+    <p><strong>${address}</strong>, ${city}, ${state} needs your local knowledge. Parents have 100x the local knowledge we do, and your involvement makes a real difference.</p>
+    <div style="margin-top:24px;">
+      ${helpLink}<a href="${mapUrl}" style="display:inline-block;padding:12px 24px;background:#2563eb;color:#ffffff;text-decoration:none;border-radius:8px;font-weight:bold;font-size:14px;">View on Map</a>
+    </div>
+    <p style="margin-top:20px;font-size:13px;color:#666;">Know the landlord? Have a zoning contact? Even small connections help us move faster. Click above to see specific ways you can help.</p>
   `;
 }
 
-export async function sendEmail(to: string, subject: string, html: string) {
+export function generateGenericHelpHtml(): string {
+  return `
+    <h2>Thank you for volunteering!</h2>
+    <p>We've noted your willingness to help — parents like you make all the difference. You have 100x the local knowledge we do.</p>
+    <p>Browse locations near you and pick one you'd like to help with. Once you do, we'll send you specific details on how you can make a difference for that location.</p>
+    <div style="margin-top:24px;">
+      <a href="https://parentpicker.vercel.app" style="display:inline-block;padding:12px 24px;background:#2563eb;color:#ffffff;text-decoration:none;border-radius:8px;font-weight:bold;font-size:14px;">Browse Locations</a>
+    </div>
+  `;
+}
+
+export interface SendResult {
+  success: boolean;
+  error?: string;
+}
+
+export async function sendEmail(to: string, subject: string, html: string): Promise<SendResult> {
   if (!resend) {
     console.log("Resend not configured, skipping email to", to);
-    return;
+    return { success: false, error: "Resend not configured" };
   }
 
   try {
-    await resend.emails.send({ from: FROM_EMAIL, replyTo: "real_estate@alpha.school", to, subject, html });
+    const result = await resend.emails.send({ from: FROM_EMAIL, replyTo: "real_estate@alpha.school", to, subject, html });
+    if (result.error) {
+      console.error("Resend error:", result.error);
+      return { success: false, error: result.error.message };
+    }
+    return { success: true };
   } catch (error) {
+    const msg = error instanceof Error ? error.message : "Unknown error";
     console.error("Failed to send email:", error);
+    return { success: false, error: msg };
   }
 }

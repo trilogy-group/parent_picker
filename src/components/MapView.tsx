@@ -503,6 +503,7 @@ export function MapView() {
                 <div className="flex items-center justify-between pt-1">
                   <HelpModal
                     variant="card"
+                    locationId={selectedLocation.id}
                     locationName={selectedLocation.name}
                     locationAddress={`${selectedLocation.address}, ${selectedLocation.city}, ${selectedLocation.state}`}
                   />
@@ -543,6 +544,7 @@ export function MapView() {
                     <SizeLabel scores={selectedLocation.scores} />
                     <HelpModal
                       variant="card-compact"
+                      locationId={selectedLocation.id}
                       locationName={selectedLocation.name}
                       locationAddress={`${selectedLocation.address}, ${selectedLocation.city}, ${selectedLocation.state}`}
                     />

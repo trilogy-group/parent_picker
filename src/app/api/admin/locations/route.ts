@@ -30,7 +30,7 @@ export async function GET(request: NextRequest) {
   const { data: locations, error } = await supabase
     .from("pp_locations")
     .select("*")
-    .eq("status", "pending_review")
+    .in("status", ["pending_scoring", "pending_review"])
     .order("created_at", { ascending: false });
 
   if (error) {

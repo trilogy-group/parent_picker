@@ -1,11 +1,11 @@
 "use client";
 
 import { useEffect, useState, useRef } from "react";
-import { ShieldCheck, Loader2, ArrowLeft } from "lucide-react";
+import { ShieldCheck, Loader2, ArrowLeft, Check, X, Mail, ExternalLink, Clock, MapPin, HandHelping } from "lucide-react";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
-import { AdminLocation, LikedLocation } from "@/types";
+import { AdminLocation, LikedLocation, AdminAction } from "@/types";
 import { AdminLocationCard } from "@/components/AdminLocationCard";
-import { AdminHelpRequestCard, HelpRequest } from "@/components/AdminHelpRequestCard";
+import { Card, CardContent } from "@/components/ui/card";
 import Link from "next/link";
 
 const ADMIN_EMAILS = (process.env.NEXT_PUBLIC_ADMIN_EMAILS || "")
@@ -13,7 +13,91 @@ const ADMIN_EMAILS = (process.env.NEXT_PUBLIC_ADMIN_EMAILS || "")
   .map((e) => e.trim().toLowerCase())
   .filter(Boolean);
 
-type Tab = "suggestions" | "likes" | "help";
+type Tab = "suggestions" | "likes" | "history";
+
+function ActionBadge({ action }: { action: string }) {
+  switch (action) {
+    case "approved":
+      return (
+        <span className="inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full bg-green-100 text-green-700">
+          <Check className="h-3 w-3" /> Approved
+        </span>
+      );
+    case "rejected":
+      return (
+        <span className="inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full bg-red-100 text-red-700">
+          <X className="h-3 w-3" /> Rejected
+        </span>
+      );
+    case "help_requested":
+      return (
+        <span className="inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full bg-blue-100 text-blue-700">
+          <Mail className="h-3 w-3" /> Help Sent
+        </span>
+      );
+    case "parent_help":
+      return (
+        <span className="inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full bg-purple-100 text-purple-700">
+          <HandHelping className="h-3 w-3" /> Parent Help
+        </span>
+      );
+    default:
+      return (
+        <span className="inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full bg-gray-100 text-gray-700">
+          {action}
+        </span>
+      );
+  }
+}
+
+function HistoryCard({ action }: { action: AdminAction }) {
+  const date = new Date(action.created_at).toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+
+  return (
+    <Card className="p-0">
+      <CardContent className="p-4 space-y-2">
+        <div className="flex items-center justify-between">
+          <ActionBadge action={action.action} />
+          <span className="flex items-center gap-1 text-xs text-muted-foreground">
+            <Clock className="h-3 w-3" />
+            {date}
+          </span>
+        </div>
+
+        {action.address && (
+          <div className="flex items-center gap-1 text-sm">
+            <MapPin className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
+            <span>{action.address}, {action.city}, {action.state}</span>
+            {action.overall_details_url && (
+              <a
+                href={action.overall_details_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-blue-600 hover:text-blue-800 ml-1"
+                title="View details"
+              >
+                <ExternalLink className="h-3.5 w-3.5" />
+              </a>
+            )}
+          </div>
+        )}
+
+        {action.recipient_emails.length > 0 && (
+          <div className="text-xs text-muted-foreground">
+            <Mail className="h-3 w-3 inline mr-1" />
+            Sent to: {action.recipient_emails.join(", ")}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
 
 export default function AdminPage() {
   // Start as not-loading if Supabase isn't configured (nothing to check)
@@ -23,11 +107,11 @@ export default function AdminPage() {
   const [activeTab, setActiveTab] = useState<Tab>("suggestions");
   const [locations, setLocations] = useState<AdminLocation[]>([]);
   const [likedLocations, setLikedLocations] = useState<LikedLocation[]>([]);
-  const [helpRequests, setHelpRequests] = useState<HelpRequest[]>([]);
+  const [history, setHistory] = useState<AdminAction[]>([]);
   const [fetchError, setFetchError] = useState<string | null>(null);
   const hasFetchedSuggestions = useRef(false);
   const hasFetchedLikes = useRef(false);
-  const hasFetchedHelpRequests = useRef(false);
+  const hasFetchedHistory = useRef(false);
 
   // Check auth on mount — all setState calls happen in the .then callback (async)
   useEffect(() => {
@@ -85,12 +169,12 @@ export default function AdminPage() {
       });
   }, [isAdmin, token, activeTab]);
 
-  // Fetch help requests when switching to help tab
+  // Fetch history when switching to history tab
   useEffect(() => {
-    if (!isAdmin || !token || activeTab !== "help" || hasFetchedHelpRequests.current) return;
-    hasFetchedHelpRequests.current = true;
+    if (!isAdmin || !token || activeTab !== "history" || hasFetchedHistory.current) return;
+    hasFetchedHistory.current = true;
 
-    fetch("/api/admin/help-requests", {
+    fetch("/api/admin/history", {
       headers: { Authorization: `Bearer ${token}` },
     })
       .then((res) => {
@@ -98,19 +182,26 @@ export default function AdminPage() {
         return res.json();
       })
       .then((data) => {
-        setHelpRequests(data);
+        setHistory(data);
       })
       .catch(() => {
-        setFetchError("Failed to load help requests");
+        setFetchError("Failed to load history");
       });
   }, [isAdmin, token, activeTab]);
 
+  const invalidateHistory = () => {
+    hasFetchedHistory.current = false;
+    setHistory([]);
+  };
+
   const handleRemoveSuggestion = (id: string) => {
     setLocations((prev) => prev.filter((loc) => loc.id !== id));
+    invalidateHistory();
   };
 
   const handleRemoveLike = (id: string) => {
     setLikedLocations((prev) => prev.filter((loc) => loc.id !== id));
+    invalidateHistory();
   };
 
   if (loading) {
@@ -136,12 +227,14 @@ export default function AdminPage() {
     );
   }
 
-  const tabCount = activeTab === "suggestions" ? locations.length : activeTab === "likes" ? likedLocations.length : helpRequests.length;
+  const tabCount = activeTab === "suggestions" ? locations.length
+    : activeTab === "likes" ? likedLocations.length
+    : history.length;
   const tabLabel = activeTab === "suggestions"
     ? `${tabCount} pending suggestion${tabCount !== 1 ? "s" : ""}`
     : activeTab === "likes"
     ? `${tabCount} liked location${tabCount !== 1 ? "s" : ""}`
-    : `${tabCount} help request${tabCount !== 1 ? "s" : ""}`;
+    : `${tabCount} action${tabCount !== 1 ? "s" : ""}`;
 
   return (
     <div className="min-h-screen bg-background">
@@ -196,19 +289,14 @@ export default function AdminPage() {
             )}
           </button>
           <button
-            onClick={() => setActiveTab("help")}
+            onClick={() => setActiveTab("history")}
             className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
-              activeTab === "help"
+              activeTab === "history"
                 ? "border-primary text-primary"
                 : "border-transparent text-muted-foreground hover:text-foreground"
             }`}
           >
-            Help Requests
-            {helpRequests.length > 0 && (
-              <span className="ml-2 text-xs bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded-full">
-                {helpRequests.length}
-              </span>
-            )}
+            History
           </button>
         </div>
       </div>
@@ -263,18 +351,18 @@ export default function AdminPage() {
           </>
         )}
 
-        {activeTab === "help" && (
+        {activeTab === "history" && (
           <>
-            {helpRequests.length === 0 && !fetchError && (
+            {history.length === 0 && !fetchError && (
               <div className="text-center py-12 text-muted-foreground">
-                <ShieldCheck className="h-10 w-10 mx-auto mb-3 opacity-50" />
-                <p className="font-medium">No help requests yet</p>
-                <p className="text-sm mt-1">Parent help offers will appear here.</p>
+                <Clock className="h-10 w-10 mx-auto mb-3 opacity-50" />
+                <p className="font-medium">No actions yet</p>
+                <p className="text-sm mt-1">Admin actions and parent help offers will appear here.</p>
               </div>
             )}
 
-            {helpRequests.map((req) => (
-              <AdminHelpRequestCard key={req.id} request={req} />
+            {history.map((action) => (
+              <HistoryCard key={action.id} action={action} />
             ))}
           </>
         )}

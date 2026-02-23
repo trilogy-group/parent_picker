@@ -18,11 +18,12 @@ interface HelpModalProps {
   /** Location-specific mode — shows on a card */
   locationName?: string;
   locationAddress?: string;
+  locationId?: string;
   /** Compact button for cards vs. full button for intro panel */
   variant?: "card" | "card-compact" | "panel";
 }
 
-export function HelpModal({ locationName, locationAddress, variant = "panel" }: HelpModalProps) {
+export function HelpModal({ locationName, locationAddress, locationId, variant = "panel" }: HelpModalProps) {
   const [open, setOpen] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [email, setEmail] = useState("");
@@ -55,6 +56,7 @@ export function HelpModal({ locationName, locationAddress, variant = "panel" }: 
         headers,
         body: JSON.stringify({
           email: submitEmail,
+          locationId: locationId || undefined,
           locationAddress: locationAddress || undefined,
           locationName: locationName || undefined,
         }),

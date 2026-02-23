@@ -16,37 +16,45 @@ interface AdminLocationCardProps {
 }
 
 function generateApprovalHtml(loc: AdminLocation, scores?: LocationScores): string {
-  const artifactLink = scores?.overallDetailsUrl
-    ? `<p><a href="${scores.overallDetailsUrl}">View Summary Report</a></p>`
+  const mapUrl = `https://parentpicker.vercel.app/?location=${loc.id}`;
+  const detailsLink = scores?.overallDetailsUrl
+    ? `&nbsp;&nbsp;<a href="${scores.overallDetailsUrl}" style="display:inline-block;padding:12px 24px;background:#2563eb;color:#ffffff;text-decoration:none;border-radius:8px;font-weight:bold;font-size:14px;">View Full Score Details</a>`
     : "";
   return `
-    <h2>Great news!</h2>
-    <p>Your suggested location <strong>${loc.name}</strong> at ${loc.address}, ${loc.city}, ${loc.state} has been evaluated and is now live on the Parent Picker map.</p>
-    ${artifactLink}
-    <p><a href="https://parentpicker.vercel.app">View on Parent Picker</a></p>
-    <p>Share the link with other parents to rally votes for this location!</p>
+    <h2>Great news — your location is live!</h2>
+    <p><strong>${loc.address}</strong>, ${loc.city}, ${loc.state} is now published on the Parent Picker map and visible to all parents.</p>
+    <div style="margin-top:24px;">
+      <a href="${mapUrl}" style="display:inline-block;padding:12px 24px;background:#22c55e;color:#ffffff;text-decoration:none;border-radius:8px;font-weight:bold;font-size:14px;">View on Map</a>
+      ${detailsLink}
+    </div>
+    <p style="margin-top:20px;">Share this link with other parents to rally votes for this location!</p>
   `;
 }
 
 function generateRejectionHtml(loc: AdminLocation): string {
   return `
     <h2>Thank you for your suggestion</h2>
-    <p>We reviewed <strong>${loc.name}</strong> at ${loc.address}, ${loc.city}, ${loc.state} but unfortunately it doesn't meet our current criteria for a micro school location.</p>
+    <p>We reviewed <strong>${loc.address}</strong>, ${loc.city}, ${loc.state} but unfortunately it doesn't meet our current criteria for a micro school location.</p>
     <p>We appreciate your help in finding great locations! Feel free to suggest other spots you think would work well.</p>
-    <p><a href="https://parentpicker.vercel.app">Suggest another location</a></p>
+    <p style="margin-top:24px;"><a href="https://parentpicker.vercel.app/suggest" style="display:inline-block;padding:12px 24px;background:#2563eb;color:#ffffff;text-decoration:none;border-radius:8px;font-weight:bold;font-size:14px;">Suggest Another Location</a></p>
   `;
 }
 
-function generateVoterUpdateHtml(loc: AdminLocation | LikedLocation, scores?: LocationScores): string {
-  const artifactLink = scores?.overallDetailsUrl
-    ? `<p><a href="${scores.overallDetailsUrl}">View Summary Report</a></p>`
+function generateHelpRequestHtml(loc: AdminLocation | LikedLocation, scores?: LocationScores): string {
+  const mapUrl = `https://parentpicker.vercel.app/?location=${loc.id}`;
+  const helpUrl = scores?.overallDetailsUrl
+    ? `${scores.overallDetailsUrl}${scores.overallDetailsUrl.includes("?") ? "&" : "?"}tab=help`
+    : null;
+  const helpLink = helpUrl
+    ? `<a href="${helpUrl}" style="display:inline-block;padding:12px 24px;background:#22c55e;color:#ffffff;text-decoration:none;border-radius:8px;font-weight:bold;font-size:14px;">See How You Can Help</a>&nbsp;&nbsp;`
     : "";
   return `
-    <h2>Location Update</h2>
-    <p>The location you liked at <strong>${loc.address}</strong>, ${loc.city}, ${loc.state} has been evaluated.</p>
-    ${artifactLink}
-    <p><a href="https://parentpicker.vercel.app">View on Parent Picker</a></p>
-    <p>Share the link with other parents to rally votes for this location!</p>
+    <h2>We need your help with a location you care about</h2>
+    <p>You voted for <strong>${loc.address}</strong>, ${loc.city}, ${loc.state} — and we're making progress! Parents have 100x the local knowledge we do, and your involvement makes a real difference.</p>
+    <div style="margin-top:24px;">
+      ${helpLink}<a href="${mapUrl}" style="display:inline-block;padding:12px 24px;background:#2563eb;color:#ffffff;text-decoration:none;border-radius:8px;font-weight:bold;font-size:14px;">View on Map</a>
+    </div>
+    <p style="margin-top:20px;font-size:13px;color:#666;">Know the landlord? Have a zoning contact? Even small connections help us move faster. Click above to see specific ways you can help.</p>
   `;
 }
 
@@ -61,6 +69,7 @@ export function AdminLocationCard({ location, token, onRemove, mode = "suggestio
   const [emailPreview, setEmailPreview] = useState<"approve" | "reject" | "liker" | null>(null);
   const [showPreview, setShowPreview] = useState(false);
   const [sent, setSent] = useState(false);
+  const [sendError, setSendError] = useState<string | null>(null);
 
   const hasScores = !!scores;
 
@@ -72,7 +81,7 @@ export function AdminLocationCard({ location, token, onRemove, mode = "suggestio
   // Build email HTML based on mode
   const approvalHtml = generateApprovalHtml(location, scores);
   const rejectionHtml = generateRejectionHtml(location);
-  const voterHtml = generateVoterUpdateHtml(location, scores);
+  const helpHtml = generateHelpRequestHtml(location, scores);
 
   const handlePreviewEmail = () => {
     setEmailPreview(isLikeMode ? "liker" : "approve");
@@ -82,6 +91,7 @@ export function AdminLocationCard({ location, token, onRemove, mode = "suggestio
   const handleApprove = async (e: React.MouseEvent) => {
     e.preventDefault();
     setApproving(true);
+    setSendError(null);
     try {
       const res = await fetch(`/api/admin/locations/${location.id}/approve`, {
         method: "POST",
@@ -91,14 +101,18 @@ export function AdminLocationCard({ location, token, onRemove, mode = "suggestio
           emailSubject: "Your suggested location is now live!",
         }),
       });
+      const data = await res.json().catch(() => ({}));
       if (res.ok) {
-        onRemove(location.id);
+        if (data.emailFailed) {
+          setSendError(`Approved but email failed: ${data.emailFailed}`);
+        } else {
+          onRemove(location.id);
+        }
       } else {
-        const data = await res.json().catch(() => ({}));
-        console.error("Approve failed:", data);
+        setSendError(data.error || "Approve failed");
       }
     } catch (err) {
-      console.error("Approve error:", err);
+      setSendError(err instanceof Error ? err.message : "Approve error");
     } finally {
       setApproving(false);
     }
@@ -107,6 +121,7 @@ export function AdminLocationCard({ location, token, onRemove, mode = "suggestio
   const handleReject = async (e: React.MouseEvent) => {
     e.preventDefault();
     setRejecting(true);
+    setSendError(null);
     try {
       const res = await fetch(`/api/admin/locations/${location.id}/reject`, {
         method: "POST",
@@ -116,37 +131,57 @@ export function AdminLocationCard({ location, token, onRemove, mode = "suggestio
           emailSubject: "Update on your suggested location",
         }),
       });
+      const data = await res.json().catch(() => ({}));
       if (res.ok) {
-        onRemove(location.id);
+        if (data.emailFailed) {
+          setSendError(`Rejected but email failed: ${data.emailFailed}`);
+        } else {
+          onRemove(location.id);
+        }
       } else {
-        const data = await res.json().catch(() => ({}));
-        console.error("Reject failed:", data);
+        setSendError(data.error || "Reject failed");
       }
     } catch (err) {
-      console.error("Reject error:", err);
+      setSendError(err instanceof Error ? err.message : "Reject error");
     } finally {
       setRejecting(false);
     }
   };
 
+  const alreadySent = likedLocation?.help_sent_at != null;
+  const newVoters = likedLocation?.new_voter_emails || [];
+  const targetEmails = alreadySent ? newVoters : (likedLocation?.voter_emails || []);
+
   const handleNotifyVoters = async () => {
-    if (!likedLocation) return;
+    if (!likedLocation || targetEmails.length === 0) return;
     setSending(true);
+    setSendError(null);
     try {
       const res = await fetch(`/api/admin/locations/${location.id}/notify-voters`, {
         method: "POST",
         headers,
         body: JSON.stringify({
-          emailHtml: voterHtml,
-          emailSubject: "Update on a location you liked",
-          voterEmails: likedLocation.voter_emails,
+          emailHtml: helpHtml,
+          emailSubject: `Help us bring Alpha to ${location.city} — here's how`,
+          voterEmails: targetEmails,
         }),
       });
+      const data = await res.json().catch(() => ({}));
       if (res.ok) {
-        setSent(true);
+        if (data.failed?.length > 0) {
+          setSendError(`Failed: ${data.failed.join("; ")}`);
+        }
+        if (data.sent > 0) {
+          setSent(true);
+          // Remove card if all target emails succeeded
+          if (!data.failed?.length) {
+            onRemove(location.id);
+          }
+        } else {
+          setSendError(data.failed?.join("; ") || "All emails failed");
+        }
       } else {
-        const data = await res.json().catch(() => ({}));
-        console.error("Notify failed:", data);
+        setSendError(data.error || "Send failed");
       }
     } catch (err) {
       console.error("Notify error:", err);
@@ -162,13 +197,13 @@ export function AdminLocationCard({ location, token, onRemove, mode = "suggestio
   });
 
   const currentPreviewHtml = isLikeMode
-    ? voterHtml
+    ? helpHtml
     : emailPreview === "reject"
     ? rejectionHtml
     : approvalHtml;
 
   const previewLabel = isLikeMode
-    ? "Voter Update"
+    ? "Help Request"
     : emailPreview === "approve"
     ? "Approval"
     : "Rejection";
@@ -180,6 +215,12 @@ export function AdminLocationCard({ location, token, onRemove, mode = "suggestio
         <div>
           <div className="flex items-center gap-2">
             <h3 className="font-semibold text-base">{location.name}</h3>
+            {location.status === "pending_scoring" && (
+              <span className="inline-flex items-center gap-1 text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full font-medium">
+                <Loader2 className="h-3 w-3 animate-spin" />
+                Scoring...
+              </span>
+            )}
             {isLikeMode && likedLocation && (
               <span className="flex items-center gap-1 text-xs bg-pink-100 text-pink-700 px-2 py-0.5 rounded-full font-medium">
                 <Heart className="h-3 w-3" />
@@ -215,7 +256,7 @@ export function AdminLocationCard({ location, token, onRemove, mode = "suggestio
           {isLikeMode && likedLocation && likedLocation.voter_emails.length > 0 && (
             <div className="flex items-center gap-1">
               <Mail className="h-3.5 w-3.5" />
-              <span>{likedLocation.voter_emails.length} voter{likedLocation.voter_emails.length !== 1 ? "s" : ""}</span>
+              <span>{likedLocation.voter_emails.join(", ")}</span>
             </div>
           )}
           <div className="flex items-center gap-1">
@@ -326,21 +367,35 @@ export function AdminLocationCard({ location, token, onRemove, mode = "suggestio
           </Button>
 
           {isLikeMode ? (
-            <Button
-              size="sm"
-              onClick={handleNotifyVoters}
-              disabled={sending || sent || !hasScores}
-              className="bg-blue-600 hover:bg-blue-700 text-white"
-            >
-              {sending ? (
-                <Loader2 className="h-3.5 w-3.5 animate-spin" />
-              ) : sent ? (
-                <Check className="h-3.5 w-3.5" />
-              ) : (
-                <Send className="h-3.5 w-3.5" />
+            <>
+              {alreadySent && (
+                <span className="text-xs text-green-600 font-medium">
+                  <Check className="h-3 w-3 inline" /> Sent {new Date(likedLocation!.help_sent_at!).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                </span>
               )}
-              {sent ? "Sent" : `Send to ${likedLocation?.voter_emails.length || 0} Voter${(likedLocation?.voter_emails.length || 0) !== 1 ? "s" : ""}`}
-            </Button>
+              <Button
+                size="sm"
+                onClick={handleNotifyVoters}
+                disabled={sending || sent || !hasScores || targetEmails.length === 0}
+                className="bg-blue-600 hover:bg-blue-700 text-white"
+              >
+                {sending ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : sent ? (
+                  <Check className="h-3.5 w-3.5" />
+                ) : (
+                  <Send className="h-3.5 w-3.5" />
+                )}
+                {sent
+                  ? "Sent"
+                  : alreadySent && newVoters.length > 0
+                  ? `Send to ${newVoters.length} New Voter${newVoters.length !== 1 ? "s" : ""}`
+                  : alreadySent
+                  ? "No New Voters"
+                  : `Ask ${targetEmails.length} Voter${targetEmails.length !== 1 ? "s" : ""} for Help`
+                }
+              </Button>
+            </>
           ) : (
             <>
               <Button
@@ -371,6 +426,12 @@ export function AdminLocationCard({ location, token, onRemove, mode = "suggestio
             </>
           )}
         </div>
+
+        {sendError && (
+          <div className="bg-red-50 text-red-700 rounded px-3 py-2 text-xs">
+            {sendError}
+          </div>
+        )}
       </CardContent>
     </Card>
   );

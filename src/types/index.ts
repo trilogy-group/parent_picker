@@ -63,5 +63,23 @@ export interface LikedLocation extends AdminLocation {
   vote_count: number;
   voter_emails: string[];
   voter_comments: { email: string; comment: string | null }[];
+  help_sent_at?: string | null;
+  help_sent_to?: string[];
+  new_voter_emails?: string[];
+}
+
+export interface AdminAction {
+  id: string;
+  location_id: string | null;
+  action: string;           // 'approved' | 'rejected' | 'help_requested'
+  admin_email: string;
+  recipient_emails: string[];
+  created_at: string;
+  // Joined from pp_locations (live)
+  address?: string;
+  city?: string;
+  state?: string;
+  // Joined from pp_location_scores (live)
+  overall_details_url?: string | null;
 }
 

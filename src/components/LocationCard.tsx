@@ -56,6 +56,7 @@ function CardContentV1({ location, rank, hasVoted, isAuthenticated, onVote, onUn
         <SizeLabel scores={location.scores} />
         <HelpModal
           variant="card-compact"
+          locationId={location.id}
           locationName={location.name}
           locationAddress={`${location.address}, ${location.city}, ${location.state}`}
         />
@@ -103,6 +104,7 @@ function CardContentV2({ location, rank, hasVoted, isAuthenticated, onVote, onUn
       <div className="flex items-center justify-between pt-0.5">
         <HelpModal
           variant="card"
+          locationId={location.id}
           locationName={location.name}
           locationAddress={`${location.address}, ${location.city}, ${location.state}`}
         />

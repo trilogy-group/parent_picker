@@ -49,6 +49,28 @@ export async function GET(request: NextRequest) {
 
   const locationIds = Array.from(voteMap.keys());
 
+  // Check which locations already had help emails sent, and to whom
+  const { data: sentActions } = await supabase
+    .from("pp_admin_actions")
+    .select("location_id, recipient_emails, created_at")
+    .eq("action", "help_requested")
+    .in("location_id", locationIds)
+    .order("created_at", { ascending: false });
+
+  // Build map: location_id → { emails already sent to, last sent date }
+  const sentMap = new Map<string, { emails: Set<string>; lastSent: string }>();
+  for (const action of sentActions || []) {
+    const existing = sentMap.get(action.location_id);
+    if (existing) {
+      for (const e of action.recipient_emails) existing.emails.add(e);
+    } else {
+      sentMap.set(action.location_id, {
+        emails: new Set(action.recipient_emails),
+        lastSent: action.created_at,
+      });
+    }
+  }
+
   // Fetch active locations that have votes
   const { data: locations, error: locError } = await supabase
     .from("pp_locations")
@@ -81,6 +103,11 @@ export async function GET(request: NextRequest) {
         voterComments.push({ email, comment: v.comment });
       }
 
+      // Figure out which voters haven't been emailed yet
+      const sent = sentMap.get(loc.id);
+      const previouslySentEmails = sent ? Array.from(sent.emails) : [];
+      const newVoterEmails = voterEmails.filter((e) => !sent?.emails.has(e));
+
       return {
         id: loc.id,
         name: loc.name,
@@ -98,12 +125,20 @@ export async function GET(request: NextRequest) {
         vote_count: voters.length,
         voter_emails: voterEmails,
         voter_comments: voterComments,
+        help_sent_at: sent?.lastSent || null,
+        help_sent_to: previouslySentEmails,
+        new_voter_emails: newVoterEmails,
       };
     })
   );
 
-  // Sort by vote count descending
-  enriched.sort((a, b) => b.vote_count - a.vote_count);
+  // Only show locations that have new voters to email
+  const actionable = enriched.filter(
+    (loc) => !loc.help_sent_at || loc.new_voter_emails.length > 0
+  );
 
-  return NextResponse.json(enriched);
+  // Sort by vote count descending
+  actionable.sort((a, b) => b.vote_count - a.vote_count);
+
+  return NextResponse.json(actionable);
 }

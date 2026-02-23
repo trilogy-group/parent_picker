@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase-admin";
-import { sendEmail, generateHelpGuideHtml } from "@/lib/email";
+import { sendEmail, generateLocationHelpHtml, generateGenericHelpHtml } from "@/lib/email";
 
 export async function POST(request: NextRequest) {
   const supabase = getSupabaseAdmin();
@@ -66,16 +66,46 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Failed to save help request" }, { status: 500 });
   }
 
-  // Send help guide email (best-effort)
-  const html = generateHelpGuideHtml(
-    body.locationAddress ? { address: body.locationAddress, name: body.locationName } : undefined
-  );
-  const subject = body.locationAddress
-    ? `How you can help with ${body.locationAddress}`
-    : "How you can help bring Alpha to your area";
+  // Generate email — location-specific vs generic
+  let html: string;
+  let subject: string;
+
+  if (locationId) {
+    // Look up details URL fresh from pp_location_scores
+    let detailsUrl: string | null = null;
+    const { data: scoreRow } = await supabase
+      .from("pp_location_scores")
+      .select("overall_details_url")
+      .eq("location_id", locationId)
+      .maybeSingle();
+    if (scoreRow) {
+      detailsUrl = scoreRow.overall_details_url;
+    }
+
+    // Get location info for the email
+    const address = body.locationAddress || "this location";
+    const parts = address.split(",").map((s: string) => s.trim());
+    const streetAddress = parts[0] || address;
+    const city = parts[1] || "";
+    const state = parts[2] || "";
+
+    html = generateLocationHelpHtml(streetAddress, city, state, locationId, detailsUrl);
+    subject = `How you can help with ${streetAddress}`;
+  } else {
+    html = generateGenericHelpHtml();
+    subject = "Thank you for volunteering to help!";
+  }
 
   sendEmail(email, subject, html).catch((err) => {
     console.error("Failed to send help guide email:", err);
+  });
+
+  // Log to history
+  await supabase.from("pp_admin_actions").insert({
+    location_id: locationId,
+    action: "parent_help",
+    admin_email: "system",
+    recipient_emails: [email],
   });
 
   return NextResponse.json({ success: true });
