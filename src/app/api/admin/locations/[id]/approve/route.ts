@@ -36,7 +36,7 @@ export async function POST(
   // Update status to active
   const { error: updateError } = await supabase
     .from("pp_locations")
-    .update({ status: "active", updated_at: new Date().toISOString() })
+    .update({ status: "active", released: true, updated_at: new Date().toISOString() })
     .eq("id", id);
 
   if (updateError) {
