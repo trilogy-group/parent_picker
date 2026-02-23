@@ -71,9 +71,10 @@ export interface LikedLocation extends AdminLocation {
 export interface AdminAction {
   id: string;
   location_id: string | null;
-  action: string;           // 'approved' | 'rejected' | 'help_requested'
-  admin_email: string;
+  action: string;           // 'approved' | 'rejected' | 'help_requested' | 'parent_help' | 'scored_notified'
+  admin_email: string;      // 'system' for auto-sent, admin email for manual
   recipient_emails: string[];
+  email_failed: boolean;
   created_at: string;
   // Joined from pp_locations (live)
   address?: string;

@@ -65,7 +65,16 @@ export async function POST(request: NextRequest) {
     detailsUrl,
   });
 
-  await sendEmail(parentEmail, `Your suggested location has been evaluated`, html);
+  const result = await sendEmail(parentEmail, `Your suggested location has been evaluated`, html);
 
-  return NextResponse.json({ sent: true, to: parentEmail });
+  // Log to history (with failure flag if email failed)
+  await supabase.from("pp_admin_actions").insert({
+    location_id: locationId,
+    action: "scored_notified",
+    admin_email: "system",
+    recipient_emails: [parentEmail],
+    email_failed: !result.success,
+  });
+
+  return NextResponse.json({ sent: result.success, to: parentEmail, error: result.error || undefined });
 }

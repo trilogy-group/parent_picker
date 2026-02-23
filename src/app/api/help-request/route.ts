@@ -96,16 +96,15 @@ export async function POST(request: NextRequest) {
     subject = "Thank you for volunteering to help!";
   }
 
-  sendEmail(email, subject, html).catch((err) => {
-    console.error("Failed to send help guide email:", err);
-  });
+  const emailResult = await sendEmail(email, subject, html);
 
-  // Log to history
+  // Log to history (with failure flag if email failed)
   await supabase.from("pp_admin_actions").insert({
     location_id: locationId,
     action: "parent_help",
     admin_email: "system",
     recipient_emails: [email],
+    email_failed: !emailResult.success,
   });
 
   return NextResponse.json({ success: true });

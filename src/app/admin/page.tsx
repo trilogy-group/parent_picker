@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useRef } from "react";
-import { ShieldCheck, Loader2, ArrowLeft, Check, X, Mail, ExternalLink, Clock, MapPin, HandHelping } from "lucide-react";
+import { ShieldCheck, Loader2, ArrowLeft, Check, X, Mail, ExternalLink, Clock, MapPin, HandHelping, AlertTriangle, RefreshCw, Bell, Trash2 } from "lucide-react";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { AdminLocation, LikedLocation, AdminAction } from "@/types";
 import { AdminLocationCard } from "@/components/AdminLocationCard";
@@ -41,6 +41,12 @@ function ActionBadge({ action }: { action: string }) {
           <HandHelping className="h-3 w-3" /> Parent Help
         </span>
       );
+    case "scored_notified":
+      return (
+        <span className="inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full bg-teal-100 text-teal-700">
+          <Bell className="h-3 w-3" /> Scored
+        </span>
+      );
     default:
       return (
         <span className="inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full bg-gray-100 text-gray-700">
@@ -50,7 +56,11 @@ function ActionBadge({ action }: { action: string }) {
   }
 }
 
-function HistoryCard({ action }: { action: AdminAction }) {
+function HistoryCard({ action, token, onRetrySuccess, onDelete }: { action: AdminAction; token: string; onRetrySuccess: (id: string) => void; onDelete: (id: string) => void }) {
+  const [retrying, setRetrying] = useState(false);
+  const [retryError, setRetryError] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
+
   const date = new Date(action.created_at).toLocaleDateString("en-US", {
     month: "short",
     day: "numeric",
@@ -59,15 +69,69 @@ function HistoryCard({ action }: { action: AdminAction }) {
     minute: "2-digit",
   });
 
+  const isAuto = action.admin_email === "system";
+
+  const handleRetry = async () => {
+    setRetrying(true);
+    setRetryError(null);
+    try {
+      const res = await fetch(`/api/admin/history/${action.id}/retry`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        setRetryError(data.failed?.join("; ") || data.error || "Retry failed");
+      } else {
+        onRetrySuccess(action.id);
+      }
+    } catch {
+      setRetryError("Network error");
+    } finally {
+      setRetrying(false);
+    }
+  };
+
   return (
-    <Card className="p-0">
+    <Card className={`p-0 ${action.email_failed ? "border-red-300" : ""}`}>
       <CardContent className="p-4 space-y-2">
         <div className="flex items-center justify-between">
-          <ActionBadge action={action.action} />
-          <span className="flex items-center gap-1 text-xs text-muted-foreground">
-            <Clock className="h-3 w-3" />
-            {date}
-          </span>
+          <div className="flex items-center gap-2">
+            <ActionBadge action={action.action} />
+            <span className="text-xs text-muted-foreground">
+              {isAuto ? "Auto" : "Admin"}
+            </span>
+            {action.email_failed && (
+              <span className="inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full bg-red-100 text-red-700">
+                <AlertTriangle className="h-3 w-3" /> Failed
+              </span>
+            )}
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="flex items-center gap-1 text-xs text-muted-foreground">
+              <Clock className="h-3 w-3" />
+              {date}
+            </span>
+            <button
+              onClick={async () => {
+                setDeleting(true);
+                try {
+                  const res = await fetch(`/api/admin/history/${action.id}`, {
+                    method: "DELETE",
+                    headers: { Authorization: `Bearer ${token}` },
+                  });
+                  if (res.ok) onDelete(action.id);
+                } finally {
+                  setDeleting(false);
+                }
+              }}
+              disabled={deleting}
+              className="text-muted-foreground hover:text-red-600 transition-colors"
+              title="Delete"
+            >
+              {deleting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
+            </button>
+          </div>
         </div>
 
         {action.address && (
@@ -92,6 +156,22 @@ function HistoryCard({ action }: { action: AdminAction }) {
           <div className="text-xs text-muted-foreground">
             <Mail className="h-3 w-3 inline mr-1" />
             Sent to: {action.recipient_emails.join(", ")}
+          </div>
+        )}
+
+        {action.email_failed && (
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleRetry}
+              disabled={retrying}
+              className="inline-flex items-center gap-1 text-xs font-medium px-3 py-1.5 rounded-md bg-red-600 text-white hover:bg-red-700 disabled:opacity-50"
+            >
+              {retrying ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
+              Retry Send
+            </button>
+            {retryError && (
+              <span className="text-xs text-red-600">{retryError}</span>
+            )}
           </div>
         )}
       </CardContent>
@@ -362,7 +442,19 @@ export default function AdminPage() {
             )}
 
             {history.map((action) => (
-              <HistoryCard key={action.id} action={action} />
+              <HistoryCard
+                key={action.id}
+                action={action}
+                token={token!}
+                onRetrySuccess={(id) => {
+                  setHistory((prev) =>
+                    prev.map((a) => a.id === id ? { ...a, email_failed: false } : a)
+                  );
+                }}
+                onDelete={(id) => {
+                  setHistory((prev) => prev.filter((a) => a.id !== id));
+                }}
+              />
             ))}
           </>
         )}

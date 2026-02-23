@@ -22,6 +22,7 @@ export async function GET(request: NextRequest) {
       action,
       admin_email,
       recipient_emails,
+      email_failed,
       created_at,
       pp_locations (address, city, state, pp_location_scores (overall_details_url))
     `)
@@ -46,6 +47,7 @@ export async function GET(request: NextRequest) {
       action: row.action,
       admin_email: row.admin_email,
       recipient_emails: row.recipient_emails,
+      email_failed: row.email_failed || false,
       created_at: row.created_at,
       address: loc?.address || null,
       city: loc?.city || null,
