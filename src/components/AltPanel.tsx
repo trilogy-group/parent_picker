@@ -190,11 +190,10 @@ export function AltPanel() {
         {/* Suggest a location */}
         <a
           href="/suggest"
-          className="block bg-blue-50 rounded-xl p-5 hover:bg-blue-100/60 transition-colors"
+          className="block bg-blue-50 rounded-xl p-4 hover:bg-blue-100/60 transition-colors"
         >
-          <p className="text-[10px] font-semibold tracking-widest text-blue-600 mb-2">SUGGEST</p>
-          <p className="text-[15px] leading-snug text-gray-900">Know a space that&apos;s not here? We&apos;ll evaluate it within 24 hours.</p>
-          <p className="text-sm font-semibold text-blue-600 mt-2">Suggest a location &rarr;</p>
+          <p className="text-sm font-semibold text-blue-600">Suggest a location &rarr;</p>
+          <p className="text-[13px] leading-snug text-gray-500 mt-0.5">Know a space that&apos;s not here? We&apos;ll evaluate it within 24 hours.</p>
         </a>
       </div>
 

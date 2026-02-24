@@ -64,11 +64,10 @@ export function InviteModal() {
     <>
       <button
         onClick={handleOpen}
-        className="w-full bg-blue-50 rounded-xl p-5 text-left hover:bg-blue-100/60 transition-colors"
+        className="w-full bg-blue-50 rounded-xl p-4 text-left hover:bg-blue-100/60 transition-colors"
       >
-        <p className="text-[10px] font-semibold tracking-widest text-blue-600 mb-2">INVITE</p>
-        <p className="text-[15px] leading-snug text-gray-900">Know a family who should weigh in? More families, better decisions.</p>
-        <p className="text-sm font-semibold text-blue-600 mt-2">Invite a family &rarr;</p>
+        <p className="text-sm font-semibold text-blue-600">Invite a family &rarr;</p>
+        <p className="text-[13px] leading-snug text-gray-500 mt-0.5">Know a family who should weigh in? More families, better decisions.</p>
       </button>
 
       <Dialog open={showSignIn} onOpenChange={setShowSignIn}>
