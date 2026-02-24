@@ -34,6 +34,7 @@ export function AltPanel() {
     voteIn, voteNotHere, votedLocationIds, votedNotHereIds,
     mapCenter, mapBounds, sortMode, setSortMode,
     locationVoters, loadLocationVoters, zoomLevel,
+    citySummaries, setFlyToTarget,
   } = useVotesStore(useShallow((s) => ({
     locations: s.locations,
     filteredLocations: s.filteredLocations,
@@ -50,6 +51,8 @@ export function AltPanel() {
     locationVoters: s.locationVoters,
     loadLocationVoters: s.loadLocationVoters,
     zoomLevel: s.zoomLevel,
+    citySummaries: s.citySummaries,
+    setFlyToTarget: s.setFlyToTarget,
   })));
 
   const { user } = useAuth();
@@ -70,6 +73,13 @@ export function AltPanel() {
     entries.sort((a, b) => b[1] - a[1]);
     return entries[0][0];
   }, [zoomLevel, filteredLocations, locations]);
+
+  // City summaries sorted by location count (for zoomed-out view)
+  const sortedCities = useMemo(() => {
+    return [...citySummaries].sort((a, b) => b.locationCount - a.locationCount);
+  }, [citySummaries]);
+
+  const showCityCards = zoomLevel < 9;
 
   // Sort and filter locations in viewport
   const sortedLocations = useMemo(() => {
@@ -118,82 +128,108 @@ export function AltPanel() {
         </p>
       </div>
 
-      {/* What Alpha Feels Like card */}
-      <div className="mx-5 mb-4 bg-gray-900 rounded-xl p-5 text-white">
-        <p className="text-[10px] font-semibold tracking-widest text-gray-400 mb-2">
-          WHAT ALPHA FEELS LIKE
-        </p>
-        <p className="text-[15px] leading-snug">
-          Two hours of focused academics. Then the rest of the day building real things &mdash; businesses, robots, films, friendships.
-        </p>
-        <div className="flex gap-3 mt-4">
-          <div className="flex-1 bg-gray-800 rounded-lg p-3">
-            <p className="text-lg font-bold">2 hrs</p>
-            <p className="text-[10px] text-gray-400">AI-powered academics</p>
-          </div>
-          <div className="flex-1 bg-gray-800 rounded-lg p-3">
-            <p className="text-lg font-bold">2&times;</p>
-            <p className="text-[10px] text-gray-400">the learning, measured</p>
-          </div>
-          <div className="flex-1 bg-gray-800 rounded-lg p-3">
-            <p className="text-lg font-bold">100%</p>
-            <p className="text-[10px] text-gray-400">of kids say they love school</p>
-          </div>
+      {showCityCards ? (
+        /* Zoomed-out: city summary cards */
+        <div className="flex-1 overflow-y-auto px-4 py-2 space-y-2">
+          {sortedCities.map((city) => (
+            <button
+              key={`${city.city}-${city.state}`}
+              onClick={() => setFlyToTarget({ lat: city.lat, lng: city.lng, zoom: 11 })}
+              className="w-full p-4 bg-white rounded-xl border border-gray-200 text-left hover:border-blue-300 transition-colors"
+            >
+              <p className="font-semibold text-gray-900">{city.city}, {city.state}</p>
+              <p className="text-sm text-gray-500">
+                {city.locationCount} {city.locationCount === 1 ? 'location' : 'locations'}
+              </p>
+            </button>
+          ))}
+          {sortedCities.length === 0 && (
+            <p className="text-center text-sm text-gray-400 py-8">
+              Loading cities&hellip;
+            </p>
+          )}
         </div>
-        <div className="mt-4">
-          <InviteModal />
-        </div>
-      </div>
+      ) : (
+        /* Zoomed-in: location cards with sort pills and info card */
+        <>
+          {/* What Alpha Feels Like card */}
+          <div className="mx-5 mb-4 bg-gray-900 rounded-xl p-5 text-white">
+            <p className="text-[10px] font-semibold tracking-widest text-gray-400 mb-2">
+              WHAT ALPHA FEELS LIKE
+            </p>
+            <p className="text-[15px] leading-snug">
+              Two hours of focused academics. Then the rest of the day building real things &mdash; businesses, robots, films, friendships.
+            </p>
+            <div className="flex gap-3 mt-4">
+              <div className="flex-1 bg-gray-800 rounded-lg p-3">
+                <p className="text-lg font-bold">2 hrs</p>
+                <p className="text-[10px] text-gray-400">AI-powered academics</p>
+              </div>
+              <div className="flex-1 bg-gray-800 rounded-lg p-3">
+                <p className="text-lg font-bold">2&times;</p>
+                <p className="text-[10px] text-gray-400">the learning, measured</p>
+              </div>
+              <div className="flex-1 bg-gray-800 rounded-lg p-3">
+                <p className="text-lg font-bold">100%</p>
+                <p className="text-[10px] text-gray-400">of kids say they love school</p>
+              </div>
+            </div>
+            <div className="mt-4">
+              <InviteModal />
+            </div>
+          </div>
 
-      {/* Sort pills */}
-      <div className="px-5 pb-3 flex items-center gap-2">
-        <span className="text-xs text-gray-500">Sort</span>
-        {(['most_support', 'most_viable'] as const).map((mode) => (
-          <button
-            key={mode}
-            onClick={() => setSortMode(mode)}
-            className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
-              sortMode === mode
-                ? 'bg-gray-900 text-white'
-                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-            }`}
-          >
-            {mode === 'most_support' ? 'Most support' : 'Most viable'}
-          </button>
-        ))}
-      </div>
+          {/* Sort pills */}
+          <div className="px-5 pb-3 flex items-center gap-2">
+            <span className="text-xs text-gray-500">Sort</span>
+            {(['most_support', 'most_viable'] as const).map((mode) => (
+              <button
+                key={mode}
+                onClick={() => setSortMode(mode)}
+                className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
+                  sortMode === mode
+                    ? 'bg-gray-900 text-white'
+                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                }`}
+              >
+                {mode === 'most_support' ? 'Most support' : 'Most viable'}
+              </button>
+            ))}
+          </div>
 
-      {/* Location cards */}
-      <div className="flex-1 overflow-y-auto px-5 pb-5 space-y-3">
-        {visibleLocations.map((loc) => (
-          <AltLocationCard
-            key={loc.id}
-            location={loc}
-            distance={mapCenter ? getDistanceMiles(mapCenter.lat, mapCenter.lng, loc.lat, loc.lng) : undefined}
-            voters={locationVoters.get(loc.id) || []}
-            hasVotedIn={votedLocationIds.has(loc.id)}
-            hasVotedNotHere={votedNotHereIds.has(loc.id)}
-            isAuthenticated={isAuthenticated}
-            isSelected={selectedLocationId === loc.id}
-            onSelect={() => setSelectedLocation(loc.id)}
-            onVoteIn={() => voteIn(loc.id)}
-            onVoteNotHere={() => voteNotHere(loc.id)}
-          />
-        ))}
-        {sortedLocations.length > visibleLocations.length && (
-          <button
-            onClick={() => setExtraPages(p => p + 1)}
-            className="w-full py-2 text-sm text-blue-600 font-medium hover:underline"
-          >
-            Show more locations
-          </button>
-        )}
-        {visibleLocations.length === 0 && (
-          <p className="text-center text-sm text-gray-400 py-8">
-            No locations in this area yet. Zoom out or search a different city.
-          </p>
-        )}
-      </div>
+          {/* Location cards */}
+          <div className="flex-1 overflow-y-auto px-5 pb-5 space-y-3">
+            {visibleLocations.map((loc) => (
+              <AltLocationCard
+                key={loc.id}
+                location={loc}
+                distance={mapCenter ? getDistanceMiles(mapCenter.lat, mapCenter.lng, loc.lat, loc.lng) : undefined}
+                voters={locationVoters.get(loc.id) || []}
+                hasVotedIn={votedLocationIds.has(loc.id)}
+                hasVotedNotHere={votedNotHereIds.has(loc.id)}
+                isAuthenticated={isAuthenticated}
+                isSelected={selectedLocationId === loc.id}
+                onSelect={() => setSelectedLocation(loc.id)}
+                onVoteIn={() => voteIn(loc.id)}
+                onVoteNotHere={(comment) => voteNotHere(loc.id, comment)}
+              />
+            ))}
+            {sortedLocations.length > visibleLocations.length && (
+              <button
+                onClick={() => setExtraPages(p => p + 1)}
+                className="w-full py-2 text-sm text-blue-600 font-medium hover:underline"
+              >
+                Show more locations
+              </button>
+            )}
+            {visibleLocations.length === 0 && (
+              <p className="text-center text-sm text-gray-400 py-8">
+                No locations in this area yet. Zoom out or search a different city.
+              </p>
+            )}
+          </div>
+        </>
+      )}
     </div>
   );
 }
