@@ -15,6 +15,7 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { SignInPrompt } from "./SignInPrompt";
+import NotHereReasonModal from "./NotHereReasonModal";
 
 const LAUNCH_THRESHOLD = 30;
 
@@ -28,7 +29,7 @@ interface AltLocationCardProps {
   isSelected: boolean;
   onSelect: () => void;
   onVoteIn: () => void;
-  onVoteNotHere: () => void;
+  onVoteNotHere: (comment?: string) => void;
 }
 
 export function AltLocationCard({
@@ -36,6 +37,7 @@ export function AltLocationCard({
   isAuthenticated, isSelected, onSelect, onVoteIn, onVoteNotHere,
 }: AltLocationCardProps) {
   const [showSignIn, setShowSignIn] = useState(false);
+  const [notHereModalOpen, setNotHereModalOpen] = useState(false);
   const badge = statusBadge(location.scores?.overallColor);
   const remaining = Math.max(0, LAUNCH_THRESHOLD - location.votes);
 
@@ -48,7 +50,7 @@ export function AltLocationCard({
   const handleVoteNotHere = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (!isAuthenticated) { setShowSignIn(true); return; }
-    onVoteNotHere();
+    setNotHereModalOpen(true);
   };
 
   return (
@@ -136,6 +138,16 @@ export function AltLocationCard({
           />
         </DialogContent>
       </Dialog>
+
+      <NotHereReasonModal
+        open={notHereModalOpen}
+        onOpenChange={setNotHereModalOpen}
+        locationName={location.name}
+        onSubmit={(reason) => {
+          onVoteNotHere(reason || undefined);
+          setNotHereModalOpen(false);
+        }}
+      />
     </>
   );
 }

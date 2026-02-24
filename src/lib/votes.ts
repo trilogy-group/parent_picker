@@ -62,7 +62,7 @@ interface VotesState {
   vote: (locationId: string, comment?: string) => void;
   unvote: (locationId: string) => void;
   voteIn: (locationId: string) => void;
-  voteNotHere: (locationId: string) => void;
+  voteNotHere: (locationId: string, comment?: string) => void;
   removeVote: (locationId: string) => void;
   setSortMode: (mode: 'most_support' | 'most_viable') => void;
   loadLocationVoters: (locationIds: string[]) => Promise<void>;
@@ -387,7 +387,7 @@ export const useVotesStore = create<VotesState>((set, get) => ({
     }
   },
 
-  voteNotHere: (locationId) => {
+  voteNotHere: (locationId, comment?) => {
     const state = get();
     const wasIn = state.votedLocationIds.has(locationId);
     const alreadyNotHere = state.votedNotHereIds.has(locationId);
@@ -412,7 +412,7 @@ export const useVotesStore = create<VotesState>((set, get) => ({
       supabase
         .from("pp_votes")
         .upsert(
-          { location_id: locationId, user_id: state.userId, vote_type: 'not_here' },
+          { location_id: locationId, user_id: state.userId, vote_type: 'not_here', comment: comment || null },
           { onConflict: 'location_id,user_id' }
         )
         .then(({ error }) => {
