@@ -161,12 +161,14 @@ export function AltPanel() {
           </p>
           <AuthButton darkBg={false} />
         </div>
-        <h1 className="text-[20px] font-bold text-gray-900 leading-tight whitespace-nowrap">
+        <h1 className="text-[20px] font-bold text-gray-900 leading-tight">
           Choose where your kid goes to school.
         </h1>
-        <p className="text-sm text-gray-500 mt-1.5">
-          Say &ldquo;I&rsquo;m in.&rdquo; Share what you know. Enough families, and it happens.
-        </p>
+        <ul className="text-sm text-gray-500 mt-1.5 space-y-0.5">
+          <li>Here are locations we&rsquo;re considering along with community opinions.</li>
+          <li>Say &ldquo;I&rsquo;m in&rdquo; if you like a location. Share what you know.</li>
+          <li>Enough families, and it happens.</li>
+        </ul>
         {isAdmin && (
           <button
             onClick={() => setViewAsParent(!viewAsParent)}
