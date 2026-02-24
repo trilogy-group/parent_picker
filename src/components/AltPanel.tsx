@@ -79,6 +79,12 @@ export function AltPanel() {
   }, [selectedLocationId, loadLocationVoters]);
 
   // Determine metro name when zoomed in
+  const METRO_DISPLAY: Record<string, string> = {
+    "Irvine": "Orange County",
+    "Stamford": "Greenwich",
+    "Scottsdale": "Phoenix",
+  };
+
   const metroName = useMemo(() => {
     if (zoomLevel < 9) return null;
     const filtered = filteredLocations();
@@ -91,7 +97,8 @@ export function AltPanel() {
     const entries = Object.entries(cityCount);
     if (entries.length === 0) return null;
     entries.sort((a, b) => b[1] - a[1]);
-    return entries[0][0];
+    const topCity = entries[0][0];
+    return METRO_DISPLAY[topCity] || topCity;
   }, [zoomLevel, filteredLocations, locations]);
 
   // City summaries sorted by location count (for zoomed-out view)
