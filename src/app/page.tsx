@@ -47,6 +47,7 @@ function DeepLinkHandler() {
           lat: Number(data.lat),
           lng: Number(data.lng),
           votes: 0,
+          notHereVotes: 0,
           suggested: data.source === "parent_suggested",
           scores: scores?.overall_color != null ? {
             overallColor: scores.overall_color || null,

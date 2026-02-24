@@ -121,7 +121,7 @@ export const mockLocations: Location[] = [
     CA: new Set(["Redwood City", "Santa Clara", "San Jose", "Menlo Park"]),
   };
   const released = RELEASED_CITIES[loc.state]?.has(loc.city) ?? false;
-  return { ...loc, released, scores: mockScores(i) };
+  return { ...loc, notHereVotes: 0, released, scores: mockScores(i) };
 });
 
 // Austin TX - default location when user location unavailable
@@ -233,6 +233,7 @@ function mapRows(rows: Record<string, unknown>[]): Location[] {
     lat: Number(row.lat),
     lng: Number(row.lng),
     votes: row.votes as number,
+    notHereVotes: Number(row.not_here_count) || 0,
     suggested: row.source === "parent_suggested",
     scores: mapRowToScores(row),
   }));
@@ -325,6 +326,7 @@ export async function getNearbyLocations(centerLat: number, centerLng: number, l
       lat: Number(row.lat),
       lng: Number(row.lng),
       votes: Number(row.vote_count),
+      notHereVotes: Number(row.not_here_count) || 0,
       suggested: (row.source as string) === "parent_suggested",
       released: row.released as boolean | undefined,
       scores: mapRowToScores(row),
@@ -426,6 +428,7 @@ export async function suggestLocation(
           lat: Number(data.lat),
           lng: Number(data.lng),
           votes: 0,
+          notHereVotes: 0,
           suggested: true,
         };
       }
@@ -444,6 +447,7 @@ export async function suggestLocation(
     lat: coordinates?.lat ?? 30.2672, // Fallback to Austin center if no coordinates
     lng: coordinates?.lng ?? -97.7431,
     votes: 0,
+    notHereVotes: 0,
     suggested: true,
   };
 }

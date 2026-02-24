@@ -1,7 +1,7 @@
 "use client";
 
 import { create } from "zustand";
-import { Location, CitySummary } from "@/types";
+import { Location, CitySummary, VoterInfo, VoteType } from "@/types";
 import { supabase, isSupabaseConfigured } from "./supabase";
 import { getCitySummaries, getNearbyLocations, getDistanceMiles } from "./locations";
 import { consolidateToMetros } from "./metros";
@@ -32,6 +32,9 @@ interface VotesState {
   lastFetchCenter: { lat: number; lng: number } | null;
   zoomLevel: number;
   votedLocationIds: Set<string>;
+  votedNotHereIds: Set<string>;
+  locationVoters: Map<string, VoterInfo[]>;
+  sortMode: 'most_support' | 'most_viable';
   selectedLocationId: string | null;
   searchQuery: string;
   flyToTarget: { lat: number; lng: number; zoom?: number } | null;
@@ -58,6 +61,11 @@ interface VotesState {
   addLocation: (location: Location) => void;
   vote: (locationId: string, comment?: string) => void;
   unvote: (locationId: string) => void;
+  voteIn: (locationId: string) => void;
+  voteNotHere: (locationId: string) => void;
+  removeVote: (locationId: string) => void;
+  setSortMode: (mode: 'most_support' | 'most_viable') => void;
+  loadLocationVoters: (locationIds: string[]) => Promise<void>;
   setSelectedLocation: (id: string | null) => void;
   setSearchQuery: (query: string) => void;
   setFlyToTarget: (coords: { lat: number; lng: number; zoom?: number } | null) => void;
@@ -88,6 +96,9 @@ export const useVotesStore = create<VotesState>((set, get) => ({
   lastFetchCenter: null,
   zoomLevel: 4,
   votedLocationIds: new Set<string>(),
+  votedNotHereIds: new Set<string>(),
+  locationVoters: new Map(),
+  sortMode: 'most_support' as const,
   selectedLocationId: null,
   searchQuery: "",
   flyToTarget: null,
@@ -226,7 +237,7 @@ export const useVotesStore = create<VotesState>((set, get) => ({
     try {
       const { data, error } = await supabase
         .from("pp_votes")
-        .select("location_id")
+        .select("location_id, vote_type")
         .eq("user_id", userId);
 
       if (error) {
@@ -234,14 +245,16 @@ export const useVotesStore = create<VotesState>((set, get) => ({
         return;
       }
 
-      const votedIds = new Set(data.map((v) => v.location_id));
-      set({ votedLocationIds: votedIds });
+      type VoteRow = { location_id: string; vote_type: string | null };
+      const inIds = new Set(data.filter((v: VoteRow) => v.vote_type !== 'not_here').map((v: VoteRow) => v.location_id));
+      const notHereIds = new Set(data.filter((v: VoteRow) => v.vote_type === 'not_here').map((v: VoteRow) => v.location_id));
+      set({ votedLocationIds: inIds, votedNotHereIds: notHereIds });
     } catch (error) {
       console.error("Failed to load user votes:", error);
     }
   },
 
-  clearUserVotes: () => set({ votedLocationIds: new Set<string>() }),
+  clearUserVotes: () => set({ votedLocationIds: new Set<string>(), votedNotHereIds: new Set<string>() }),
 
   addLocation: (location) =>
     set((state) => ({
@@ -318,6 +331,172 @@ export const useVotesStore = create<VotesState>((set, get) => ({
             });
           }
         });
+    }
+  },
+
+  voteIn: (locationId) => {
+    const state = get();
+    const wasNotHere = state.votedNotHereIds.has(locationId);
+    const alreadyIn = state.votedLocationIds.has(locationId);
+    if (alreadyIn) return;
+
+    // Optimistic update
+    const newInIds = new Set([...state.votedLocationIds, locationId]);
+    const newNotHereIds = new Set(state.votedNotHereIds);
+    newNotHereIds.delete(locationId);
+    set({
+      locations: state.locations.map(loc =>
+        loc.id === locationId ? {
+          ...loc,
+          votes: loc.votes + 1,
+          notHereVotes: wasNotHere ? loc.notHereVotes - 1 : loc.notHereVotes,
+        } : loc
+      ),
+      votedLocationIds: newInIds,
+      votedNotHereIds: newNotHereIds,
+    });
+
+    if (state.userId && isSupabaseConfigured && supabase) {
+      supabase
+        .from("pp_votes")
+        .upsert(
+          { location_id: locationId, user_id: state.userId, vote_type: 'in' },
+          { onConflict: 'location_id,user_id' }
+        )
+        .then(({ error }) => {
+          if (error) {
+            console.error("Error persisting vote:", error);
+            // Rollback
+            const s = get();
+            const rollbackIn = new Set(s.votedLocationIds);
+            rollbackIn.delete(locationId);
+            const rollbackNotHere = wasNotHere ? new Set([...s.votedNotHereIds, locationId]) : s.votedNotHereIds;
+            set({
+              locations: s.locations.map(loc =>
+                loc.id === locationId ? {
+                  ...loc,
+                  votes: loc.votes - 1,
+                  notHereVotes: wasNotHere ? loc.notHereVotes + 1 : loc.notHereVotes,
+                } : loc
+              ),
+              votedLocationIds: rollbackIn,
+              votedNotHereIds: rollbackNotHere,
+            });
+          }
+        });
+    }
+  },
+
+  voteNotHere: (locationId) => {
+    const state = get();
+    const wasIn = state.votedLocationIds.has(locationId);
+    const alreadyNotHere = state.votedNotHereIds.has(locationId);
+    if (alreadyNotHere) return;
+
+    const newNotHereIds = new Set([...state.votedNotHereIds, locationId]);
+    const newInIds = new Set(state.votedLocationIds);
+    newInIds.delete(locationId);
+    set({
+      locations: state.locations.map(loc =>
+        loc.id === locationId ? {
+          ...loc,
+          notHereVotes: loc.notHereVotes + 1,
+          votes: wasIn ? loc.votes - 1 : loc.votes,
+        } : loc
+      ),
+      votedLocationIds: newInIds,
+      votedNotHereIds: newNotHereIds,
+    });
+
+    if (state.userId && isSupabaseConfigured && supabase) {
+      supabase
+        .from("pp_votes")
+        .upsert(
+          { location_id: locationId, user_id: state.userId, vote_type: 'not_here' },
+          { onConflict: 'location_id,user_id' }
+        )
+        .then(({ error }) => {
+          if (error) {
+            console.error("Error persisting vote:", error);
+            const s = get();
+            const rollbackNotHere = new Set(s.votedNotHereIds);
+            rollbackNotHere.delete(locationId);
+            const rollbackIn = wasIn ? new Set([...s.votedLocationIds, locationId]) : s.votedLocationIds;
+            set({
+              locations: s.locations.map(loc =>
+                loc.id === locationId ? {
+                  ...loc,
+                  notHereVotes: loc.notHereVotes - 1,
+                  votes: wasIn ? loc.votes + 1 : loc.votes,
+                } : loc
+              ),
+              votedLocationIds: rollbackIn,
+              votedNotHereIds: rollbackNotHere,
+            });
+          }
+        });
+    }
+  },
+
+  removeVote: (locationId) => {
+    const state = get();
+    const wasIn = state.votedLocationIds.has(locationId);
+    const wasNotHere = state.votedNotHereIds.has(locationId);
+    if (!wasIn && !wasNotHere) return;
+
+    const newInIds = new Set(state.votedLocationIds);
+    newInIds.delete(locationId);
+    const newNotHereIds = new Set(state.votedNotHereIds);
+    newNotHereIds.delete(locationId);
+    set({
+      locations: state.locations.map(loc =>
+        loc.id === locationId ? {
+          ...loc,
+          votes: wasIn ? loc.votes - 1 : loc.votes,
+          notHereVotes: wasNotHere ? loc.notHereVotes - 1 : loc.notHereVotes,
+        } : loc
+      ),
+      votedLocationIds: newInIds,
+      votedNotHereIds: newNotHereIds,
+    });
+
+    if (state.userId && isSupabaseConfigured && supabase) {
+      supabase
+        .from("pp_votes")
+        .delete()
+        .eq("location_id", locationId)
+        .eq("user_id", state.userId)
+        .then(({ error }) => {
+          if (error) {
+            console.error("Error removing vote:", error);
+          }
+        });
+    }
+  },
+
+  setSortMode: (sortMode) => set({ sortMode }),
+
+  loadLocationVoters: async (locationIds) => {
+    if (!isSupabaseConfigured || !supabase || locationIds.length === 0) return;
+    try {
+      const { data, error } = await supabase.rpc('get_location_voters', {
+        location_ids: locationIds,
+      });
+      if (error) { console.error("Error loading voters:", error); return; }
+      const voterMap = new Map<string, VoterInfo[]>();
+      for (const row of data || []) {
+        const list = voterMap.get(row.location_id) || [];
+        list.push({
+          userId: row.user_id,
+          voteType: row.vote_type as VoteType,
+          displayName: row.display_name,
+          email: row.email,
+        });
+        voterMap.set(row.location_id, list);
+      }
+      set({ locationVoters: voterMap });
+    } catch (error) {
+      console.error("Failed to load voters:", error);
     }
   },
 

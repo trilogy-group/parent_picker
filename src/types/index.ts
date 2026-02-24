@@ -21,9 +21,19 @@ export interface Location {
   lat: number;
   lng: number;
   votes: number;
+  notHereVotes: number;   // count of 'not_here' votes
   suggested?: boolean;
   released?: boolean;
   scores?: LocationScores;
+}
+
+export type VoteType = 'in' | 'not_here';
+
+export interface VoterInfo {
+  userId: string;
+  voteType: VoteType;
+  displayName: string | null;
+  email: string;
 }
 
 export interface CitySummary {
