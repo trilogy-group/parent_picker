@@ -3,7 +3,7 @@
 import { useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, CheckCircle2, Building2, TreePine, DollarSign, Clock, School, Rocket, Crown } from "lucide-react";
+import { ArrowLeft, CheckCircle2, Building2, TreePine, DollarSign, MapPin, Clock, School, Rocket, Crown } from "lucide-react";
 import { SCHOOL_TYPES, CriteriaSection } from "@/lib/school-types";
 import { FileUpload } from "@/components/FileUpload";
 import { Button } from "@/components/ui/button";
