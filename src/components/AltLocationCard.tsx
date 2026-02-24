@@ -21,7 +21,6 @@ const LAUNCH_THRESHOLD = 30;
 
 interface AltLocationCardProps {
   location: Location;
-  distance?: number;
   voters: VoterInfo[];
   hasVotedIn: boolean;
   hasVotedNotHere: boolean;
@@ -30,11 +29,12 @@ interface AltLocationCardProps {
   onSelect: () => void;
   onVoteIn: () => void;
   onVoteNotHere: (comment?: string) => void;
+  onRemoveVote?: () => void;
 }
 
 export function AltLocationCard({
-  location, distance, voters, hasVotedIn, hasVotedNotHere,
-  isAuthenticated, isSelected, onSelect, onVoteIn, onVoteNotHere,
+  location, voters, hasVotedIn, hasVotedNotHere,
+  isAuthenticated, isSelected, onSelect, onVoteIn, onVoteNotHere, onRemoveVote,
 }: AltLocationCardProps) {
   const [showSignIn, setShowSignIn] = useState(false);
   const [notHereModalOpen, setNotHereModalOpen] = useState(false);
@@ -62,13 +62,10 @@ export function AltLocationCard({
           isSelected ? "border-gray-900 shadow-md" : "border-gray-200",
         )}
       >
-        {/* Name + distance */}
+        {/* Name */}
         <h3 className="font-semibold text-[15px] leading-tight">
           {extractStreet(location.address, location.city)}
         </h3>
-        {distance != null && (
-          <p className="text-xs text-gray-500 mt-0.5">{distance.toFixed(1)} mi from you</p>
-        )}
 
         {/* Status badge */}
         {badge && (
@@ -77,19 +74,28 @@ export function AltLocationCard({
           </p>
         )}
 
-        {/* Avatar row + stats */}
-        <div className="flex items-center gap-2 mt-2">
-          <AvatarRow voters={voters} />
-          <span className="text-xs text-gray-600">
-            <strong>{location.votes}</strong> in
-            {location.notHereVotes > 0 && (
-              <> &middot; <span className="text-amber-600">{location.notHereVotes} concern{location.notHereVotes !== 1 ? "s" : ""}</span></>
-            )}
-            {remaining > 0 && (
-              <> &middot; <span className="text-gray-400">{remaining} more to launch</span></>
-            )}
-          </span>
-        </div>
+        {/* Avatar row + stats — only show if there are votes or concerns */}
+        {(location.votes > 0 || location.notHereVotes > 0) && (
+          <div className="flex items-center gap-2 mt-2">
+            <AvatarRow voters={voters} />
+            <span className="text-xs text-gray-600">
+              {location.votes > 0 && (
+                <>
+                  <strong>{location.votes}</strong> in
+                  {remaining > 0 && (
+                    <> &middot; <span className="text-gray-400">{remaining} more to launch</span></>
+                  )}
+                </>
+              )}
+              {location.notHereVotes > 0 && (
+                <>
+                  {location.votes > 0 && <> &middot; </>}
+                  <span className="text-amber-600">{location.notHereVotes} concern{location.notHereVotes !== 1 ? "s" : ""}</span>
+                </>
+              )}
+            </span>
+          </div>
+        )}
 
         {/* Vote buttons */}
         <div className="flex gap-2 mt-3">
@@ -99,6 +105,26 @@ export function AltLocationCard({
                 <Check className="w-3 h-3 text-white" />
               </div>
               You&apos;re in
+              {onRemoveVote && (
+                <button
+                  onClick={(e) => { e.stopPropagation(); onRemoveVote(); }}
+                  className="ml-2 text-xs text-gray-400 hover:text-gray-600 underline"
+                >
+                  undo
+                </button>
+              )}
+            </div>
+          ) : hasVotedNotHere ? (
+            <div className="flex items-center gap-1.5 text-sm text-gray-500 font-medium py-2">
+              Concern noted
+              {onRemoveVote && (
+                <button
+                  onClick={(e) => { e.stopPropagation(); onRemoveVote(); }}
+                  className="ml-2 text-xs text-gray-400 hover:text-gray-600 underline"
+                >
+                  undo
+                </button>
+              )}
             </div>
           ) : (
             <>
@@ -110,12 +136,7 @@ export function AltLocationCard({
               </button>
               <button
                 onClick={handleVoteNotHere}
-                className={cn(
-                  "px-4 py-2.5 rounded-lg text-sm font-medium transition-colors border",
-                  hasVotedNotHere
-                    ? "border-gray-400 bg-gray-100 text-gray-500"
-                    : "border-gray-300 text-gray-700 hover:bg-gray-50"
-                )}
+                className="px-4 py-2.5 rounded-lg text-sm font-medium transition-colors border border-gray-300 text-gray-700 hover:bg-gray-50"
               >
                 Not here
               </button>

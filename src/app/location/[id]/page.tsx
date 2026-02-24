@@ -15,13 +15,14 @@ export default function LocationPage({ params }: { params: Promise<{ id: string 
   const isAuthenticated = !!user;
   const {
     locations, votedLocationIds, votedNotHereIds,
-    voteIn, voteNotHere, loadLocationVoters, locationVoters,
+    voteIn, voteNotHere, removeVote, loadLocationVoters, locationVoters,
   } = useVotesStore(useShallow((s) => ({
     locations: s.locations,
     votedLocationIds: s.votedLocationIds,
     votedNotHereIds: s.votedNotHereIds,
     voteIn: s.voteIn,
     voteNotHere: s.voteNotHere,
+    removeVote: s.removeVote,
     loadLocationVoters: s.loadLocationVoters,
     locationVoters: s.locationVoters,
   })));
@@ -74,6 +75,7 @@ export default function LocationPage({ params }: { params: Promise<{ id: string 
         onBack={() => router.back()}
         onVoteIn={() => voteIn(id)}
         onVoteNotHere={(comment) => voteNotHere(id, comment)}
+        onRemoveVote={() => removeVote(id)}
       />
     </div>
   );

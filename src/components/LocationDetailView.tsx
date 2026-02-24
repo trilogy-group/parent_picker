@@ -5,7 +5,7 @@ import { Location, VoterInfo } from "@/types";
 import { statusBadge, sizeTierLabel } from "@/lib/status";
 import { extractStreet } from "@/lib/address";
 import NotHereReasonModal from "./NotHereReasonModal";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, ExternalLink } from "lucide-react";
 
 const LAUNCH_THRESHOLD = 30;
 
@@ -19,6 +19,7 @@ interface LocationDetailViewProps {
   onBack: () => void;
   onVoteIn: () => void;
   onVoteNotHere: (comment?: string) => void;
+  onRemoveVote?: () => void;
 }
 
 export default function LocationDetailView({
@@ -31,6 +32,7 @@ export default function LocationDetailView({
   onBack,
   onVoteIn,
   onVoteNotHere,
+  onRemoveVote,
 }: LocationDetailViewProps) {
   const [notHereModalOpen, setNotHereModalOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<"in" | "concerns">("in");
@@ -143,7 +145,7 @@ export default function LocationDetailView({
             <p className="text-sm text-gray-500 mt-0.5">
               {location.address}, {location.city}, {location.state}
             </p>
-            <div className="flex items-center gap-2 mt-2">
+            <div className="flex items-center gap-2 mt-2 flex-wrap">
               {badge && (
                 <span
                   className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${badge.bgClassName} ${badge.className}`}
@@ -154,6 +156,16 @@ export default function LocationDetailView({
               {sizeLabel && (
                 <span className="text-xs text-gray-500">{sizeLabel}</span>
               )}
+              {location.scores?.overallDetailsUrl && (
+                <a
+                  href={location.scores.overallDetailsUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800"
+                >
+                  Details <ExternalLink className="w-3 h-3" />
+                </a>
+              )}
             </div>
           </div>
 
@@ -162,9 +174,19 @@ export default function LocationDetailView({
             {hasVotedIn ? (
               /* Already voted in */
               <div className="bg-gray-50 rounded-xl p-5">
-                <h3 className="text-lg font-semibold text-gray-900">
-                  You&apos;re in!
-                </h3>
+                <div className="flex items-center justify-between">
+                  <h3 className="text-lg font-semibold text-gray-900">
+                    You&apos;re in!
+                  </h3>
+                  {onRemoveVote && (
+                    <button
+                      onClick={onRemoveVote}
+                      className="text-xs text-gray-400 hover:text-gray-600 underline"
+                    >
+                      undo
+                    </button>
+                  )}
+                </div>
                 <div className="mt-3">
                   <div className="w-full bg-gray-200 rounded-full h-2.5">
                     <div
@@ -182,16 +204,45 @@ export default function LocationDetailView({
                   </p>
                 </div>
               </div>
+            ) : hasVotedNotHere ? (
+              /* Already voted not here */
+              <div className="bg-gray-50 rounded-xl p-5">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-base font-medium text-gray-600">
+                    Concern noted
+                  </h3>
+                  {onRemoveVote && (
+                    <button
+                      onClick={onRemoveVote}
+                      className="text-xs text-gray-400 hover:text-gray-600 underline"
+                    >
+                      undo
+                    </button>
+                  )}
+                </div>
+              </div>
             ) : (
               /* Not voted */
               <div className="bg-blue-50 rounded-xl p-5">
                 <h3 className="text-lg font-semibold text-gray-900">
                   Picture your kid here.
                 </h3>
-                <p className="text-sm text-gray-600 mt-1">
-                  {location.votes} families interested &mdash; {remaining} more
-                  to launch
-                </p>
+                {(location.votes > 0 || location.notHereVotes > 0) && (
+                  <p className="text-sm text-gray-600 mt-1">
+                    {location.votes > 0 && (
+                      <>{location.votes} {location.votes === 1 ? "family" : "families"} interested</>
+                    )}
+                    {location.votes > 0 && remaining > 0 && (
+                      <> &mdash; {remaining} more to launch</>
+                    )}
+                    {location.notHereVotes > 0 && (
+                      <>
+                        {location.votes > 0 && " · "}
+                        <span className="text-amber-600">{location.notHereVotes} concern{location.notHereVotes !== 1 ? "s" : ""}</span>
+                      </>
+                    )}
+                  </p>
+                )}
                 <div className="flex gap-3 mt-4">
                   <button
                     onClick={handleVoteIn}
@@ -203,11 +254,7 @@ export default function LocationDetailView({
                   <button
                     onClick={handleVoteNotHere}
                     disabled={!isAuthenticated}
-                    className={`px-5 py-2.5 rounded-lg text-sm font-medium transition-colors border ${
-                      hasVotedNotHere
-                        ? "border-gray-400 bg-gray-100 text-gray-500"
-                        : "border-gray-300 text-gray-700 hover:bg-white disabled:opacity-50 disabled:cursor-not-allowed"
-                    }`}
+                    className="px-5 py-2.5 rounded-lg text-sm font-medium transition-colors border border-gray-300 text-gray-700 hover:bg-white disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     Not here
                   </button>

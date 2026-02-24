@@ -9,7 +9,6 @@ import { AltLocationCard } from "./AltLocationCard";
 import LocationDetailView from "./LocationDetailView";
 import { InviteModal } from "./InviteModal";
 import { AuthButton } from "./AuthButton";
-import { getDistanceMiles } from "@/lib/locations";
 import { Location } from "@/types";
 
 const COLOR_RANK: Record<string, number> = { GREEN: 0, YELLOW: 1, AMBER: 2, RED: 3 };
@@ -33,7 +32,7 @@ const PAGE_SIZE = 25;
 export function AltPanel() {
   const {
     locations, filteredLocations, selectedLocationId, setSelectedLocation,
-    voteIn, voteNotHere, votedLocationIds, votedNotHereIds,
+    voteIn, voteNotHere, removeVote, votedLocationIds, votedNotHereIds,
     mapCenter, mapBounds, sortMode, setSortMode,
     locationVoters, loadLocationVoters, zoomLevel,
     citySummaries, setFlyToTarget,
@@ -44,6 +43,7 @@ export function AltPanel() {
     setSelectedLocation: s.setSelectedLocation,
     voteIn: s.voteIn,
     voteNotHere: s.voteNotHere,
+    removeVote: s.removeVote,
     votedLocationIds: s.votedLocationIds,
     votedNotHereIds: s.votedNotHereIds,
     mapCenter: s.mapCenter,
@@ -139,6 +139,7 @@ export function AltPanel() {
         onBack={() => setSelectedLocation(null)}
         onVoteIn={() => voteIn(selectedLocation.id)}
         onVoteNotHere={(comment) => voteNotHere(selectedLocation.id, comment)}
+        onRemoveVote={() => removeVote(selectedLocation.id)}
       />
     );
   }
@@ -159,6 +160,33 @@ export function AltPanel() {
         <p className="text-sm text-gray-500 mt-1.5">
           Say &ldquo;I&rsquo;m in.&rdquo; Share what you know. Enough families, and it happens.
         </p>
+      </div>
+
+      {/* What Alpha Feels Like card — always visible */}
+      <div className="mx-5 mb-4 bg-gray-900 rounded-xl p-5 text-white">
+        <p className="text-[10px] font-semibold tracking-widest text-gray-400 mb-2">
+          WHAT ALPHA FEELS LIKE
+        </p>
+        <p className="text-[15px] leading-snug">
+          Two hours of focused academics. Then the rest of the day building real things &mdash; businesses, robots, films, friendships.
+        </p>
+        <div className="flex gap-3 mt-4">
+          <div className="flex-1 bg-gray-800 rounded-lg p-3">
+            <p className="text-lg font-bold">2 hrs</p>
+            <p className="text-[10px] text-gray-400">AI-powered academics</p>
+          </div>
+          <div className="flex-1 bg-gray-800 rounded-lg p-3">
+            <p className="text-lg font-bold">2&times;</p>
+            <p className="text-[10px] text-gray-400">the learning, measured</p>
+          </div>
+          <div className="flex-1 bg-gray-800 rounded-lg p-3">
+            <p className="text-lg font-bold">100%</p>
+            <p className="text-[10px] text-gray-400">of kids say they love school</p>
+          </div>
+        </div>
+        <div className="mt-4">
+          <InviteModal />
+        </div>
       </div>
 
       {showCityCards ? (
@@ -183,35 +211,8 @@ export function AltPanel() {
           )}
         </div>
       ) : (
-        /* Zoomed-in: location cards with sort pills and info card */
+        /* Zoomed-in: location cards with sort pills */
         <>
-          {/* What Alpha Feels Like card */}
-          <div className="mx-5 mb-4 bg-gray-900 rounded-xl p-5 text-white">
-            <p className="text-[10px] font-semibold tracking-widest text-gray-400 mb-2">
-              WHAT ALPHA FEELS LIKE
-            </p>
-            <p className="text-[15px] leading-snug">
-              Two hours of focused academics. Then the rest of the day building real things &mdash; businesses, robots, films, friendships.
-            </p>
-            <div className="flex gap-3 mt-4">
-              <div className="flex-1 bg-gray-800 rounded-lg p-3">
-                <p className="text-lg font-bold">2 hrs</p>
-                <p className="text-[10px] text-gray-400">AI-powered academics</p>
-              </div>
-              <div className="flex-1 bg-gray-800 rounded-lg p-3">
-                <p className="text-lg font-bold">2&times;</p>
-                <p className="text-[10px] text-gray-400">the learning, measured</p>
-              </div>
-              <div className="flex-1 bg-gray-800 rounded-lg p-3">
-                <p className="text-lg font-bold">100%</p>
-                <p className="text-[10px] text-gray-400">of kids say they love school</p>
-              </div>
-            </div>
-            <div className="mt-4">
-              <InviteModal />
-            </div>
-          </div>
-
           {/* Sort pills */}
           <div className="px-5 pb-3 flex items-center gap-2">
             <span className="text-xs text-gray-500">Sort</span>
@@ -236,12 +237,11 @@ export function AltPanel() {
               <AltLocationCard
                 key={loc.id}
                 location={loc}
-                distance={mapCenter ? getDistanceMiles(mapCenter.lat, mapCenter.lng, loc.lat, loc.lng) : undefined}
                 voters={locationVoters.get(loc.id) || []}
                 hasVotedIn={votedLocationIds.has(loc.id)}
                 hasVotedNotHere={votedNotHereIds.has(loc.id)}
                 isAuthenticated={isAuthenticated}
-                isSelected={selectedLocationId === loc.id}
+                isSelected={false}
                 onSelect={() => {
                   setSelectedLocation(loc.id);
                   if (typeof window !== 'undefined' && window.innerWidth < 1024) {
@@ -250,6 +250,7 @@ export function AltPanel() {
                 }}
                 onVoteIn={() => voteIn(loc.id)}
                 onVoteNotHere={(comment) => voteNotHere(loc.id, comment)}
+                onRemoveVote={() => removeVote(loc.id)}
               />
             ))}
             {sortedLocations.length > visibleLocations.length && (
