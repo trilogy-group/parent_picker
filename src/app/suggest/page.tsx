@@ -3,7 +3,7 @@
 import { useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, CheckCircle2, Building2, TreePine, DollarSign, MapPin, Upload as UploadIcon, Clock, School, Rocket, Crown } from "lucide-react";
+import { ArrowLeft, CheckCircle2, Building2, TreePine, DollarSign, Clock, School, Rocket, Crown } from "lucide-react";
 import { SCHOOL_TYPES, CriteriaSection } from "@/lib/school-types";
 import { FileUpload } from "@/components/FileUpload";
 import { Button } from "@/components/ui/button";
@@ -32,14 +32,8 @@ function SuggestPageInner() {
 
   // Optional details
   const [sqft, setSqft] = useState("");
-  const [currentUse, setCurrentUse] = useState("");
-  const [athleticNotes, setAthleticNotes] = useState("");
-  const [trafficNotes, setTrafficNotes] = useState("");
-  const [neighborhoodNotes, setNeighborhoodNotes] = useState("");
   const [askingRent, setAskingRent] = useState("");
-  const [nnnCam, setNnnCam] = useState("");
-  const [zoningClass, setZoningClass] = useState("");
-  const [zoningHurdles, setZoningHurdles] = useState("");
+  const [zoningStatus, setZoningStatus] = useState<"" | "allowed" | "needs_cup" | "prohibited" | "not_sure">("");
   const [generalNotes, setGeneralNotes] = useState("");
   const [attachmentUrls, setAttachmentUrls] = useState<{ name: string; url: string }[]>([]);
 
@@ -89,14 +83,11 @@ function SuggestPageInner() {
 
       const detailLines: string[] = [];
       if (sqft) detailLines.push(`Square footage: ${sanitizeText(sqft)}`);
-      if (currentUse) detailLines.push(`Current use: ${sanitizeText(currentUse)}`);
-      if (athleticNotes) detailLines.push(`Athletic/outdoor space: ${sanitizeText(athleticNotes)}`);
-      if (trafficNotes) detailLines.push(`Traffic/drop-off: ${sanitizeText(trafficNotes)}`);
-      if (neighborhoodNotes) detailLines.push(`Neighborhood: ${sanitizeText(neighborhoodNotes)}`);
       if (askingRent) detailLines.push(`Asking rent: ${sanitizeText(askingRent)}`);
-      if (nnnCam) detailLines.push(`NNN/CAM: ${sanitizeText(nnnCam)}`);
-      if (zoningClass) detailLines.push(`Zoning classification: ${sanitizeText(zoningClass)}`);
-      if (zoningHurdles) detailLines.push(`Zoning hurdles: ${sanitizeText(zoningHurdles)}`);
+      if (zoningStatus && zoningStatus !== "not_sure") {
+        const zoningLabels: Record<string, string> = { allowed: "School allowed", needs_cup: "Needs approval (CUP)", prohibited: "Prohibited" };
+        detailLines.push(`Zoning: ${zoningLabels[zoningStatus]}`);
+      }
       if (generalNotes) detailLines.push(`Notes: ${sanitizeText(generalNotes)}`);
       if (attachmentUrls.length > 0) {
         detailLines.push(`Attachments:\n${attachmentUrls.map((a) => `  - ${a.name}: ${a.url}`).join("\n")}`);
@@ -321,137 +312,61 @@ function SuggestPageInner() {
 
               <hr />
 
-              {/* Section: Building Details */}
-              <div className="space-y-4">
-                <h3 className="font-semibold text-sm text-muted-foreground uppercase tracking-wider flex items-center gap-2">
-                  <Building2 className="w-4 h-4" />
-                  Building Details
-                  <span className="text-xs font-normal normal-case text-muted-foreground">(optional)</span>
-                </h3>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <label htmlFor="suggest-sqft" className="text-sm font-medium">Approx. Square Footage</label>
-                    <Input id="suggest-sqft" placeholder="e.g. 3,500" value={sqft} onChange={(e) => { setSqft(e.target.value); revalidateIfNeeded({ sqft: e.target.value }); }} />
-                    {errors.sqft && <p data-testid="error-sqft" className="text-xs text-red-600 mt-1">{errors.sqft}</p>}
-                  </div>
-                  <div className="space-y-2">
-                    <label htmlFor="suggest-use" className="text-sm font-medium">Current Use</label>
-                    <Input id="suggest-use" placeholder="e.g. Retail, Office, Church" value={currentUse} onChange={(e) => setCurrentUse(e.target.value)} />
-                  </div>
+              {/* Optional details — flat, no section headers */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <label htmlFor="suggest-sqft" className="text-sm font-medium">Approx. Sq Ft</label>
+                  <Input id="suggest-sqft" placeholder="e.g. 3,500" value={sqft} onChange={(e) => { setSqft(e.target.value); revalidateIfNeeded({ sqft: e.target.value }); }} />
+                  {errors.sqft && <p data-testid="error-sqft" className="text-xs text-red-600 mt-1">{errors.sqft}</p>}
                 </div>
                 <div className="space-y-2">
-                  <label htmlFor="suggest-athletic" className="text-sm font-medium">Athletic / Outdoor Space Options</label>
-                  <textarea
-                    id="suggest-athletic"
-                    placeholder="e.g. Has a fenced backyard, park across the street, gym in the building..."
-                    value={athleticNotes}
-                    onChange={(e) => setAthleticNotes(e.target.value)}
-                    className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring resize-none"
-                    rows={2}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <label htmlFor="suggest-traffic" className="text-sm font-medium">Traffic Flow &amp; Drop-off/Pick-up</label>
-                  <textarea
-                    id="suggest-traffic"
-                    placeholder="e.g. Parking lot in front, easy loop for cars, on a quiet side street..."
-                    value={trafficNotes}
-                    onChange={(e) => setTrafficNotes(e.target.value)}
-                    className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring resize-none"
-                    rows={2}
-                  />
+                  <label htmlFor="suggest-rent" className="text-sm font-medium">Asking Rent</label>
+                  <Input id="suggest-rent" placeholder="e.g. $15/sq ft or $4,500/mo" value={askingRent} onChange={(e) => setAskingRent(e.target.value)} />
                 </div>
               </div>
 
-              <hr />
-
-              {/* Section: Neighborhood */}
-              <div className="space-y-4">
-                <h3 className="font-semibold text-sm text-muted-foreground uppercase tracking-wider flex items-center gap-2">
-                  <TreePine className="w-4 h-4" />
-                  Neighborhood
-                  <span className="text-xs font-normal normal-case text-muted-foreground">(optional)</span>
-                </h3>
-                <div className="space-y-2">
-                  <label htmlFor="suggest-neighborhood" className="text-sm font-medium">Neighborhood Feel</label>
-                  <textarea
-                    id="suggest-neighborhood"
-                    placeholder="e.g. Upscale shopping area, near top-rated elementary school, quiet residential..."
-                    value={neighborhoodNotes}
-                    onChange={(e) => setNeighborhoodNotes(e.target.value)}
-                    className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring resize-none"
-                    rows={2}
-                  />
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Zoning Status</label>
+                <div className="flex flex-wrap gap-2">
+                  {([
+                    { value: "not_sure", label: "Not sure" },
+                    { value: "allowed", label: "School allowed" },
+                    { value: "needs_cup", label: "Needs approval (CUP)" },
+                    { value: "prohibited", label: "Prohibited" },
+                  ] as const).map((opt) => (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      onClick={() => setZoningStatus(zoningStatus === opt.value ? "" : opt.value)}
+                      className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
+                        zoningStatus === opt.value
+                          ? "bg-blue-600 text-white"
+                          : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                      }`}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
                 </div>
               </div>
 
-              <hr />
-
-              {/* Section: Economics */}
-              <div className="space-y-4">
-                <h3 className="font-semibold text-sm text-muted-foreground uppercase tracking-wider flex items-center gap-2">
-                  <DollarSign className="w-4 h-4" />
-                  Economics
-                  <span className="text-xs font-normal normal-case text-muted-foreground">(optional)</span>
-                </h3>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <label htmlFor="suggest-rent" className="text-sm font-medium">Asking Rent</label>
-                    <Input id="suggest-rent" placeholder="e.g. $15/sq ft or $4,500/mo" value={askingRent} onChange={(e) => setAskingRent(e.target.value)} />
-                  </div>
-                  <div className="space-y-2">
-                    <label htmlFor="suggest-nnn" className="text-sm font-medium">Est. NNN / CAM</label>
-                    <Input id="suggest-nnn" placeholder="e.g. $5/sq ft" value={nnnCam} onChange={(e) => setNnnCam(e.target.value)} />
-                  </div>
-                </div>
-              </div>
-
-              <hr />
-
-              {/* Section: Zoning */}
-              <div className="space-y-4">
-                <h3 className="font-semibold text-sm text-muted-foreground uppercase tracking-wider flex items-center gap-2">
-                  Zoning
-                  <span className="text-xs font-normal normal-case text-muted-foreground">(optional)</span>
-                </h3>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <label htmlFor="suggest-zoning" className="text-sm font-medium">Zoning Classification</label>
-                    <Input id="suggest-zoning" placeholder="e.g. C-2, PUD, Mixed Use" value={zoningClass} onChange={(e) => setZoningClass(e.target.value)} />
-                  </div>
-                  <div className="space-y-2">
-                    <label htmlFor="suggest-hurdles" className="text-sm font-medium">Known Hurdles</label>
-                    <Input id="suggest-hurdles" placeholder="e.g. Needs CUP, HOA restriction" value={zoningHurdles} onChange={(e) => setZoningHurdles(e.target.value)} />
-                  </div>
-                </div>
-              </div>
-
-              <hr />
-
-              {/* Section: Attachments & Notes */}
-              <div className="space-y-4">
-                <h3 className="font-semibold text-sm text-muted-foreground uppercase tracking-wider flex items-center gap-2">
-                  <UploadIcon className="w-4 h-4" />
-                  Attachments &amp; Notes
-                  <span className="text-xs font-normal normal-case text-muted-foreground">(optional)</span>
-                </h3>
-                <FileUpload
-                  userId={userId}
-                  onFilesChange={(files) => setAttachmentUrls(files.map((f) => ({ name: f.name, url: f.url })))}
+              <div className="space-y-2">
+                <label htmlFor="suggest-notes" className="text-sm font-medium">Notes</label>
+                <textarea
+                  id="suggest-notes"
+                  placeholder="Anything else — why this would be great, links to listing, neighborhood info, etc."
+                  value={generalNotes}
+                  onChange={(e) => { setGeneralNotes(e.target.value); revalidateIfNeeded({ notes: e.target.value }); }}
+                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring resize-none"
+                  rows={3}
                 />
-                <div className="space-y-2">
-                  <label htmlFor="suggest-notes" className="text-sm font-medium">General Notes</label>
-                  <textarea
-                    id="suggest-notes"
-                    placeholder="Anything else we should know — why you think this would be a great Alpha location, links to listing, etc."
-                    value={generalNotes}
-                    onChange={(e) => { setGeneralNotes(e.target.value); revalidateIfNeeded({ notes: e.target.value }); }}
-                    className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring resize-none"
-                    rows={3}
-                  />
-                  {errors.notes && <p data-testid="error-notes" className="text-xs text-red-600 mt-1">{errors.notes}</p>}
-                </div>
+                {errors.notes && <p data-testid="error-notes" className="text-xs text-red-600 mt-1">{errors.notes}</p>}
               </div>
+
+              <FileUpload
+                userId={userId}
+                onFilesChange={(files) => setAttachmentUrls(files.map((f) => ({ name: f.name, url: f.url })))}
+              />
 
               {/* Submit */}
               <div className="flex items-center justify-between pt-4 border-t">
