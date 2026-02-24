@@ -7,6 +7,7 @@ import { useVotesStore } from "@/lib/votes";
 import { useShallow } from "zustand/react/shallow";
 import { useAuth } from "@/components/AuthProvider";
 import { Location } from "@/types";
+import { getDistanceMiles } from "@/lib/locations";
 
 export default function LocationPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -15,7 +16,7 @@ export default function LocationPage({ params }: { params: Promise<{ id: string 
   const isAuthenticated = !!user;
   const {
     locations, votedLocationIds, votedNotHereIds,
-    voteIn, voteNotHere, removeVote, loadLocationVoters, locationVoters,
+    voteIn, voteNotHere, removeVote, loadLocationVoters, locationVoters, userLocation,
   } = useVotesStore(useShallow((s) => ({
     locations: s.locations,
     votedLocationIds: s.votedLocationIds,
@@ -25,6 +26,7 @@ export default function LocationPage({ params }: { params: Promise<{ id: string 
     removeVote: s.removeVote,
     loadLocationVoters: s.loadLocationVoters,
     locationVoters: s.locationVoters,
+    userLocation: s.userLocation,
   })));
 
   const [fetchedLocation, setFetchedLocation] = useState<Location | null>(null);
@@ -77,6 +79,7 @@ export default function LocationPage({ params }: { params: Promise<{ id: string 
         onVoteNotHere={(comment) => voteNotHere(id, comment)}
         onRemoveVote={() => removeVote(id)}
         onContributionSubmitted={() => loadLocationVoters([id], true)}
+        distanceMi={userLocation && location ? getDistanceMiles(userLocation.lat, userLocation.lng, location.lat, location.lng) : null}
       />
     </div>
   );

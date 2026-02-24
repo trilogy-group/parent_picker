@@ -23,6 +23,7 @@ interface AltLocationCardProps {
   hasVotedNotHere: boolean;
   isAuthenticated: boolean;
   isSelected: boolean;
+  distanceMi?: number | null;
   onSelect: () => void;
   onVoteIn: () => void;
   onVoteNotHere: (comment?: string) => void;
@@ -31,7 +32,7 @@ interface AltLocationCardProps {
 
 export function AltLocationCard({
   location, voters, hasVotedIn, hasVotedNotHere,
-  isAuthenticated, isSelected, onSelect, onVoteIn, onVoteNotHere, onRemoveVote,
+  isAuthenticated, isSelected, distanceMi, onSelect, onVoteIn, onVoteNotHere, onRemoveVote,
 }: AltLocationCardProps) {
   const [showSignIn, setShowSignIn] = useState(false);
   const [notHereModalOpen, setNotHereModalOpen] = useState(false);
@@ -64,11 +65,20 @@ export function AltLocationCard({
           {extractStreet(location.address, location.city)}
         </h3>
 
-        {/* Status badge */}
-        {badge && (
-          <p className={cn("text-xs font-medium mt-1.5", badge.className)}>
-            &#10003; {badge.label}
-          </p>
+        {/* Status badge + distance */}
+        {(badge || distanceMi != null) && (
+          <div className="flex items-center gap-2 mt-1.5">
+            {badge && (
+              <span className={cn("text-xs font-medium", badge.className)}>
+                &#10003; {badge.label}
+              </span>
+            )}
+            {distanceMi != null && (
+              <span className="text-xs text-gray-400">
+                {distanceMi.toFixed(1)} mi
+              </span>
+            )}
+          </div>
         )}
 
         {/* Avatar row + stats — only show if there are votes or concerns */}

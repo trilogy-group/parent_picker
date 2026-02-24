@@ -54,6 +54,7 @@ interface VotesState {
   releasedFilter: ReleasedFilter;  // Admin: all/released/unreleased
   cardVersion: "v1" | "v2";       // Admin toggle: card layout version (parents always v1)
   showAltUI: boolean;              // Admin toggle: new UI vs old UI
+  userLocation: { lat: number; lng: number } | null;  // Browser geolocation
 
   setLocations: (locations: Location[]) => void;
   toggleScoreFilter: (category: ScoreFilterCategory, value: string) => void;
@@ -84,6 +85,7 @@ interface VotesState {
   setReleasedFilter: (filter: ReleasedFilter) => void;
   setCardVersion: (version: "v1" | "v2") => void;
   setShowAltUI: (show: boolean) => void;
+  setUserLocation: (coords: { lat: number; lng: number } | null) => void;
   loadCitySummaries: () => Promise<void>;
   fetchNearby: (center: { lat: number; lng: number }) => Promise<void>;
   fetchNearbyForce: (center: { lat: number; lng: number }) => Promise<void>;
@@ -125,6 +127,7 @@ export const useVotesStore = create<VotesState>((set, get) => ({
   releasedFilter: "all",
   cardVersion: "v1",
   showAltUI: typeof window !== "undefined" && localStorage.getItem("showAltUI") === "true",
+  userLocation: null,
 
   toggleScoreFilter: (category, value) => {
     const filters = get().scoreFilters;
@@ -190,6 +193,8 @@ export const useVotesStore = create<VotesState>((set, get) => ({
     if (typeof window !== "undefined") localStorage.setItem("showAltUI", String(showAltUI));
     set({ showAltUI });
   },
+
+  setUserLocation: (userLocation) => set({ userLocation }),
 
   loadCitySummaries: async () => {
     const { isAdmin, viewAsParent, releasedFilter, showUnscored } = get();

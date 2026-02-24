@@ -10,6 +10,7 @@ import LocationDetailView from "./LocationDetailView";
 import { InviteModal } from "./InviteModal";
 import { AuthButton } from "./AuthButton";
 import { Location } from "@/types";
+import { getDistanceMiles } from "@/lib/locations";
 
 const COLOR_RANK: Record<string, number> = { GREEN: 0, YELLOW: 1, AMBER: 2, RED: 3 };
 
@@ -35,7 +36,7 @@ export function AltPanel() {
     voteIn, voteNotHere, removeVote, votedLocationIds, votedNotHereIds,
     mapBounds, sortMode, setSortMode,
     locationVoters, loadLocationVoters, zoomLevel,
-    citySummaries, setFlyToTarget,
+    citySummaries, setFlyToTarget, userLocation,
   } = useVotesStore(useShallow((s) => ({
     locations: s.locations,
     filteredLocations: s.filteredLocations,
@@ -54,6 +55,7 @@ export function AltPanel() {
     zoomLevel: s.zoomLevel,
     citySummaries: s.citySummaries,
     setFlyToTarget: s.setFlyToTarget,
+    userLocation: s.userLocation,
   })));
 
   const { user, session } = useAuth();
@@ -140,6 +142,7 @@ export function AltPanel() {
         onVoteNotHere={(comment) => voteNotHere(selectedLocation.id, comment)}
         onRemoveVote={() => removeVote(selectedLocation.id)}
         onContributionSubmitted={() => loadLocationVoters([selectedLocation.id], true)}
+        distanceMi={userLocation ? getDistanceMiles(userLocation.lat, userLocation.lng, selectedLocation.lat, selectedLocation.lng) : null}
       />
     );
   }
@@ -255,6 +258,7 @@ export function AltPanel() {
                 hasVotedNotHere={votedNotHereIds.has(loc.id)}
                 isAuthenticated={isAuthenticated}
                 isSelected={false}
+                distanceMi={userLocation ? getDistanceMiles(userLocation.lat, userLocation.lng, loc.lat, loc.lng) : null}
                 onSelect={() => {
                   setSelectedLocation(loc.id);
                   if (typeof window !== 'undefined' && window.innerWidth < 1024) {

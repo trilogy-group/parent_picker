@@ -38,6 +38,7 @@ export function MapView() {
     fetchNearbyForce,
     cardVersion,
     showAltUI,
+    setUserLocationStore,
     votedLocationIds,
     vote,
     unvote,
@@ -67,6 +68,7 @@ export function MapView() {
     viewAsParent: s.viewAsParent,
     cardVersion: s.cardVersion,
     showAltUI: s.showAltUI,
+    setUserLocationStore: s.setUserLocation,
   })));
 
   const { user, isOfflineMode } = useAuth();
@@ -151,10 +153,12 @@ export function MapView() {
 
     navigator.geolocation.getCurrentPosition(
       (position) => {
-        setUserLocation({
+        const coords = {
           lat: position.coords.latitude,
           lng: position.coords.longitude,
-        });
+        };
+        setUserLocation(coords);
+        setUserLocationStore(coords);
         setGeoResolved(true);
       },
       (error) => {

@@ -24,6 +24,7 @@ interface LocationDetailViewProps {
   onVoteNotHere: (comment?: string) => void;
   onRemoveVote?: () => void;
   onContributionSubmitted?: () => void;
+  distanceMi?: number | null;
 }
 
 export default function LocationDetailView({
@@ -38,6 +39,7 @@ export default function LocationDetailView({
   onVoteNotHere,
   onRemoveVote,
   onContributionSubmitted,
+  distanceMi,
 }: LocationDetailViewProps) {
   const [notHereModalOpen, setNotHereModalOpen] = useState(false);
   const [showSignIn, setShowSignIn] = useState(false);
@@ -166,6 +168,9 @@ export default function LocationDetailView({
               )}
               {sizeLabel && (
                 <span className="text-xs text-gray-500">{sizeLabel}</span>
+              )}
+              {distanceMi != null && (
+                <span className="text-xs text-gray-400">{distanceMi.toFixed(1)} mi from you</span>
               )}
               {location.scores?.overallDetailsUrl && (
                 <a
