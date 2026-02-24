@@ -6,6 +6,7 @@ import { AvatarRow } from "./AvatarRow";
 import { cn } from "@/lib/utils";
 import { Check } from "lucide-react";
 import { extractStreet } from "@/lib/address";
+import { statusBadge } from "@/lib/status";
 import {
   Dialog,
   DialogContent,
@@ -16,13 +17,6 @@ import {
 import { SignInPrompt } from "./SignInPrompt";
 
 const LAUNCH_THRESHOLD = 30;
-
-function statusBadge(overallColor: string | null | undefined) {
-  if (overallColor === "GREEN") return { label: "Ready to go", className: "text-green-700" };
-  if (overallColor === "YELLOW" || overallColor === "AMBER") return { label: "Needs work", className: "text-amber-600" };
-  if (overallColor === "RED") return { label: "Challenging", className: "text-red-600" };
-  return null;
-}
 
 interface AltLocationCardProps {
   location: Location;
