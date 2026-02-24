@@ -1,0 +1,203 @@
+"use client";
+
+import { useState, useMemo, useEffect } from "react";
+import { useVotesStore } from "@/lib/votes";
+import { useShallow } from "zustand/react/shallow";
+import { useAuth } from "./AuthProvider";
+import { AltLocationCard } from "./AltLocationCard";
+import { InviteModal } from "./InviteModal";
+import { AuthButton } from "./AuthButton";
+import { getDistanceMiles } from "@/lib/locations";
+import { Location } from "@/types";
+
+const COLOR_RANK: Record<string, number> = { GREEN: 0, YELLOW: 1, AMBER: 2, RED: 3 };
+
+function sortMostSupport(a: Location, b: Location): number {
+  if (b.votes !== a.votes) return b.votes - a.votes;
+  const aRank = COLOR_RANK[a.scores?.overallColor || ""] ?? 99;
+  const bRank = COLOR_RANK[b.scores?.overallColor || ""] ?? 99;
+  return aRank - bRank;
+}
+
+function sortMostViable(a: Location, b: Location): number {
+  const aRank = COLOR_RANK[a.scores?.overallColor || ""] ?? 99;
+  const bRank = COLOR_RANK[b.scores?.overallColor || ""] ?? 99;
+  if (aRank !== bRank) return aRank - bRank;
+  return b.votes - a.votes;
+}
+
+const PAGE_SIZE = 25;
+
+export function AltPanel() {
+  const {
+    filteredLocations, selectedLocationId, setSelectedLocation,
+    voteIn, voteNotHere, votedLocationIds, votedNotHereIds,
+    mapCenter, mapBounds, sortMode, setSortMode,
+    locationVoters, loadLocationVoters, zoomLevel,
+  } = useVotesStore(useShallow((s) => ({
+    filteredLocations: s.filteredLocations,
+    selectedLocationId: s.selectedLocationId,
+    setSelectedLocation: s.setSelectedLocation,
+    voteIn: s.voteIn,
+    voteNotHere: s.voteNotHere,
+    votedLocationIds: s.votedLocationIds,
+    votedNotHereIds: s.votedNotHereIds,
+    mapCenter: s.mapCenter,
+    mapBounds: s.mapBounds,
+    sortMode: s.sortMode,
+    setSortMode: s.setSortMode,
+    locationVoters: s.locationVoters,
+    loadLocationVoters: s.loadLocationVoters,
+    zoomLevel: s.zoomLevel,
+  })));
+
+  const { user } = useAuth();
+  const isAuthenticated = !!user;
+
+  // Determine metro name when zoomed in
+  const metroName = useMemo(() => {
+    if (zoomLevel < 9) return null;
+    const filtered = filteredLocations();
+    if (filtered.length === 0) return null;
+    const cityCount: Record<string, number> = {};
+    for (const loc of filtered) {
+      const key = loc.city;
+      cityCount[key] = (cityCount[key] || 0) + 1;
+    }
+    const entries = Object.entries(cityCount);
+    if (entries.length === 0) return null;
+    entries.sort((a, b) => b[1] - a[1]);
+    return entries[0][0];
+  }, [zoomLevel, filteredLocations]);
+
+  // Sort and filter locations in viewport
+  const sortedLocations = useMemo(() => {
+    const filtered = filteredLocations();
+    if (!mapBounds) return filtered;
+    const inView = filtered.filter(loc =>
+      loc.lat <= mapBounds.north && loc.lat >= mapBounds.south &&
+      loc.lng <= mapBounds.east && loc.lng >= mapBounds.west
+    );
+    const sortFn = sortMode === 'most_support' ? sortMostSupport : sortMostViable;
+    return [...inView].sort(sortFn);
+  }, [filteredLocations, mapBounds, sortMode]);
+
+  // Pagination — track extra pages loaded beyond first page
+  const [extraPages, setExtraPages] = useState(0);
+  // Reset extra pages when sort or bounds change
+  const resetKey = `${sortMode}-${mapBounds?.north}-${mapBounds?.south}-${mapBounds?.east}-${mapBounds?.west}`;
+  const [prevResetKey, setPrevResetKey] = useState(resetKey);
+  if (resetKey !== prevResetKey) {
+    setPrevResetKey(resetKey);
+    if (extraPages !== 0) setExtraPages(0);
+  }
+  const visibleLocations = sortedLocations.slice(0, (extraPages + 1) * PAGE_SIZE);
+
+  // Load voter details for visible cards
+  useEffect(() => {
+    const ids = visibleLocations.map(l => l.id);
+    if (ids.length > 0) loadLocationVoters(ids);
+  }, [visibleLocations.map(l => l.id).join(',')]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  return (
+    <div className="flex flex-col h-full bg-white">
+      {/* Header */}
+      <div className="px-5 pt-5 pb-4">
+        {metroName && (
+          <p className="text-xs font-semibold text-blue-600 tracking-wide mb-1">
+            ALPHA SCHOOL &middot; {metroName.toUpperCase()}
+          </p>
+        )}
+
+        <div className="flex items-start justify-between gap-3">
+          <h1 className="text-[22px] font-bold text-gray-900 leading-tight">
+            Choose where your kid goes to school.
+          </h1>
+          <div className="shrink-0 pt-1">
+            <AuthButton darkBg={false} />
+          </div>
+        </div>
+        <p className="text-sm text-gray-500 mt-1.5">
+          Say &ldquo;I&rsquo;m in.&rdquo; Share what you know. Enough families, and it happens.
+        </p>
+      </div>
+
+      {/* What Alpha Feels Like card */}
+      <div className="mx-5 mb-4 bg-gray-900 rounded-xl p-5 text-white">
+        <p className="text-[10px] font-semibold tracking-widest text-gray-400 mb-2">
+          WHAT ALPHA FEELS LIKE
+        </p>
+        <p className="text-[15px] leading-snug">
+          Two hours of focused academics. Then the rest of the day building real things &mdash; businesses, robots, films, friendships.
+        </p>
+        <div className="flex gap-3 mt-4">
+          <div className="flex-1 bg-gray-800 rounded-lg p-3">
+            <p className="text-lg font-bold">2 hrs</p>
+            <p className="text-[10px] text-gray-400">AI-powered academics</p>
+          </div>
+          <div className="flex-1 bg-gray-800 rounded-lg p-3">
+            <p className="text-lg font-bold">2&times;</p>
+            <p className="text-[10px] text-gray-400">the learning, measured</p>
+          </div>
+          <div className="flex-1 bg-gray-800 rounded-lg p-3">
+            <p className="text-lg font-bold">100%</p>
+            <p className="text-[10px] text-gray-400">of kids say they love school</p>
+          </div>
+        </div>
+        <div className="mt-4">
+          <InviteModal />
+        </div>
+      </div>
+
+      {/* Sort pills */}
+      <div className="px-5 pb-3 flex items-center gap-2">
+        <span className="text-xs text-gray-500">Sort</span>
+        {(['most_support', 'most_viable'] as const).map((mode) => (
+          <button
+            key={mode}
+            onClick={() => setSortMode(mode)}
+            className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
+              sortMode === mode
+                ? 'bg-gray-900 text-white'
+                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+            }`}
+          >
+            {mode === 'most_support' ? 'Most support' : 'Most viable'}
+          </button>
+        ))}
+      </div>
+
+      {/* Location cards */}
+      <div className="flex-1 overflow-y-auto px-5 pb-5 space-y-3">
+        {visibleLocations.map((loc) => (
+          <AltLocationCard
+            key={loc.id}
+            location={loc}
+            distance={mapCenter ? getDistanceMiles(mapCenter.lat, mapCenter.lng, loc.lat, loc.lng) : undefined}
+            voters={locationVoters.get(loc.id) || []}
+            hasVotedIn={votedLocationIds.has(loc.id)}
+            hasVotedNotHere={votedNotHereIds.has(loc.id)}
+            isAuthenticated={isAuthenticated}
+            isSelected={selectedLocationId === loc.id}
+            onSelect={() => setSelectedLocation(loc.id)}
+            onVoteIn={() => voteIn(loc.id)}
+            onVoteNotHere={() => voteNotHere(loc.id)}
+          />
+        ))}
+        {sortedLocations.length > visibleLocations.length && (
+          <button
+            onClick={() => setExtraPages(p => p + 1)}
+            className="w-full py-2 text-sm text-blue-600 font-medium hover:underline"
+          >
+            Show more locations
+          </button>
+        )}
+        {visibleLocations.length === 0 && (
+          <p className="text-center text-sm text-gray-400 py-8">
+            No locations in this area yet. Zoom out or search a different city.
+          </p>
+        )}
+      </div>
+    </div>
+  );
+}
