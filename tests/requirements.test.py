@@ -3634,6 +3634,11 @@ def run_tests():
         print("\n## 31. New UI Toggle")
         # ============================================================
 
+        # Reload to start from clean state on main page
+        desktop_page.goto(BASE_URL)
+        desktop_page.wait_for_load_state("networkidle")
+        desktop_page.wait_for_timeout(3000)
+
         @test("TC-31.1.1", "Try new UI button visible to all users on desktop")
         def _():
             toggle = desktop_page.locator("button:has-text('Try new UI')")
