@@ -161,15 +161,11 @@ export function AltPanel() {
           </p>
           <AuthButton darkBg={false} />
         </div>
-        <h1 className="text-[20px] font-bold text-gray-900 leading-tight">
-          Choose where your kid goes to school.
-        </h1>
-        <div className="bg-blue-50 rounded-lg p-3 mt-2">
-          <ul className="text-sm text-gray-700 space-y-1">
-            <li className="flex gap-2"><span className="text-blue-500 mt-0.5">&#8226;</span><span>Here are locations we&rsquo;re considering along with community opinions.</span></li>
-            <li className="flex gap-2"><span className="text-blue-500 mt-0.5">&#8226;</span><span>Say &ldquo;I&rsquo;m in&rdquo; if you like a location. Share what you know.</span></li>
-            <li className="flex gap-2"><span className="text-blue-500 mt-0.5">&#8226;</span><span>Enough families, and it happens.</span></li>
-          </ul>
+        <div className="bg-blue-50 rounded-xl p-4 mt-2">
+          <p className="text-sm font-semibold text-blue-600">Choose where your kid goes to school.</p>
+          <p className="text-[13px] leading-snug text-gray-500 mt-0.5">
+            Here are locations we&rsquo;re considering along with community opinions. Say &ldquo;I&rsquo;m in&rdquo; if you like a location. Share what you know. Enough families, and it happens.
+          </p>
         </div>
         {isAdmin && (
           <button
@@ -225,8 +221,16 @@ export function AltPanel() {
       ) : (
         /* Zoomed-in: location cards with sort pills */
         <>
-          {/* Sort pills */}
-          <div className="px-5 pb-3 flex items-center gap-2 sticky top-0 bg-white z-10">
+          {/* Legend + Sort pills */}
+          <div className="px-5 pb-2 pt-1 sticky top-0 bg-white z-10">
+            <div className="flex items-center gap-3 text-[11px] text-gray-500 mb-2">
+              <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-green-500 inline-block" /> Promising</span>
+              <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-amber-400 inline-block" /> Viable</span>
+              <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-red-500 inline-block" /> Needs Work</span>
+              <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-gray-400 inline-block" /> Unscored</span>
+            </div>
+          </div>
+          <div className="px-5 pb-3 flex items-center gap-2">
             <span className="text-xs text-gray-500">Sort</span>
             {(['most_support', 'most_viable'] as const).map((mode) => (
               <button

@@ -139,13 +139,13 @@ export function AltLocationCard({
                 onClick={handleVoteIn}
                 className="flex-1 py-2.5 rounded-lg text-sm font-semibold transition-colors bg-blue-600 text-white hover:bg-blue-700"
               >
-                I&apos;m in
+                I&apos;d choose this location
               </button>
               <button
                 onClick={handleVoteNotHere}
                 className="px-4 py-2.5 rounded-lg text-sm font-medium transition-colors border border-gray-300 text-gray-700 hover:bg-gray-50"
               >
-                Not here
+                Not for me
               </button>
             </>
           )}

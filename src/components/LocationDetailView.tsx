@@ -207,21 +207,9 @@ export default function LocationDetailView({
                 )}
               </div>
             )}
-            {(distanceMi != null || location.scores?.overallDetailsUrl) && (
-              <div className="flex items-center gap-2 mt-1">
-                {distanceMi != null && (
-                  <span className="text-xs text-gray-400">{distanceMi.toFixed(1)} mi from you</span>
-                )}
-                {location.scores?.overallDetailsUrl && (
-                  <a
-                    href={location.scores.overallDetailsUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800"
-                  >
-                    Details <ExternalLink className="w-3 h-3" />
-                  </a>
-                )}
+            {distanceMi != null && (
+              <div className="mt-1">
+                <span className="text-xs text-gray-400">{distanceMi.toFixed(1)} mi from you</span>
               </div>
             )}
             {/* Red subscore breakdown */}
@@ -238,6 +226,21 @@ export default function LocationDetailView({
               ) : null;
             })()}
           </div>
+
+          {/* Details link box */}
+          {location.scores?.overallDetailsUrl && (
+            <a
+              href={location.scores.overallDetailsUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="block mt-4 bg-blue-50 rounded-xl p-4 hover:bg-blue-100/60 transition-colors"
+            >
+              <p className="text-sm font-semibold text-blue-600 inline-flex items-center gap-1.5">
+                View full location details <ExternalLink className="w-3.5 h-3.5" />
+              </p>
+              <p className="text-[13px] leading-snug text-gray-500 mt-0.5">Scoring breakdown, zoning info, and neighborhood data.</p>
+            </a>
+          )}
 
           {/* 4. Vote section */}
           <div className="mt-5">
@@ -308,13 +311,13 @@ export default function LocationDetailView({
                     onClick={handleVoteIn}
                     className="flex-1 py-2.5 rounded-lg text-sm font-semibold transition-colors bg-blue-600 text-white hover:bg-blue-700"
                   >
-                    I&apos;m in
+                    I&apos;d choose this location
                   </button>
                   <button
                     onClick={handleVoteNotHere}
                     className="px-5 py-2.5 rounded-lg text-sm font-medium transition-colors border border-gray-300 text-gray-700 hover:bg-white"
                   >
-                    Not here
+                    Not for me
                   </button>
                 </div>
               </div>
