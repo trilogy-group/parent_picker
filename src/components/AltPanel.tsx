@@ -155,16 +155,16 @@ export function AltPanel() {
     <div className="h-full overflow-y-auto bg-white">
       {/* Header */}
       <div className="px-5 pt-5 pb-4">
-        <div className="flex items-center justify-between mb-1">
-          <p className="text-xs font-semibold text-blue-600 tracking-wide">
-            ALPHA SCHOOL{metroName ? <> &middot; {metroName.toUpperCase()}</> : null}
-          </p>
+        <p className="text-xs font-semibold text-blue-600 tracking-wide">
+          ALPHA SCHOOL{metroName ? <> &middot; {metroName.toUpperCase()}</> : null}
+        </p>
+        <div className="flex justify-end mt-1">
           <AuthButton darkBg={false} />
         </div>
         <div className="bg-blue-50 rounded-xl p-4 mt-2">
           <p className="text-sm font-semibold text-blue-600">Choose where your kid goes to school.</p>
           <p className="text-[13px] leading-snug text-gray-500 mt-0.5">
-            Here are locations we&rsquo;re considering along with community opinions. Say &ldquo;I&rsquo;m in&rdquo; if you like a location. Share what you know. Enough families, and it happens.
+            Here are locations we&rsquo;re considering along with community opinions. Tell us if you like a location. Share what you know. Enough families, and it happens.
           </p>
         </div>
         {isAdmin && (

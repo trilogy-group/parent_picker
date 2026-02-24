@@ -93,15 +93,31 @@ export function AltLocationCard({
           <div className="mt-2">
             {location.votes > 0 && (
               <div>
-                <div className="w-full bg-gray-100 rounded-full h-5 relative overflow-hidden">
-                  <div
-                    className="bg-blue-600 h-5 rounded-full transition-all"
-                    style={{ width: `${Math.min(100, (location.votes / LAUNCH_THRESHOLD) * 100)}%` }}
-                  />
-                  <span className="absolute inset-0 flex items-center justify-center text-[11px] font-medium text-gray-700">
-                    {location.votes} in &middot; {remaining} to go
-                  </span>
-                </div>
+                {(() => {
+                  const pct = Math.min(100, (location.votes / LAUNCH_THRESHOLD) * 100);
+                  const label = <>{location.votes} in &middot; {remaining} to go</>;
+                  return (
+                    <div className="w-full bg-gray-100 rounded-full h-5 relative overflow-hidden">
+                      <div
+                        className="bg-blue-600 h-5 rounded-full transition-all"
+                        style={{ width: `${pct}%` }}
+                      />
+                      {/* Dark text on gray background */}
+                      <span className="absolute inset-0 flex items-center justify-center text-[11px] font-medium text-gray-700">
+                        {label}
+                      </span>
+                      {/* White text clipped to blue fill */}
+                      <div className="absolute inset-y-0 left-0 overflow-hidden" style={{ width: `${pct}%` }}>
+                        <span
+                          className="flex items-center justify-center text-[11px] font-medium text-white h-full whitespace-nowrap"
+                          style={{ width: `${10000 / pct}%` }}
+                        >
+                          {label}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })()}
               </div>
             )}
             {location.notHereVotes > 0 && (
