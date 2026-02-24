@@ -97,10 +97,9 @@ export function HelpModal({ locationName, locationAddress, locationId, variant =
         ) : variant === "card" ? (
           <button
             onClick={(e) => e.stopPropagation()}
-            className="flex items-center gap-1 text-[11px] text-blue-600 hover:text-blue-800 font-medium hover:underline"
+            className="text-sm font-semibold text-blue-600 hover:text-blue-800"
           >
-            <HandHelping className="w-3 h-3" />
-            I can help here
+            Send me the guide &rarr;
           </button>
         ) : (
           <button className="flex-1 flex items-center justify-center gap-1.5 bg-white text-blue-700 font-semibold text-xs py-2 px-3 rounded-lg hover:bg-blue-50 transition-colors shadow-md">

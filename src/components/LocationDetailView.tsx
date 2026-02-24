@@ -5,6 +5,7 @@ import { Location, VoterInfo } from "@/types";
 import { statusBadge, sizeTierLabel } from "@/lib/status";
 import { extractStreet } from "@/lib/address";
 import NotHereReasonModal from "./NotHereReasonModal";
+import { HelpModal } from "./HelpModal";
 import { ArrowLeft, ExternalLink } from "lucide-react";
 
 const LAUNCH_THRESHOLD = 30;
@@ -20,6 +21,7 @@ interface LocationDetailViewProps {
   onVoteIn: () => void;
   onVoteNotHere: (comment?: string) => void;
   onRemoveVote?: () => void;
+  onContributionSubmitted?: () => void;
 }
 
 export default function LocationDetailView({
@@ -33,6 +35,7 @@ export default function LocationDetailView({
   onVoteIn,
   onVoteNotHere,
   onRemoveVote,
+  onContributionSubmitted,
 }: LocationDetailViewProps) {
   const [notHereModalOpen, setNotHereModalOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<"in" | "concerns">("in");
@@ -75,8 +78,11 @@ export default function LocationDetailView({
         }),
       });
       if (!res.ok) throw new Error("Submission failed");
-      setContributionSubmitted(true);
       setContribution("");
+      onContributionSubmitted?.();
+      // Brief "Saved!" flash, then reset for more input
+      setContributionSubmitted(true);
+      setTimeout(() => setContributionSubmitted(false), 2000);
     } catch (err) {
       console.error("Failed to submit contribution:", err);
     } finally {
@@ -173,11 +179,9 @@ export default function LocationDetailView({
           <div className="mt-5">
             {hasVotedIn ? (
               /* Already voted in */
-              <div className="bg-gray-50 rounded-xl p-5">
+              <div className="bg-blue-50 rounded-xl p-5">
                 <div className="flex items-center justify-between">
-                  <h3 className="text-lg font-semibold text-gray-900">
-                    You&apos;re in!
-                  </h3>
+                  <p className="text-[10px] font-semibold tracking-widest text-blue-600">YOU&apos;RE IN</p>
                   {onRemoveVote && (
                     <button
                       onClick={onRemoveVote}
@@ -188,7 +192,7 @@ export default function LocationDetailView({
                   )}
                 </div>
                 <div className="mt-3">
-                  <div className="w-full bg-gray-200 rounded-full h-2.5">
+                  <div className="w-full bg-blue-100 rounded-full h-2.5">
                     <div
                       className="bg-blue-600 h-2.5 rounded-full transition-all"
                       style={{
@@ -196,7 +200,7 @@ export default function LocationDetailView({
                       }}
                     />
                   </div>
-                  <p className="text-sm text-gray-600 mt-2">
+                  <p className="text-[15px] leading-snug text-gray-900 mt-2">
                     {location.votes} of {LAUNCH_THRESHOLD} families
                     {remaining > 0
                       ? ` \u2014 ${remaining} more to launch`
@@ -206,11 +210,9 @@ export default function LocationDetailView({
               </div>
             ) : hasVotedNotHere ? (
               /* Already voted not here */
-              <div className="bg-gray-50 rounded-xl p-5">
+              <div className="bg-blue-50 rounded-xl p-5">
                 <div className="flex items-center justify-between">
-                  <h3 className="text-base font-medium text-gray-600">
-                    Concern noted
-                  </h3>
+                  <p className="text-[10px] font-semibold tracking-widest text-blue-600">CONCERN NOTED</p>
                   {onRemoveVote && (
                     <button
                       onClick={onRemoveVote}
@@ -224,13 +226,12 @@ export default function LocationDetailView({
             ) : (
               /* Not voted */
               <div className="bg-blue-50 rounded-xl p-5">
-                <h3 className="text-lg font-semibold text-gray-900">
+                <p className="text-[10px] font-semibold tracking-widest text-blue-600 mb-2">VOTE</p>
+                <p className="text-[15px] leading-snug text-gray-900">
                   Picture your kid here.
-                </h3>
-                <p className="text-sm text-gray-600 mt-1">
                   {location.votes > 0 ? (
-                    <>{location.votes} {location.votes === 1 ? "family is" : "families are"} in. </>
-                  ) : null}
+                    <> {location.votes} {location.votes === 1 ? "family is" : "families are"} in. </>
+                  ) : " "}
                   At {LAUNCH_THRESHOLD}, Alpha moves forward and begins lease negotiation.
                 </p>
                 {location.notHereVotes > 0 && (
@@ -259,34 +260,46 @@ export default function LocationDetailView({
           </div>
 
           {/* 5. Help us fill in the gaps */}
-          <div className="mt-6">
-            <h3 className="text-base font-semibold text-gray-900">
-              Help us fill in the gaps
-            </h3>
-            {contributionSubmitted ? (
+          <div className="mt-6 bg-blue-50 rounded-xl p-5">
+            <p className="text-[10px] font-semibold tracking-widest text-blue-600 mb-2">CONTRIBUTE</p>
+            <p className="text-[15px] leading-snug text-gray-900">Help us fill in the gaps.</p>
+            {contributionSubmitted && (
               <p className="text-sm text-green-600 mt-2">
-                Thanks for sharing!
+                Saved!
               </p>
-            ) : (
-              <>
-                <textarea
-                  value={contribution}
-                  onChange={(e) => setContribution(e.target.value)}
-                  placeholder="Know something about this area? Zoning issues, traffic, nearby schools..."
-                  className="w-full mt-2 min-h-[80px] rounded-lg border border-gray-300 p-3 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none resize-none"
-                />
-                <button
-                  onClick={handleContributionSubmit}
-                  disabled={!contribution.trim() || contributionSubmitting}
-                  className="mt-2 px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                >
-                  {contributionSubmitting ? "Submitting..." : "Submit"}
-                </button>
-              </>
             )}
+            <textarea
+              value={contribution}
+              onChange={(e) => setContribution(e.target.value)}
+              placeholder="Know something about this area? Zoning issues, traffic, nearby schools..."
+              className="w-full mt-3 min-h-[80px] rounded-lg border border-blue-100 bg-white p-3 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none resize-none"
+            />
+            <button
+              onClick={handleContributionSubmit}
+              disabled={!contribution.trim() || contributionSubmitting || !isAuthenticated}
+              className="mt-2 px-4 py-2 text-sm font-semibold text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              {contributionSubmitting ? "Saving..." : "Submit"}
+            </button>
           </div>
 
-          {/* 6. Who's in / Concerns tabs */}
+          {/* 6. Help box — only when voted in */}
+          {hasVotedIn && (
+            <div className="mt-6 bg-blue-50 rounded-xl p-5">
+              <p className="text-[10px] font-semibold tracking-widest text-blue-600 mb-2">GET INVOLVED</p>
+              <p className="text-[15px] leading-snug text-gray-900">Want to dig in and help make this location happen? We&apos;ll send you a guide.</p>
+              <div className="mt-3">
+                <HelpModal
+                  variant="card"
+                  locationId={location.id}
+                  locationName={location.name}
+                  locationAddress={`${location.address}, ${location.city}, ${location.state}`}
+                />
+              </div>
+            </div>
+          )}
+
+          {/* 7. Who's in / Concerns tabs */}
           <div className="mt-6">
             <div className="flex border-b border-gray-200">
               <button

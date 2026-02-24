@@ -139,6 +139,7 @@ export function AltPanel() {
         onVoteIn={() => voteIn(selectedLocation.id)}
         onVoteNotHere={(comment) => voteNotHere(selectedLocation.id, comment)}
         onRemoveVote={() => removeVote(selectedLocation.id)}
+        onContributionSubmitted={() => loadLocationVoters([selectedLocation.id], true)}
       />
     );
   }
@@ -164,25 +165,25 @@ export function AltPanel() {
       {/* 3 action boxes */}
       <div className="px-5 mb-4 space-y-3">
         {/* What Alpha Feels Like */}
-        <div className="bg-gray-900 rounded-xl p-5 text-white">
-          <p className="text-[10px] font-semibold tracking-widest text-gray-400 mb-2">
+        <div className="bg-blue-50 rounded-xl p-5">
+          <p className="text-[10px] font-semibold tracking-widest text-blue-600 mb-2">
             WHAT ALPHA FEELS LIKE
           </p>
-          <p className="text-[15px] leading-snug">
+          <p className="text-[15px] leading-snug text-gray-900">
             Two hours of focused academics. Then the rest of the day building real things &mdash; businesses, robots, films, friendships.
           </p>
           <div className="flex gap-3 mt-4">
-            <div className="flex-1 bg-gray-800 rounded-lg p-3">
-              <p className="text-lg font-bold">2 hrs</p>
-              <p className="text-[10px] text-gray-400">AI-powered academics</p>
+            <div className="flex-1 bg-white rounded-lg p-3 border border-blue-100">
+              <p className="text-lg font-bold text-gray-900">2 hrs</p>
+              <p className="text-[10px] text-gray-500">AI-powered academics</p>
             </div>
-            <div className="flex-1 bg-gray-800 rounded-lg p-3">
-              <p className="text-lg font-bold">2&times;</p>
-              <p className="text-[10px] text-gray-400">the learning, measured</p>
+            <div className="flex-1 bg-white rounded-lg p-3 border border-blue-100">
+              <p className="text-lg font-bold text-gray-900">2&times;</p>
+              <p className="text-[10px] text-gray-500">the learning, measured</p>
             </div>
-            <div className="flex-1 bg-gray-800 rounded-lg p-3">
-              <p className="text-lg font-bold">100%</p>
-              <p className="text-[10px] text-gray-400">of kids say they love school</p>
+            <div className="flex-1 bg-white rounded-lg p-3 border border-blue-100">
+              <p className="text-lg font-bold text-gray-900">100%</p>
+              <p className="text-[10px] text-gray-500">of kids say they love school</p>
             </div>
           </div>
         </div>
@@ -193,10 +194,11 @@ export function AltPanel() {
         {/* Suggest a location */}
         <a
           href="/suggest"
-          className="block bg-gray-50 rounded-xl p-4 text-center hover:bg-gray-100 transition-colors"
+          className="block bg-blue-50 rounded-xl p-5 hover:bg-blue-100/60 transition-colors"
         >
-          <p className="font-semibold text-gray-900 text-sm">Know a space that&apos;s not here?</p>
-          <p className="text-xs text-gray-500 mt-0.5">We&apos;ll evaluate it within 24 hours.</p>
+          <p className="text-[10px] font-semibold tracking-widest text-blue-600 mb-2">SUGGEST</p>
+          <p className="text-[15px] leading-snug text-gray-900">Know a space that&apos;s not here? We&apos;ll evaluate it within 24 hours.</p>
+          <p className="text-sm font-semibold text-blue-600 mt-2">Suggest a location &rarr;</p>
         </a>
       </div>
 

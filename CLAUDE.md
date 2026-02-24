@@ -129,10 +129,60 @@ Duplicate the Sports Academy facilities map functionality:
 - `src/app/api/admin/likes/route.ts` — tracks already-sent emails, filters fully-emailed locations
 - `src/types/index.ts` — `AdminAction` interface, `LikedLocation` help_sent fields
 
+### Workstream 13: New UI (Location Detail View + Panel Redesign) — DONE
+
+**What was built:**
+
+**New UI toggle** — "Try new UI" / "Back to current" button visible to all users (desktop + mobile). Stores `showAltUI` in Zustand so MapView can conditionally show popup (old UI) or let AltPanel handle detail (new UI).
+
+**LocationDetailView** (`src/components/LocationDetailView.tsx`) — shared detail component used by AltPanel (desktop) and `/location/[id]` (mobile):
+- Street View hero image, location name, status badge, size tier, details link
+- Vote section with 3 states: not voted (VOTE eyebrow + I'm in / Not here buttons), voted in (YOU'RE IN + progress bar + undo), concern noted (CONCERN NOTED + undo)
+- "Not here" opens NotHereReasonModal for reason/comment before submitting
+- CONTRIBUTE section: "Help us fill in the gaps" textarea, writes to `pp_votes.comment` (appends, no separate pp_contributions table)
+- GET INVOLVED section (voted-in only): triggers HelpModal with location-specific guide
+- Who's in / Concerns tabs with avatar + name + comment display
+
+**AltPanel redesign** (`src/components/AltPanel.tsx`):
+- Header: ALPHA SCHOOL eyebrow + metro name, AuthButton inline, "Choose where your kid goes to school"
+- 3 action boxes at top (unified blue-50 card style with eyebrow labels): What Alpha Feels Like, Invite, Suggest
+- Sort pills (Most support / Most viable) + location cards below
+- City cards when zoomed out (< zoom 9), location cards when zoomed in
+- Clicking card opens detail view in panel (desktop) or navigates to `/location/[id]` (mobile)
+
+**Unified box styling** — all cards use consistent pattern:
+- `bg-blue-50 rounded-xl p-5`
+- Eyebrow: `text-[10px] font-semibold tracking-widest text-blue-600` ALL CAPS
+- Body: `text-[15px] leading-snug text-gray-900`
+- Action links: `text-sm font-semibold text-blue-600` with arrow (→)
+
+**Vote comment flow:**
+- "Fill in the gaps" contributions write directly to `pp_votes.comment` (appended with newline)
+- `pp_contributions` table no longer used by the API
+- `get_location_voters` RPC updated: `LEFT JOIN pp_profiles` + `LEFT JOIN auth.users` for resilience (handles users without pp_profiles row)
+- `loadLocationVoters(ids, force?)` — force param bypasses deduplication cache for post-vote refresh
+
+**AltLocationCard** (`src/components/AltLocationCard.tsx`):
+- Vote buttons with undo support, NotHereReasonModal for concerns
+- Avatar row + vote/concern counts (hidden when all zero)
+- Sign-in prompt dialog for unauthenticated users
+
+**Other changes:**
+- `src/lib/status.ts` — shared `statusBadge()` (GREEN→Promising, YELLOW/AMBER→Viable, RED→Concerning) and `sizeTierLabel()` (Micro→"Micro (25 students)", etc.)
+- `src/lib/votes.ts` — `showAltUI` store field, `voteNotHere` accepts comment, `removeVote` action, force-refresh voters after vote operations
+- `src/components/MapView.tsx` — popup restored conditionally (only when `!showAltUI`), dot click sets `selectedLocationId` for AltPanel detail
+- `src/components/AvatarRow.tsx` — avatar colors updated to blue/emerald/purple/orange (no dark gray)
+- `src/components/InviteModal.tsx` — redesigned as blue-50 card with eyebrow label
+- `src/components/HelpModal.tsx` — "card" variant trigger updated to arrow link style
+
+**DB changes:**
+- `get_location_voters` RPC: `LEFT JOIN` instead of `INNER JOIN`, `COALESCE` fallback chain for email
+- Backfilled `pp_profiles` for users missing profile rows
+
 ### Pending / Next steps
 - **REBL scoring bug**: `overall_color` wrong for ~74% of scored rows — needs fix in REBL
 - REBL needs to score ~1,166 unscored locations and fill sub-score gaps (Price: 140 missing)
-- **Resend on free tier** — can only send to verified emails; upgrade needed for production parent emails
+- **Resend domain switch** — add `alpha.school` domain in Resend dashboard, add DNS records (MX/SPF/DKIM), then update `FROM_EMAIL` in `src/lib/email.ts` to `real_estate@alpha.school` and remove `replyTo`
 - Vercel env vars already set: `SUPABASE_SERVICE_ROLE_KEY`, `RESEND_API_KEY`, `ADMIN_EMAILS`, `NEXT_PUBLIC_ADMIN_EMAILS`, `NEXT_PUBLIC_GOOGLE_MAPS_KEY`
 
 ## File Structure

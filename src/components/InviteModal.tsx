@@ -64,9 +64,11 @@ export function InviteModal() {
     <>
       <button
         onClick={handleOpen}
-        className="w-full py-3 rounded-lg bg-white text-gray-900 font-semibold text-sm hover:bg-gray-50 transition-colors flex items-center justify-center gap-2"
+        className="w-full bg-blue-50 rounded-xl p-5 text-left hover:bg-blue-100/60 transition-colors"
       >
-        <span>👋</span> Invite a family
+        <p className="text-[10px] font-semibold tracking-widest text-blue-600 mb-2">INVITE</p>
+        <p className="text-[15px] leading-snug text-gray-900">Know a family who should weigh in? More families, better decisions.</p>
+        <p className="text-sm font-semibold text-blue-600 mt-2">Invite a family &rarr;</p>
       </button>
 
       <Dialog open={showSignIn} onOpenChange={setShowSignIn}>

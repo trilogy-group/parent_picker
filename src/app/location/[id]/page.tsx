@@ -76,6 +76,7 @@ export default function LocationPage({ params }: { params: Promise<{ id: string 
         onVoteIn={() => voteIn(id)}
         onVoteNotHere={(comment) => voteNotHere(id, comment)}
         onRemoveVote={() => removeVote(id)}
+        onContributionSubmitted={() => loadLocationVoters([id], true)}
       />
     </div>
   );

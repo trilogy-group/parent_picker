@@ -53,6 +53,7 @@ interface VotesState {
   showUnscored: boolean;           // Admin toggle: show locations without scores
   releasedFilter: ReleasedFilter;  // Admin: all/released/unreleased
   cardVersion: "v1" | "v2";       // Admin toggle: card layout version (parents always v1)
+  showAltUI: boolean;              // Admin toggle: new UI vs old UI
 
   setLocations: (locations: Location[]) => void;
   toggleScoreFilter: (category: ScoreFilterCategory, value: string) => void;
@@ -65,7 +66,7 @@ interface VotesState {
   voteNotHere: (locationId: string, comment?: string) => void;
   removeVote: (locationId: string) => void;
   setSortMode: (mode: 'most_support' | 'most_viable') => void;
-  loadLocationVoters: (locationIds: string[]) => Promise<void>;
+  loadLocationVoters: (locationIds: string[], force?: boolean) => Promise<void>;
   setSelectedLocation: (id: string | null) => void;
   setSearchQuery: (query: string) => void;
   setFlyToTarget: (coords: { lat: number; lng: number; zoom?: number } | null) => void;
@@ -82,6 +83,7 @@ interface VotesState {
   setShowUnscored: (show: boolean) => void;
   setReleasedFilter: (filter: ReleasedFilter) => void;
   setCardVersion: (version: "v1" | "v2") => void;
+  setShowAltUI: (show: boolean) => void;
   loadCitySummaries: () => Promise<void>;
   fetchNearby: (center: { lat: number; lng: number }) => Promise<void>;
   fetchNearbyForce: (center: { lat: number; lng: number }) => Promise<void>;
@@ -122,6 +124,7 @@ export const useVotesStore = create<VotesState>((set, get) => ({
   showUnscored: false,
   releasedFilter: "all",
   cardVersion: "v1",
+  showAltUI: false,
 
   toggleScoreFilter: (category, value) => {
     const filters = get().scoreFilters;
@@ -182,6 +185,8 @@ export const useVotesStore = create<VotesState>((set, get) => ({
   setReleasedFilter: (releasedFilter) => set({ releasedFilter }),
 
   setCardVersion: (cardVersion) => set({ cardVersion }),
+
+  setShowAltUI: (showAltUI) => set({ showAltUI }),
 
   loadCitySummaries: async () => {
     const { isAdmin, viewAsParent, releasedFilter, showUnscored } = get();
@@ -384,7 +389,7 @@ export const useVotesStore = create<VotesState>((set, get) => ({
             });
           } else {
             // Refresh voter list so Who's in / Concerns tabs update
-            get().loadLocationVoters([locationId]);
+            get().loadLocationVoters([locationId], true);
           }
         });
     }
@@ -437,7 +442,7 @@ export const useVotesStore = create<VotesState>((set, get) => ({
               votedNotHereIds: rollbackNotHere,
             });
           } else {
-            get().loadLocationVoters([locationId]);
+            get().loadLocationVoters([locationId], true);
           }
         });
     }
@@ -488,7 +493,7 @@ export const useVotesStore = create<VotesState>((set, get) => ({
               votedNotHereIds: wasNotHere ? new Set([...s.votedNotHereIds, locationId]) : s.votedNotHereIds,
             });
           } else {
-            get().loadLocationVoters([locationId]);
+            get().loadLocationVoters([locationId], true);
           }
         });
     }
@@ -496,12 +501,14 @@ export const useVotesStore = create<VotesState>((set, get) => ({
 
   setSortMode: (sortMode) => set({ sortMode }),
 
-  loadLocationVoters: async (locationIds) => {
+  loadLocationVoters: async (locationIds, force) => {
     if (!isSupabaseConfigured || !supabase || locationIds.length === 0) return;
-    // Deduplicate: skip if we already have data for all these IDs
-    const existing = get().locationVoters;
-    const needsFetch = locationIds.some(id => !existing.has(id));
-    if (!needsFetch) return;
+    // Deduplicate: skip if we already have data for all these IDs (unless force refresh)
+    if (!force) {
+      const existing = get().locationVoters;
+      const needsFetch = locationIds.some(id => !existing.has(id));
+      if (!needsFetch) return;
+    }
     try {
       const { data, error } = await supabase.rpc('get_location_voters', {
         location_ids: locationIds,

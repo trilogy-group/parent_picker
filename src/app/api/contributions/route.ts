@@ -20,26 +20,43 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Missing fields" }, { status: 400 });
   }
 
-  // Try to get user_id from auth header if present
-  let userId: string | null = null;
+  // Require auth — must have a vote to attach a comment
   const authHeader = request.headers.get("authorization");
-  if (authHeader?.startsWith("Bearer ")) {
-    const token = authHeader.slice(7);
-    const { data } = await supabase.auth.getUser(token);
-    if (data?.user) {
-      userId = data.user.id;
-    }
+  if (!authHeader?.startsWith("Bearer ")) {
+    return NextResponse.json({ error: "Auth required" }, { status: 401 });
+  }
+  const token = authHeader.slice(7);
+  const { data: authData } = await supabase.auth.getUser(token);
+  if (!authData?.user) {
+    return NextResponse.json({ error: "Invalid token" }, { status: 401 });
+  }
+  const userId = authData.user.id;
+
+  // Fetch existing comment so we can append
+  const { data: vote } = await supabase
+    .from("pp_votes")
+    .select("comment")
+    .eq("location_id", locationId)
+    .eq("user_id", userId)
+    .single();
+
+  if (!vote) {
+    return NextResponse.json({ error: "Vote first to leave a comment" }, { status: 400 });
   }
 
-  const { error } = await supabase.from("pp_contributions").insert({
-    location_id: locationId,
-    user_id: userId,
-    comment: comment.trim(),
-  });
+  const newComment = vote.comment
+    ? `${vote.comment}\n${comment.trim()}`
+    : comment.trim();
+
+  const { error } = await supabase
+    .from("pp_votes")
+    .update({ comment: newComment })
+    .eq("location_id", locationId)
+    .eq("user_id", userId);
 
   if (error) {
-    console.error("Failed to insert contribution:", error);
-    return NextResponse.json({ error: "Failed to save contribution" }, { status: 500 });
+    console.error("Failed to update vote comment:", error);
+    return NextResponse.json({ error: "Failed to save comment" }, { status: 500 });
   }
 
   return NextResponse.json({ success: true });

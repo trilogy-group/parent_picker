@@ -70,8 +70,7 @@ function DeepLinkHandler() {
 
 export default function Home() {
   const [panelExpanded, setPanelExpanded] = useState(false);
-  const [showAltUI, setShowAltUI] = useState(false);
-  const { locations, citySummaries, zoomLevel, loadCitySummaries, setReferencePoint, setIsAdmin, releasedFilter, showUnscored, viewAsParent } = useVotesStore();
+  const { locations, citySummaries, zoomLevel, loadCitySummaries, setReferencePoint, setIsAdmin, releasedFilter, showUnscored, viewAsParent, showAltUI, setShowAltUI } = useVotesStore();
   const { isAdmin } = useAuth();
 
   // Sync isAdmin from AuthProvider into Zustand store
@@ -165,16 +164,14 @@ export default function Home() {
         </div>
       )}
 
-      {/* Admin: Alt UI toggle */}
-      {isAdmin && (
-        <button
-          onClick={() => setShowAltUI(!showAltUI)}
-          className="hidden lg:flex absolute top-4 left-[calc(var(--panel-w)+1.5rem)] items-center gap-1.5 bg-white/90 backdrop-blur px-3 py-1.5 rounded-lg shadow-md text-xs font-medium text-gray-700 hover:bg-white transition-colors z-10"
-          style={{ "--panel-w": showAltUI ? "400px" : "380px" } as React.CSSProperties}
-        >
-          {showAltUI ? "Back to current" : "Try new UI"}
-        </button>
-      )}
+      {/* UI toggle */}
+      <button
+        onClick={() => setShowAltUI(!showAltUI)}
+        className="hidden lg:flex absolute top-4 left-[calc(var(--panel-w)+1.5rem)] items-center gap-1.5 bg-white/90 backdrop-blur px-3 py-1.5 rounded-lg shadow-md text-xs font-medium text-gray-700 hover:bg-white transition-colors z-10"
+        style={{ "--panel-w": showAltUI ? "400px" : "380px" } as React.CSSProperties}
+      >
+        {showAltUI ? "Back to current" : "Try new UI"}
+      </button>
 
       {/* Mobile: Bottom sheet */}
       <div data-testid="mobile-bottom-sheet" className="lg:hidden absolute left-0 right-0 bottom-0 flex flex-col">
@@ -208,14 +205,12 @@ export default function Home() {
                 <p className="text-sm text-muted-foreground">{totalVotes} Votes from Parents</p>
               </div>
               <div className="flex items-center gap-2">
-                {isAdmin && (
-                  <button
-                    onClick={() => setShowAltUI(!showAltUI)}
-                    className="text-[10px] px-2 py-1 rounded bg-gray-100 text-gray-600"
-                  >
-                    {showAltUI ? "Current" : "New UI"}
-                  </button>
-                )}
+                <button
+                  onClick={() => setShowAltUI(!showAltUI)}
+                  className="text-[10px] px-2 py-1 rounded bg-gray-100 text-gray-600"
+                >
+                  {showAltUI ? "Current" : "New UI"}
+                </button>
                 <AuthButton darkBg={false} />
               </div>
             </div>

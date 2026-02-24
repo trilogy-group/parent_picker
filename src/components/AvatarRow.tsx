@@ -12,10 +12,10 @@ function getInitials(voter: VoterInfo): string {
 }
 
 const COLORS = [
-  "bg-gray-800 text-white",
-  "bg-amber-600 text-white",
-  "bg-blue-600 text-white",
-  "bg-emerald-600 text-white",
+  "bg-blue-500 text-white",
+  "bg-emerald-500 text-white",
+  "bg-purple-500 text-white",
+  "bg-orange-500 text-white",
 ];
 
 interface AvatarRowProps {
