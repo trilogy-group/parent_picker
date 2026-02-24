@@ -81,6 +81,10 @@ export function AltPanel() {
   // Determine metro name when zoomed in
   const METRO_DISPLAY: Record<string, string> = {
     "Irvine": "Orange County",
+    "Santa Ana": "Orange County",
+    "Anaheim": "Orange County",
+    "Costa Mesa": "Orange County",
+    "Newport Beach": "Orange County",
     "Stamford": "Greenwich",
     "Phoenix": "Scottsdale",
   };
