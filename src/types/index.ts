@@ -34,6 +34,8 @@ export interface VoterInfo {
   voteType: VoteType;
   displayName: string | null;
   email: string;
+  comment: string | null;
+  createdAt: string | null;
 }
 
 export interface CitySummary {

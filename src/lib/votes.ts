@@ -511,6 +511,8 @@ export const useVotesStore = create<VotesState>((set, get) => ({
           voteType: row.vote_type as VoteType,
           displayName: row.display_name,
           email: row.email,
+          comment: row.comment || null,
+          createdAt: row.created_at || null,
         });
         merged.set(row.location_id, list);
       }
