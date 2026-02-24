@@ -3629,6 +3629,475 @@ def run_tests():
             assert ".filter(vc => vc.comment)" in content, "Filter for comments not found — only votes with comments should show"
         _()
 
+
+        # ============================================================
+        print("\n## 31. New UI Toggle")
+        # ============================================================
+
+        @test("TC-31.1.1", "Try new UI button visible to all users on desktop")
+        def _():
+            toggle = desktop_page.locator("button:has-text('Try new UI')")
+            assert toggle.count() > 0, "Try new UI button not found"
+            assert toggle.is_visible(), "Try new UI button not visible"
+        _()
+
+        @test("TC-31.1.2", "Clicking toggle switches panel to new UI (white bg, 400px width)")
+        def _():
+            toggle = desktop_page.locator("button:has-text('Try new UI')")
+            toggle.click()
+            desktop_page.wait_for_timeout(1000)
+            panel = desktop_page.locator("[data-testid='desktop-panel']")
+            classes = panel.get_attribute("class") or ""
+            assert "bg-white" in classes, f"New UI panel missing bg-white: {classes}"
+            assert "w-[400px]" in classes, f"New UI panel missing w-[400px]: {classes}"
+        _()
+
+        @test("TC-31.1.3", "Back to current button appears after switching")
+        def _():
+            back_btn = desktop_page.locator("button:has-text('Back to current')")
+            assert back_btn.count() > 0, "Back to current button not found"
+            assert back_btn.is_visible(), "Back to current button not visible"
+        _()
+
+        @test("TC-31.1.4", "Clicking Back to current restores old UI")
+        def _():
+            back_btn = desktop_page.locator("button:has-text('Back to current')")
+            back_btn.click()
+            desktop_page.wait_for_timeout(1000)
+            panel = desktop_page.locator("[data-testid='desktop-panel']")
+            classes = panel.get_attribute("class") or ""
+            assert "bg-blue-600" in classes, f"Old UI panel missing bg-blue-600: {classes}"
+            assert "w-[380px]" in classes, f"Old UI panel missing w-[380px]: {classes}"
+            # Switch back to new UI for remaining tests
+            toggle = desktop_page.locator("button:has-text('Try new UI')")
+            toggle.click()
+            desktop_page.wait_for_timeout(1000)
+        _()
+
+        # ============================================================
+        print("\n## 32. New UI Panel Header")
+        # ============================================================
+
+        @test("TC-32.1.1", "ALPHA SCHOOL eyebrow text visible")
+        def _():
+            eyebrow = desktop_page.locator("text=ALPHA SCHOOL")
+            assert eyebrow.count() > 0, "ALPHA SCHOOL eyebrow text not found"
+            assert eyebrow.first.is_visible(), "ALPHA SCHOOL eyebrow text not visible"
+        _()
+
+        @test("TC-32.1.2", "Heading 'Choose where your kid goes to school' visible")
+        def _():
+            heading = desktop_page.locator("h1:has-text('Choose where your kid goes to school')")
+            assert heading.count() > 0, "Main heading not found"
+            assert heading.first.is_visible(), "Main heading not visible"
+        _()
+
+        @test("TC-32.1.3", "Auth button visible in header")
+        def _():
+            # AuthButton is rendered inside the new UI header
+            import os
+            panel_path = os.path.join(os.path.dirname(__file__), "..", "src", "components", "AltPanel.tsx")
+            with open(panel_path) as f:
+                content = f.read()
+            assert "AuthButton" in content, "AuthButton not found in AltPanel"
+            assert "darkBg={false}" in content, "AuthButton should use darkBg={false} on white background"
+        _()
+
+        # ============================================================
+        print("\n## 33. Action Boxes (3 unified blue-50 cards)")
+        # ============================================================
+
+        @test("TC-33.1.1", "What Alpha Feels Like box present with WHAT ALPHA FEELS LIKE eyebrow")
+        def _():
+            eyebrow = desktop_page.locator("text=WHAT ALPHA FEELS LIKE")
+            assert eyebrow.count() > 0, "WHAT ALPHA FEELS LIKE eyebrow not found"
+            assert eyebrow.first.is_visible(), "WHAT ALPHA FEELS LIKE eyebrow not visible"
+        _()
+
+        @test("TC-33.1.2", "Three stat boxes (2 hrs, 2x, 100%) inside Alpha card")
+        def _():
+            stat_2hrs = desktop_page.locator("text=2 hrs")
+            stat_2x = desktop_page.locator("text=2×")
+            stat_100 = desktop_page.locator("text=100%")
+            assert stat_2hrs.count() > 0, "2 hrs stat not found"
+            assert stat_2x.count() > 0, "2x stat not found"
+            assert stat_100.count() > 0, "100% stat not found"
+        _()
+
+        @test("TC-33.2.1", "Invite box present with INVITE eyebrow")
+        def _():
+            eyebrow = desktop_page.locator("text=INVITE")
+            assert eyebrow.count() > 0, "INVITE eyebrow not found"
+            assert eyebrow.first.is_visible(), "INVITE eyebrow not visible"
+        _()
+
+        @test("TC-33.2.2", "Invite box has 'Invite a family →' link")
+        def _():
+            link = desktop_page.locator("text=Invite a family")
+            assert link.count() > 0, "Invite a family link not found"
+            assert link.first.is_visible(), "Invite a family link not visible"
+        _()
+
+        @test("TC-33.3.1", "Suggest box present with SUGGEST eyebrow")
+        def _():
+            eyebrow = desktop_page.locator("text=SUGGEST")
+            assert eyebrow.count() > 0, "SUGGEST eyebrow not found"
+            assert eyebrow.first.is_visible(), "SUGGEST eyebrow not visible"
+        _()
+
+        @test("TC-33.3.2", "Suggest box links to /suggest")
+        def _():
+            suggest_link = desktop_page.locator("a[href='/suggest']")
+            assert suggest_link.count() > 0, "Suggest link with href=/suggest not found"
+            suggest_text = desktop_page.locator("a[href='/suggest'] >> text=Suggest a location")
+            assert suggest_text.count() > 0, "Suggest a location text not found in suggest link"
+        _()
+
+        # ============================================================
+        print("\n## 34. Sort Pills")
+        # ============================================================
+
+        @test("TC-34.1.1", "Sort pills visible when zoomed into a city (zoom >= 9)")
+        def _():
+            # Source code check — sort pills only render when !showCityCards (zoomLevel >= 9)
+            import os
+            panel_path = os.path.join(os.path.dirname(__file__), "..", "src", "components", "AltPanel.tsx")
+            with open(panel_path) as f:
+                content = f.read()
+            assert "showCityCards" in content, "showCityCards conditional not found"
+            assert "zoomLevel < 9" in content, "zoomLevel < 9 threshold not found"
+            assert "Sort" in content, "Sort label not found in panel"
+        _()
+
+        @test("TC-34.1.2", "Most support and Most viable options present")
+        def _():
+            import os
+            panel_path = os.path.join(os.path.dirname(__file__), "..", "src", "components", "AltPanel.tsx")
+            with open(panel_path) as f:
+                content = f.read()
+            assert "Most support" in content, "Most support option not found"
+            assert "Most viable" in content, "Most viable option not found"
+        _()
+
+        @test("TC-34.1.3", "One sort pill is active (bg-blue-600)")
+        def _():
+            import os
+            panel_path = os.path.join(os.path.dirname(__file__), "..", "src", "components", "AltPanel.tsx")
+            with open(panel_path) as f:
+                content = f.read()
+            assert "bg-blue-600 text-white" in content, "Active sort pill style (bg-blue-600 text-white) not found"
+            assert "bg-gray-100 text-gray-600" in content, "Inactive sort pill style not found"
+        _()
+
+        # ============================================================
+        print("\n## 35. Location Cards (AltLocationCard)")
+        # ============================================================
+
+        @test("TC-35.1.1", "Location cards render in scrollable list")
+        def _():
+            import os
+            panel_path = os.path.join(os.path.dirname(__file__), "..", "src", "components", "AltPanel.tsx")
+            with open(panel_path) as f:
+                content = f.read()
+            assert "overflow-y-auto" in content, "Scrollable container (overflow-y-auto) not found"
+            assert "AltLocationCard" in content, "AltLocationCard not rendered in panel"
+        _()
+
+        @test("TC-35.1.2", "Cards show street name as title")
+        def _():
+            import os
+            card_path = os.path.join(os.path.dirname(__file__), "..", "src", "components", "AltLocationCard.tsx")
+            with open(card_path) as f:
+                content = f.read()
+            assert "extractStreet" in content, "extractStreet not used for card title"
+            assert "<h3" in content, "h3 heading not found for card title"
+        _()
+
+        @test("TC-35.1.3", "Cards show status badge (Promising/Viable/Concerning)")
+        def _():
+            import os
+            card_path = os.path.join(os.path.dirname(__file__), "..", "src", "components", "AltLocationCard.tsx")
+            with open(card_path) as f:
+                content = f.read()
+            assert "statusBadge" in content, "statusBadge not imported/used in AltLocationCard"
+            assert "badge.label" in content, "badge.label not rendered in card"
+        _()
+
+        @test("TC-35.2.1", "I'm in button present on cards")
+        def _():
+            import os
+            card_path = os.path.join(os.path.dirname(__file__), "..", "src", "components", "AltLocationCard.tsx")
+            with open(card_path) as f:
+                content = f.read()
+            assert "I\u2019m in" in content or "I'm in" in content or "I&apos;m in" in content, "I'm in button text not found"
+        _()
+
+        @test("TC-35.2.2", "Not here button present on cards")
+        def _():
+            import os
+            card_path = os.path.join(os.path.dirname(__file__), "..", "src", "components", "AltLocationCard.tsx")
+            with open(card_path) as f:
+                content = f.read()
+            assert "Not here" in content, "Not here button text not found"
+        _()
+
+        # ============================================================
+        print("\n## 36. Location Detail View")
+        # ============================================================
+
+        @test("TC-36.1.1", "LocationDetailView component has back arrow button")
+        def _():
+            import os
+            detail_path = os.path.join(os.path.dirname(__file__), "..", "src", "components", "LocationDetailView.tsx")
+            with open(detail_path) as f:
+                content = f.read()
+            assert "ArrowLeft" in content, "ArrowLeft icon not found in LocationDetailView"
+            assert "Back to locations" in content, "Back to locations text not found"
+            assert "onBack" in content, "onBack handler not found"
+        _()
+
+        @test("TC-36.1.2", "LocationDetailView has street view hero image section")
+        def _():
+            import os
+            detail_path = os.path.join(os.path.dirname(__file__), "..", "src", "components", "LocationDetailView.tsx")
+            with open(detail_path) as f:
+                content = f.read()
+            assert "maps.googleapis.com/maps/api/streetview" in content, "Google Street View URL not found"
+            assert "h-48" in content, "Hero image height class (h-48) not found"
+        _()
+
+        @test("TC-36.1.3", "LocationDetailView has status badge and size tier")
+        def _():
+            import os
+            detail_path = os.path.join(os.path.dirname(__file__), "..", "src", "components", "LocationDetailView.tsx")
+            with open(detail_path) as f:
+                content = f.read()
+            assert "statusBadge" in content, "statusBadge not used in LocationDetailView"
+            assert "sizeTierLabel" in content, "sizeTierLabel not used in LocationDetailView"
+            assert "badge.label" in content, "badge.label not rendered"
+            assert "sizeLabel" in content, "sizeLabel not rendered"
+        _()
+
+        @test("TC-36.1.4", "LocationDetailView has vote section with VOTE eyebrow")
+        def _():
+            import os
+            detail_path = os.path.join(os.path.dirname(__file__), "..", "src", "components", "LocationDetailView.tsx")
+            with open(detail_path) as f:
+                content = f.read()
+            assert "VOTE" in content, "VOTE eyebrow text not found in LocationDetailView"
+        _()
+
+        @test("TC-36.1.5", "Vote section has I'm in and Not here buttons")
+        def _():
+            import os
+            detail_path = os.path.join(os.path.dirname(__file__), "..", "src", "components", "LocationDetailView.tsx")
+            with open(detail_path) as f:
+                content = f.read()
+            assert "I&apos;m in" in content or "I'm in" in content, "I'm in button not found in detail view"
+            assert "Not here" in content, "Not here button not found in detail view"
+        _()
+
+        @test("TC-36.2.1", "Contribute section has CONTRIBUTE eyebrow")
+        def _():
+            import os
+            detail_path = os.path.join(os.path.dirname(__file__), "..", "src", "components", "LocationDetailView.tsx")
+            with open(detail_path) as f:
+                content = f.read()
+            assert "CONTRIBUTE" in content, "CONTRIBUTE eyebrow text not found"
+        _()
+
+        @test("TC-36.2.2", "Contribute section has textarea for comments")
+        def _():
+            import os
+            detail_path = os.path.join(os.path.dirname(__file__), "..", "src", "components", "LocationDetailView.tsx")
+            with open(detail_path) as f:
+                content = f.read()
+            assert "<textarea" in content, "textarea not found in LocationDetailView"
+            assert "contribution" in content, "contribution state not found"
+            assert "Zoning issues" in content or "zoning" in content.lower(), "Placeholder mentioning zoning not found"
+        _()
+
+        @test("TC-36.3.1", "Who's in / Concerns tabs present")
+        def _():
+            import os
+            detail_path = os.path.join(os.path.dirname(__file__), "..", "src", "components", "LocationDetailView.tsx")
+            with open(detail_path) as f:
+                content = f.read()
+            assert "Who" in content and "in" in content, "Who's in tab not found"
+            assert "Concerns" in content, "Concerns tab not found"
+            assert "activeTab" in content, "activeTab state not found for tab switching"
+        _()
+
+        @test("TC-36.3.2", "Tabs show count of voters")
+        def _():
+            import os
+            detail_path = os.path.join(os.path.dirname(__file__), "..", "src", "components", "LocationDetailView.tsx")
+            with open(detail_path) as f:
+                content = f.read()
+            assert "inVoters.length" in content, "inVoters.length count not shown in tab"
+            assert "concernVoters.length" in content, "concernVoters.length count not shown in tab"
+        _()
+
+        # ============================================================
+        print("\n## 37. Not Here Reason Modal")
+        # ============================================================
+
+        @test("TC-37.1.1", "NotHereReasonModal component exists with textarea")
+        def _():
+            import os
+            modal_path = os.path.join(os.path.dirname(__file__), "..", "src", "components", "NotHereReasonModal.tsx")
+            with open(modal_path) as f:
+                content = f.read()
+            assert "NotHereReasonModal" in content, "NotHereReasonModal component not found"
+            assert "<textarea" in content, "textarea not found in NotHereReasonModal"
+            assert "reason" in content, "reason state not found in NotHereReasonModal"
+        _()
+
+        @test("TC-37.1.2", "Modal has Skip and Submit concern buttons")
+        def _():
+            import os
+            modal_path = os.path.join(os.path.dirname(__file__), "..", "src", "components", "NotHereReasonModal.tsx")
+            with open(modal_path) as f:
+                content = f.read()
+            assert "Skip" in content, "Skip button text not found in NotHereReasonModal"
+            assert "Submit" in content, "Submit button text not found in NotHereReasonModal"
+        _()
+
+        # ============================================================
+        print("\n## 38. Vote Comment Flow (contributions → pp_votes.comment)")
+        # ============================================================
+
+        @test("TC-38.1.1", "Contributions API writes to pp_votes.comment (not pp_contributions)")
+        def _():
+            import os
+            api_path = os.path.join(os.path.dirname(__file__), "..", "src", "app", "api", "contributions", "route.ts")
+            with open(api_path) as f:
+                content = f.read()
+            assert "pp_votes" in content, "pp_votes table not referenced in contributions API"
+            assert "pp_contributions" not in content, "pp_contributions table should not be used — contributions go to pp_votes.comment"
+            assert ".update({ comment:" in content or '.update({ comment:' in content, "comment update on pp_votes not found"
+        _()
+
+        @test("TC-38.1.2", "API appends comments (newline separator)")
+        def _():
+            import os
+            api_path = os.path.join(os.path.dirname(__file__), "..", "src", "app", "api", "contributions", "route.ts")
+            with open(api_path) as f:
+                content = f.read()
+            assert "vote.comment" in content, "Existing comment fetch not found"
+            assert "\\n" in content, "Newline separator for appending comments not found"
+        _()
+
+        @test("TC-38.1.3", "API requires auth")
+        def _():
+            import os
+            api_path = os.path.join(os.path.dirname(__file__), "..", "src", "app", "api", "contributions", "route.ts")
+            with open(api_path) as f:
+                content = f.read()
+            assert "authorization" in content.lower(), "Authorization header check not found"
+            assert "401" in content, "401 status code not returned for unauthorized requests"
+            assert "Auth required" in content or "auth required" in content.lower(), "Auth required error message not found"
+        _()
+
+        # ============================================================
+        print("\n## 39. Voter List (loadLocationVoters)")
+        # ============================================================
+
+        @test("TC-39.1.1", "loadLocationVoters has force parameter")
+        def _():
+            import os
+            votes_path = os.path.join(os.path.dirname(__file__), "..", "src", "lib", "votes.ts")
+            with open(votes_path) as f:
+                content = f.read()
+            assert "loadLocationVoters: async (locationIds, force)" in content, "force parameter not found in loadLocationVoters signature"
+        _()
+
+        @test("TC-39.1.2", "Post-vote calls use force=true")
+        def _():
+            import os
+            votes_path = os.path.join(os.path.dirname(__file__), "..", "src", "lib", "votes.ts")
+            with open(votes_path) as f:
+                content = f.read()
+            assert "loadLocationVoters([locationId], true)" in content, "Post-vote force=true call not found"
+        _()
+
+        @test("TC-39.1.3", "RPC function name is get_location_voters")
+        def _():
+            import os
+            votes_path = os.path.join(os.path.dirname(__file__), "..", "src", "lib", "votes.ts")
+            with open(votes_path) as f:
+                content = f.read()
+            assert "get_location_voters" in content, "get_location_voters RPC function name not found"
+        _()
+
+        # ============================================================
+        print("\n## 40. Status & Size Utilities")
+        # ============================================================
+
+        @test("TC-40.1.1", "statusBadge maps GREEN to Promising")
+        def _():
+            import os
+            status_path = os.path.join(os.path.dirname(__file__), "..", "src", "lib", "status.ts")
+            with open(status_path) as f:
+                content = f.read()
+            assert '"GREEN"' in content, "GREEN color key not found"
+            assert '"Promising"' in content, "Promising label not found"
+            # Verify the mapping
+            green_line = [l for l in content.split('\n') if 'GREEN' in l and 'Promising' in l]
+            assert len(green_line) > 0, "GREEN → Promising mapping not found on same line"
+        _()
+
+        @test("TC-40.1.2", "statusBadge maps YELLOW/AMBER to Viable")
+        def _():
+            import os
+            status_path = os.path.join(os.path.dirname(__file__), "..", "src", "lib", "status.ts")
+            with open(status_path) as f:
+                content = f.read()
+            assert '"YELLOW"' in content, "YELLOW color key not found"
+            assert '"AMBER"' in content, "AMBER color key not found"
+            assert '"Viable"' in content, "Viable label not found"
+            amber_line = [l for l in content.split('\n') if 'AMBER' in l and 'Viable' in l]
+            assert len(amber_line) > 0, "AMBER → Viable mapping not found on same line"
+        _()
+
+        @test("TC-40.1.3", "statusBadge maps RED to Concerning")
+        def _():
+            import os
+            status_path = os.path.join(os.path.dirname(__file__), "..", "src", "lib", "status.ts")
+            with open(status_path) as f:
+                content = f.read()
+            assert '"RED"' in content, "RED color key not found"
+            assert '"Concerning"' in content, "Concerning label not found"
+            red_line = [l for l in content.split('\n') if 'RED' in l and 'Concerning' in l]
+            assert len(red_line) > 0, "RED → Concerning mapping not found on same line"
+        _()
+
+        @test("TC-40.2.1", "sizeTierLabel maps Micro to 'Micro (25 students)'")
+        def _():
+            import os
+            status_path = os.path.join(os.path.dirname(__file__), "..", "src", "lib", "status.ts")
+            with open(status_path) as f:
+                content = f.read()
+            assert "Micro (25 students)" in content, "Micro → Micro (25 students) mapping not found"
+        _()
+
+        @test("TC-40.2.2", "sizeTierLabel maps Full Size to 'Flagship (1000 students)'")
+        def _():
+            import os
+            status_path = os.path.join(os.path.dirname(__file__), "..", "src", "lib", "status.ts")
+            with open(status_path) as f:
+                content = f.read()
+            assert "Flagship (1000 students)" in content, "Full Size → Flagship (1000 students) mapping not found"
+            assert "full size" in content.lower(), "full size key not found in sizeTierLabel"
+        _()
+
+        # Restore old UI after new UI tests
+        back_btn = desktop_page.locator("button:has-text('Back to current')")
+        if back_btn.count() > 0 and back_btn.is_visible():
+            back_btn.click()
+            desktop_page.wait_for_timeout(1000)
+
+
         # Cleanup
         desktop.close()
         mobile.close()
