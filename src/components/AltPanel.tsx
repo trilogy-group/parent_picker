@@ -182,32 +182,8 @@ export function AltPanel() {
         )}
       </div>
 
-      {/* 3 action boxes */}
+      {/* Action boxes */}
       <div className="px-5 mb-4 space-y-3">
-        {/* What Alpha Feels Like */}
-        <div className="bg-blue-50 rounded-xl p-5">
-          <p className="text-[10px] font-semibold tracking-widest text-blue-600 mb-2">
-            WHAT ALPHA FEELS LIKE
-          </p>
-          <p className="text-[15px] leading-snug text-gray-900">
-            Two hours of focused academics. Then the rest of the day building real things &mdash; businesses, robots, films, friendships.
-          </p>
-          <div className="flex gap-3 mt-4">
-            <div className="flex-1 bg-white rounded-lg p-3 border border-blue-100">
-              <p className="text-lg font-bold text-gray-900">2 hrs</p>
-              <p className="text-[10px] text-gray-500">AI-powered academics</p>
-            </div>
-            <div className="flex-1 bg-white rounded-lg p-3 border border-blue-100">
-              <p className="text-lg font-bold text-gray-900">2&times;</p>
-              <p className="text-[10px] text-gray-500">the learning, measured</p>
-            </div>
-            <div className="flex-1 bg-white rounded-lg p-3 border border-blue-100">
-              <p className="text-lg font-bold text-gray-900">100%</p>
-              <p className="text-[10px] text-gray-500">of kids say they love school</p>
-            </div>
-          </div>
-        </div>
-
         {/* Invite someone */}
         <InviteModal />
 
