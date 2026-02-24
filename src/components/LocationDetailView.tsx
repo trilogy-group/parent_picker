@@ -64,7 +64,7 @@ export default function LocationDetailView({
       if (session?.access_token) {
         headers["Authorization"] = `Bearer ${session.access_token}`;
       }
-      await fetch("/api/contributions", {
+      const res = await fetch("/api/contributions", {
         method: "POST",
         headers,
         body: JSON.stringify({
@@ -72,6 +72,7 @@ export default function LocationDetailView({
           comment: contribution.trim(),
         }),
       });
+      if (!res.ok) throw new Error("Submission failed");
       setContributionSubmitted(true);
       setContribution("");
     } catch (err) {
@@ -276,15 +277,20 @@ export default function LocationDetailView({
                   </p>
                 ) : (
                   inVoters.map((voter, i) => (
-                    <div key={voter.userId} className="flex items-center gap-3">
+                    <div key={voter.userId} className="flex items-start gap-3">
                       <div
-                        className={`w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-medium ${avatarColor(i)}`}
+                        className={`w-8 h-8 shrink-0 rounded-full flex items-center justify-center text-white text-sm font-medium ${avatarColor(i)}`}
                       >
                         {getInitial(voter)}
                       </div>
-                      <span className="text-sm text-gray-700">
-                        {getDisplayName(voter)}
-                      </span>
+                      <div>
+                        <p className="text-sm text-gray-700">
+                          {getDisplayName(voter)}
+                        </p>
+                        {voter.comment && (
+                          <p className="text-xs text-gray-500 mt-0.5">{voter.comment}</p>
+                        )}
+                      </div>
                     </div>
                   ))
                 )
@@ -294,15 +300,20 @@ export default function LocationDetailView({
                 </p>
               ) : (
                 concernVoters.map((voter, i) => (
-                  <div key={voter.userId} className="flex items-center gap-3">
+                  <div key={voter.userId} className="flex items-start gap-3">
                     <div
-                      className={`w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-medium ${avatarColor(i)}`}
+                      className={`w-8 h-8 shrink-0 rounded-full flex items-center justify-center text-white text-sm font-medium ${avatarColor(i)}`}
                     >
                       {getInitial(voter)}
                     </div>
-                    <span className="text-sm text-gray-700">
-                      {getDisplayName(voter)}
-                    </span>
+                    <div>
+                      <p className="text-sm text-gray-700">
+                        {getDisplayName(voter)}
+                      </p>
+                      {voter.comment && (
+                        <p className="text-xs text-gray-500 mt-0.5">{voter.comment}</p>
+                      )}
+                    </div>
                   </div>
                 ))
               )}
