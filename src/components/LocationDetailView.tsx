@@ -227,20 +227,15 @@ export default function LocationDetailView({
                 <h3 className="text-lg font-semibold text-gray-900">
                   Picture your kid here.
                 </h3>
-                {(location.votes > 0 || location.notHereVotes > 0) && (
-                  <p className="text-sm text-gray-600 mt-1">
-                    {location.votes > 0 && (
-                      <>{location.votes} {location.votes === 1 ? "family" : "families"} interested</>
-                    )}
-                    {location.votes > 0 && remaining > 0 && (
-                      <> &mdash; {remaining} more to launch</>
-                    )}
-                    {location.notHereVotes > 0 && (
-                      <>
-                        {location.votes > 0 && " · "}
-                        <span className="text-amber-600">{location.notHereVotes} concern{location.notHereVotes !== 1 ? "s" : ""}</span>
-                      </>
-                    )}
+                <p className="text-sm text-gray-600 mt-1">
+                  {location.votes > 0 ? (
+                    <>{location.votes} {location.votes === 1 ? "family is" : "families are"} in. </>
+                  ) : null}
+                  At {LAUNCH_THRESHOLD}, Alpha moves forward and begins lease negotiation.
+                </p>
+                {location.notHereVotes > 0 && (
+                  <p className="text-sm text-amber-600 mt-1">
+                    {location.notHereVotes} concern{location.notHereVotes !== 1 ? "s" : ""}
                   </p>
                 )}
                 <div className="flex gap-3 mt-4">
@@ -366,6 +361,39 @@ export default function LocationDetailView({
               )}
             </div>
           </div>
+
+          {/* What Alpha Feels Like */}
+          <div className="mt-6 bg-gray-900 rounded-xl p-5 text-white">
+            <p className="text-[10px] font-semibold tracking-widest text-gray-400 mb-2">
+              WHAT ALPHA FEELS LIKE
+            </p>
+            <p className="text-[15px] leading-snug">
+              Two hours of focused academics. Then the rest of the day building real things &mdash; businesses, robots, films, friendships.
+            </p>
+            <div className="flex gap-3 mt-4">
+              <div className="flex-1 bg-gray-800 rounded-lg p-3">
+                <p className="text-lg font-bold">2 hrs</p>
+                <p className="text-[10px] text-gray-400">AI-powered academics</p>
+              </div>
+              <div className="flex-1 bg-gray-800 rounded-lg p-3">
+                <p className="text-lg font-bold">2&times;</p>
+                <p className="text-[10px] text-gray-400">the learning, measured</p>
+              </div>
+              <div className="flex-1 bg-gray-800 rounded-lg p-3">
+                <p className="text-lg font-bold">100%</p>
+                <p className="text-[10px] text-gray-400">of kids say they love school</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Know a space that's not here? */}
+          <a
+            href="/suggest"
+            className="mt-4 mb-2 block bg-gray-50 rounded-xl p-5 text-center hover:bg-gray-100 transition-colors"
+          >
+            <p className="font-semibold text-gray-900">Know a space that&apos;s not here?</p>
+            <p className="text-sm text-gray-500 mt-1">We&apos;ll evaluate it within 24 hours.</p>
+          </a>
         </div>
       </div>
 

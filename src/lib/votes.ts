@@ -382,6 +382,9 @@ export const useVotesStore = create<VotesState>((set, get) => ({
               votedLocationIds: rollbackIn,
               votedNotHereIds: rollbackNotHere,
             });
+          } else {
+            // Refresh voter list so Who's in / Concerns tabs update
+            get().loadLocationVoters([locationId]);
           }
         });
     }
@@ -433,6 +436,8 @@ export const useVotesStore = create<VotesState>((set, get) => ({
               votedLocationIds: rollbackIn,
               votedNotHereIds: rollbackNotHere,
             });
+          } else {
+            get().loadLocationVoters([locationId]);
           }
         });
     }
@@ -482,6 +487,8 @@ export const useVotesStore = create<VotesState>((set, get) => ({
               votedLocationIds: wasIn ? new Set([...s.votedLocationIds, locationId]) : s.votedLocationIds,
               votedNotHereIds: wasNotHere ? new Set([...s.votedNotHereIds, locationId]) : s.votedNotHereIds,
             });
+          } else {
+            get().loadLocationVoters([locationId]);
           }
         });
     }

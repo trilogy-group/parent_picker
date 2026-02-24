@@ -7,7 +7,6 @@ import { useShallow } from "zustand/react/shallow";
 import { useAuth } from "./AuthProvider";
 import { AltLocationCard } from "./AltLocationCard";
 import LocationDetailView from "./LocationDetailView";
-import { InviteModal } from "./InviteModal";
 import { AuthButton } from "./AuthButton";
 import { Location } from "@/types";
 
@@ -183,9 +182,6 @@ export function AltPanel() {
             <p className="text-[10px] text-gray-400">of kids say they love school</p>
           </div>
         </div>
-        <div className="mt-4">
-          <InviteModal />
-        </div>
       </div>
 
       {showCityCards ? (
@@ -265,6 +261,15 @@ export function AltPanel() {
                 No locations in this area yet. Zoom out or search a different city.
               </p>
             )}
+
+            {/* Know a space that's not here? */}
+            <a
+              href="/suggest"
+              className="block bg-gray-50 rounded-xl p-5 text-center hover:bg-gray-100 transition-colors"
+            >
+              <p className="font-semibold text-gray-900">Know a space that&apos;s not here?</p>
+              <p className="text-sm text-gray-500 mt-1">We&apos;ll evaluate it within 24 hours.</p>
+            </a>
           </div>
         </>
       )}
