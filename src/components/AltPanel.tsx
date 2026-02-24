@@ -11,6 +11,7 @@ import { InviteModal } from "./InviteModal";
 import { AuthButton } from "./AuthButton";
 import { Location } from "@/types";
 import { getDistanceMiles } from "@/lib/locations";
+import { Eye } from "lucide-react";
 
 const COLOR_RANK: Record<string, number> = { GREEN: 0, YELLOW: 1, AMBER: 2, RED: 3 };
 
@@ -37,6 +38,7 @@ export function AltPanel() {
     mapBounds, sortMode, setSortMode,
     locationVoters, loadLocationVoters, zoomLevel,
     citySummaries, setFlyToTarget, userLocation,
+    viewAsParent, setViewAsParent,
   } = useVotesStore(useShallow((s) => ({
     locations: s.locations,
     filteredLocations: s.filteredLocations,
@@ -56,9 +58,11 @@ export function AltPanel() {
     citySummaries: s.citySummaries,
     setFlyToTarget: s.setFlyToTarget,
     userLocation: s.userLocation,
+    viewAsParent: s.viewAsParent,
+    setViewAsParent: s.setViewAsParent,
   })));
 
-  const { user, session } = useAuth();
+  const { user, session, isAdmin } = useAuth();
   const isAuthenticated = !!user;
   const router = useRouter();
 
@@ -163,6 +167,19 @@ export function AltPanel() {
         <p className="text-sm text-gray-500 mt-1.5">
           Say &ldquo;I&rsquo;m in.&rdquo; Share what you know. Enough families, and it happens.
         </p>
+        {isAdmin && (
+          <button
+            onClick={() => setViewAsParent(!viewAsParent)}
+            className={`mt-2 flex items-center gap-1.5 text-[11px] font-medium px-2 py-1 rounded-md transition-colors ${
+              viewAsParent
+                ? "bg-amber-100 text-amber-800 hover:bg-amber-200"
+                : "bg-gray-100 text-gray-500 hover:bg-gray-200"
+            }`}
+          >
+            <Eye className="h-3 w-3" />
+            {viewAsParent ? "Viewing as parent \u2014 tap to exit" : "View as parent"}
+          </button>
+        )}
       </div>
 
       {/* 3 action boxes */}
