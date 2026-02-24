@@ -70,6 +70,7 @@ function DeepLinkHandler() {
 
 export default function Home() {
   const [panelExpanded, setPanelExpanded] = useState(false);
+  const [showAltUI, setShowAltUI] = useState(false);
   const { locations, citySummaries, zoomLevel, loadCitySummaries, setReferencePoint, setIsAdmin, releasedFilter, showUnscored, viewAsParent } = useVotesStore();
   const { isAdmin } = useAuth();
 
@@ -102,7 +103,11 @@ export default function Home() {
       </div>
 
       {/* Desktop: Left overlay panel */}
-      {isAdmin ? (
+      {showAltUI ? (
+        <div data-testid="desktop-panel" className="hidden lg:flex flex-col absolute top-4 left-4 bottom-4 w-[400px] bg-white rounded-xl shadow-2xl overflow-hidden">
+          <AltPanel />
+        </div>
+      ) : (
         <div data-testid="desktop-panel" className="hidden lg:flex flex-col absolute top-4 left-4 bottom-4 w-[380px] bg-blue-600 rounded-xl shadow-2xl overflow-hidden">
           {/* Panel Header */}
           <div className="px-4 pt-4 pb-2 text-white">
@@ -158,10 +163,17 @@ export default function Home() {
             <LocationsList />
           </div>
         </div>
-      ) : (
-        <div data-testid="desktop-panel" className="hidden lg:flex flex-col absolute top-4 left-4 bottom-4 w-[400px] bg-white rounded-xl shadow-2xl overflow-hidden">
-          <AltPanel />
-        </div>
+      )}
+
+      {/* Admin: Alt UI toggle */}
+      {isAdmin && (
+        <button
+          onClick={() => setShowAltUI(!showAltUI)}
+          className="hidden lg:flex absolute top-4 left-[calc(var(--panel-w)+1.5rem)] items-center gap-1.5 bg-white/90 backdrop-blur px-3 py-1.5 rounded-lg shadow-md text-xs font-medium text-gray-700 hover:bg-white transition-colors z-10"
+          style={{ "--panel-w": showAltUI ? "400px" : "380px" } as React.CSSProperties}
+        >
+          {showAltUI ? "Back to current" : "Try new UI"}
+        </button>
       )}
 
       {/* Mobile: Bottom sheet */}
@@ -190,15 +202,25 @@ export default function Home() {
         {/* Collapsed summary */}
         {!panelExpanded && (
           <div className="bg-white px-4 pb-4 border-t">
-            {isAdmin ? (
+            <div className="flex items-center justify-between py-3">
+              <div>
+                <h2 className="font-bold">Alpha School Locations</h2>
+                <p className="text-sm text-muted-foreground">{totalVotes} Votes from Parents</p>
+              </div>
+              <div className="flex items-center gap-2">
+                {isAdmin && (
+                  <button
+                    onClick={() => setShowAltUI(!showAltUI)}
+                    className="text-[10px] px-2 py-1 rounded bg-gray-100 text-gray-600"
+                  >
+                    {showAltUI ? "Current" : "New UI"}
+                  </button>
+                )}
+                <AuthButton darkBg={false} />
+              </div>
+            </div>
+            {!showAltUI && (
               <>
-                <div className="flex items-center justify-between py-3">
-                  <div>
-                    <h2 className="font-bold">Alpha School Locations</h2>
-                    <p className="text-sm text-muted-foreground">{totalVotes} Votes from Parents</p>
-                  </div>
-                  <AuthButton darkBg={false} />
-                </div>
                 <ul className="text-xs space-y-1 text-gray-500 mb-3">
                   <li className="flex gap-1.5">
                     <span className="text-amber-500 mt-0.5">&#8226;</span>
@@ -223,14 +245,6 @@ export default function Home() {
                   </Link>
                 </div>
               </>
-            ) : (
-              <div className="flex items-center justify-between py-3">
-                <div>
-                  <h2 className="font-bold text-gray-900">Alpha School Locations</h2>
-                  <p className="text-sm text-gray-500">Choose where your kid goes to school</p>
-                </div>
-                <AuthButton darkBg={false} />
-              </div>
             )}
           </div>
         )}
@@ -238,7 +252,9 @@ export default function Home() {
         {/* Expanded panel */}
         {panelExpanded && (
           <div className="bg-white max-h-[50vh] overflow-hidden flex flex-col">
-            {isAdmin ? (
+            {showAltUI ? (
+              <AltPanel />
+            ) : (
               <>
                 <div className="px-4 py-3 border-b flex items-center justify-between">
                   <div>
@@ -251,8 +267,6 @@ export default function Home() {
                   <LocationsList />
                 </div>
               </>
-            ) : (
-              <AltPanel />
             )}
           </div>
         )}
