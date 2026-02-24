@@ -1,39 +1,86 @@
-# Location Detail View — Design Draft (PAUSED)
+# Location Detail View + AltPanel Fixes — Design
 
-**Status:** Paused — user wants to revisit list view first
+**Status:** Approved
+**Date:** 2026-02-24
 
-## Summary
+## Overview
 
-When a user clicks a location card in AltPanel, the left panel transitions from list view to a detail view for that location.
+Three workstreams: (A) location detail view, (B) "Not here" reason prompt, (C) AltPanel header/zoom fixes.
 
-## Component: LocationDetailView.tsx
+## A. Location Detail View
 
-Replaces AltPanel content when `selectedLocationId` is set. Sections top-to-bottom:
+### Navigation Model
 
-1. **Back arrow** — returns to list view (clears selected location)
-2. **Street View image** — Google Street View Static API using lat/lng + NEXT_PUBLIC_GOOGLE_MAPS_KEY
-3. **Location name** (large) + status badge + size label
-4. **Zoning description** — derived from score
-5. **Vote section** — two states:
-   - **Not voted**: "Picture your kid here." card with stats + "I'm in" / "Not here" buttons
-   - **Voted**: Dark "You're in" progress bar showing "20 of 30" + launch description
-6. **"Help us fill in the gaps"** — single comment textarea + submit → pp_contributions table
-7. **Who's in / Concerns tabs** — tabbed voter list with avatar, name, timestamp, vote comment
+- **Desktop:** Clicking a card replaces the left panel content with the detail view. Back arrow returns to list.
+- **Mobile:** Clicking a card navigates to `/location/[id]` as a standalone page. Back button returns to map.
+- Both share the same `LocationDetailView` component.
 
-## DB Changes
+### Sections (top to bottom)
+
+1. **Back arrow** — returns to list (desktop: clears selectedLocationId, mobile: router.back)
+2. **Street View hero image** — Google Street View Static API using lat/lng + NEXT_PUBLIC_GOOGLE_MAPS_KEY, full-width
+3. **Location name** (large) + status badge + size tier label
+4. **Vote section** — two states:
+   - **Not voted:** "Picture your kid here." + stats + "I'm in" / "Not here" buttons
+   - **Voted:** "You're in" progress bar showing "20 of 30" + launch description
+5. **"Help us fill in the gaps"** — single comment textarea + submit → `pp_contributions` table
+6. **Who's in / Concerns tabs** — tabbed voter list with avatar, name, timestamp, vote comment
+
+### Status Badge Mapping
+
+| Score  | Badge      | Color |
+|--------|------------|-------|
+| GREEN  | Promising  | green |
+| YELLOW | Viable     | amber |
+| AMBER  | Viable     | amber |
+| RED    | Concerning | red   |
+
+### Size Tier Labels
+
+Display tier name + student count, no square footage. Examples: "Micro (25 students)", "Small (50 students)", "Medium (100 students)".
+
+### Styling
+
+Use the existing light color palette throughout (white backgrounds, gray text, blue accents). No dark theme.
+
+### DB Changes
 
 - `pp_contributions` (new): id, location_id, user_id, comment, created_at
-- Update `get_location_voters` RPC to return comment + created_at from pp_votes
+- Update `get_location_voters` RPC to return comment + created_at from `pp_votes`
+
+## B. "Not Here" Reason Prompt
+
+When a parent clicks "Not here" (on main page cards OR detail view), show a prompt/modal asking for their concern before the vote submits. The reason is stored as a comment on the `pp_votes` record (existing `comment` column or new `reason` column).
+
+This surfaces in the "Concerns" tab of the detail view's Who's in / Concerns section.
+
+## C. AltPanel Header + Zoom Fixes
+
+### Top Row
+
+Move AuthButton inline with the "ALPHA SCHOOL · CITY" badge — same row, auth button on the right.
+
+### Heading
+
+"Choose where your kid goes to school." must not wrap. Adjust text size or container to keep it single-line.
+
+### Zoomed Out State
+
+When zoomed out (no single metro detected):
+- Header shows "ALPHA SCHOOL" (no city name)
+- City cards still display so parents can pick a city
+- Currently the header hides when no metro — change to always show
 
 ## Wiring
 
-AltPanel checks selectedLocationId — if set, renders LocationDetailView instead of list. Back button calls setSelectedLocation(null).
+### Desktop
 
-## Status Badge Mapping
+AltPanel checks `selectedLocationId`. If set and a location is selected, render `LocationDetailView` instead of the list. Back button calls `setSelectedLocation(null)`.
 
-| Score | Badge | Color | Description |
-|-------|-------|-------|-------------|
-| GREEN | Promising | green | "No city approval needed — Alpha can move in as soon as families are in." |
-| YELLOW | Viable | amber | "This location needs some work, but it's a real contender." |
-| AMBER | Viable | amber | same |
-| RED | Major Issues | red | "This location has significant hurdles — but parent support can change things." |
+### Mobile
+
+Card click navigates to `/location/[id]`. That route renders `LocationDetailView` as a full page. Fetches location data by ID on mount.
+
+### Shared Component
+
+`LocationDetailView` accepts a `location` prop + callbacks. Platform-specific wiring (panel vs page) handled by the parent.
