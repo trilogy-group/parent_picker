@@ -10,9 +10,6 @@ import { statusBadge } from "@/lib/status";
 import {
   Dialog,
   DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
 } from "@/components/ui/dialog";
 import { SignInPrompt } from "./SignInPrompt";
 import NotHereReasonModal from "./NotHereReasonModal";
@@ -147,12 +144,6 @@ export function AltLocationCard({
 
       <Dialog open={showSignIn} onOpenChange={setShowSignIn}>
         <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Sign In to Vote</DialogTitle>
-            <DialogDescription>
-              Sign in to vote for this location.
-            </DialogDescription>
-          </DialogHeader>
           <SignInPrompt
             title="Sign in to vote"
             description="Enter your email to receive a magic link. No password needed."

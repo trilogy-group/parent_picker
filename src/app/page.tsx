@@ -96,8 +96,8 @@ export default function Home() {
   return (
     <div className="relative h-screen w-screen overflow-hidden">
       <Suspense><DeepLinkHandler /></Suspense>
-      {/* Full-screen Map */}
-      <div className="absolute inset-0">
+      {/* Full-screen Map — hidden on mobile when new UI active (no map needed) */}
+      <div className={showAltUI ? "absolute inset-0 hidden lg:block" : "absolute inset-0"}>
         <Map />
       </div>
 
@@ -173,99 +173,95 @@ export default function Home() {
         {showAltUI ? "Back to current" : "Try new UI"}
       </button>
 
-      {/* Mobile: Bottom sheet */}
-      <div data-testid="mobile-bottom-sheet" className="lg:hidden absolute left-0 right-0 bottom-0 flex flex-col">
-        {/* Pull handle */}
-        <button
-          onClick={() => setPanelExpanded(!panelExpanded)}
-          className="bg-white rounded-t-2xl shadow-lg pt-2 pb-3 flex flex-col items-center"
-        >
-          <div className="w-10 h-1 bg-gray-300 rounded-full mb-2" />
-          <div className="flex items-center gap-2 text-sm font-medium">
-            {panelExpanded ? (
-              <>
-                <ChevronDown className="w-4 h-4" />
-                Hide Locations
-              </>
-            ) : (
-              <>
-                <ChevronUp className="w-4 h-4" />
-                View Locations
-              </>
-            )}
-          </div>
-        </button>
-
-        {/* Collapsed summary */}
-        {!panelExpanded && (
-          <div className="bg-white px-4 pb-4 border-t">
-            <div className="flex items-center justify-between py-3">
-              <div>
-                <h2 className="font-bold">Alpha School Locations</h2>
-                <p className="text-sm text-muted-foreground">{totalVotes} Votes from Parents</p>
-              </div>
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => setShowAltUI(!showAltUI)}
-                  className="text-[10px] px-2 py-1 rounded bg-gray-100 text-gray-600"
-                >
-                  {showAltUI ? "Current" : "New UI"}
-                </button>
-                <AuthButton darkBg={false} />
-              </div>
+      {/* Mobile: New UI = full-screen AltPanel (no map), Old UI = bottom sheet over map */}
+      {showAltUI ? (
+        <div data-testid="mobile-bottom-sheet" className="lg:hidden absolute inset-0 bg-white flex flex-col">
+          <AltPanel />
+        </div>
+      ) : (
+        <div data-testid="mobile-bottom-sheet" className="lg:hidden absolute left-0 right-0 bottom-0 flex flex-col">
+          {/* Pull handle */}
+          <button
+            onClick={() => setPanelExpanded(!panelExpanded)}
+            className="bg-white rounded-t-2xl shadow-lg pt-2 pb-3 flex flex-col items-center"
+          >
+            <div className="w-10 h-1 bg-gray-300 rounded-full mb-2" />
+            <div className="flex items-center gap-2 text-sm font-medium">
+              {panelExpanded ? (
+                <>
+                  <ChevronDown className="w-4 h-4" />
+                  Hide Locations
+                </>
+              ) : (
+                <>
+                  <ChevronUp className="w-4 h-4" />
+                  View Locations
+                </>
+              )}
             </div>
-            {!showAltUI && (
-              <>
-                <ul className="text-xs space-y-1 text-gray-500 mb-3">
-                  <li className="flex gap-1.5">
-                    <span className="text-amber-500 mt-0.5">&#8226;</span>
-                    <span>Suggest a space you know — we can evaluate it in minutes</span>
-                  </li>
-                  <li className="flex gap-1.5">
-                    <span className="text-amber-500 mt-0.5">&#8226;</span>
-                    <span>Vote for locations you&apos;d want your kids to attend</span>
-                  </li>
-                  <li className="flex gap-1.5">
-                    <span className="text-amber-500 mt-0.5">&#8226;</span>
-                    <span>Connect us with landlords or property owners</span>
-                  </li>
-                </ul>
-                <div className="flex gap-2">
-                  <HelpModal variant="panel" />
-                  <Link href="/suggest" className="flex-1">
-                    <button className="w-full flex items-center justify-center gap-1.5 bg-amber-400 hover:bg-amber-500 text-amber-950 font-semibold text-xs py-2 px-3 rounded-lg transition-colors shadow-md">
-                      <Plus className="w-3.5 h-3.5" />
-                      Suggest a Location
-                    </button>
-                  </Link>
-                </div>
-              </>
-            )}
-          </div>
-        )}
+          </button>
 
-        {/* Expanded panel */}
-        {panelExpanded && (
-          <div className="bg-white max-h-[50vh] overflow-hidden flex flex-col">
-            {showAltUI ? (
-              <AltPanel />
-            ) : (
-              <>
-                <div className="px-4 py-3 border-b flex items-center justify-between">
-                  <div>
-                    <h2 className="font-bold">Alpha School Locations</h2>
-                    <p className="text-sm text-muted-foreground">{totalVotes} Votes from Parents</p>
-                  </div>
+          {/* Collapsed summary */}
+          {!panelExpanded && (
+            <div className="bg-white px-4 pb-4 border-t">
+              <div className="flex items-center justify-between py-3">
+                <div>
+                  <h2 className="font-bold">Alpha School Locations</h2>
+                  <p className="text-sm text-muted-foreground">{totalVotes} Votes from Parents</p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setShowAltUI(!showAltUI)}
+                    className="text-[10px] px-2 py-1 rounded bg-gray-100 text-gray-600"
+                  >
+                    New UI
+                  </button>
                   <AuthButton darkBg={false} />
                 </div>
-                <div className="flex-1 overflow-hidden">
-                  <LocationsList />
+              </div>
+              <ul className="text-xs space-y-1 text-gray-500 mb-3">
+                <li className="flex gap-1.5">
+                  <span className="text-amber-500 mt-0.5">&#8226;</span>
+                  <span>Suggest a space you know — we can evaluate it in minutes</span>
+                </li>
+                <li className="flex gap-1.5">
+                  <span className="text-amber-500 mt-0.5">&#8226;</span>
+                  <span>Vote for locations you&apos;d want your kids to attend</span>
+                </li>
+                <li className="flex gap-1.5">
+                  <span className="text-amber-500 mt-0.5">&#8226;</span>
+                  <span>Connect us with landlords or property owners</span>
+                </li>
+              </ul>
+              <div className="flex gap-2">
+                <HelpModal variant="panel" />
+                <Link href="/suggest" className="flex-1">
+                  <button className="w-full flex items-center justify-center gap-1.5 bg-amber-400 hover:bg-amber-500 text-amber-950 font-semibold text-xs py-2 px-3 rounded-lg transition-colors shadow-md">
+                    <Plus className="w-3.5 h-3.5" />
+                    Suggest a Location
+                  </button>
+                </Link>
+              </div>
+            </div>
+          )}
+
+          {/* Expanded panel */}
+          {panelExpanded && (
+            <div className="bg-white max-h-[50vh] overflow-y-auto flex flex-col">
+              <div className="px-4 py-3 border-b flex items-center justify-between">
+                <div>
+                  <h2 className="font-bold">Alpha School Locations</h2>
+                  <p className="text-sm text-muted-foreground">{totalVotes} Votes from Parents</p>
                 </div>
-              </>
-            )}
-          </div>
-        )}
-      </div>
+                <AuthButton darkBg={false} />
+              </div>
+              <div className="flex-1 overflow-hidden">
+                <LocationsList />
+              </div>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

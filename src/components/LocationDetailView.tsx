@@ -6,6 +6,8 @@ import { statusBadge, sizeTierLabel } from "@/lib/status";
 import { extractStreet } from "@/lib/address";
 import NotHereReasonModal from "./NotHereReasonModal";
 import { HelpModal } from "./HelpModal";
+import { SignInPrompt } from "./SignInPrompt";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { ArrowLeft, ExternalLink } from "lucide-react";
 
 const LAUNCH_THRESHOLD = 30;
@@ -38,6 +40,7 @@ export default function LocationDetailView({
   onContributionSubmitted,
 }: LocationDetailViewProps) {
   const [notHereModalOpen, setNotHereModalOpen] = useState(false);
+  const [showSignIn, setShowSignIn] = useState(false);
   const [activeTab, setActiveTab] = useState<"in" | "concerns">("in");
   const [contribution, setContribution] = useState("");
   const [contributionSubmitted, setContributionSubmitted] = useState(false);
@@ -52,10 +55,12 @@ export default function LocationDetailView({
   const concernVoters = voters.filter((v) => v.voteType === "not_here");
 
   const handleVoteIn = () => {
+    if (!isAuthenticated) { setShowSignIn(true); return; }
     onVoteIn();
   };
 
   const handleVoteNotHere = () => {
+    if (!isAuthenticated) { setShowSignIn(true); return; }
     setNotHereModalOpen(true);
   };
 
@@ -229,10 +234,10 @@ export default function LocationDetailView({
                 <p className="text-[10px] font-semibold tracking-widest text-blue-600 mb-2">VOTE</p>
                 <p className="text-[15px] leading-snug text-gray-900">
                   Picture your kid here.
-                  {location.votes > 0 ? (
-                    <> {location.votes} {location.votes === 1 ? "family is" : "families are"} in. </>
-                  ) : " "}
-                  At {LAUNCH_THRESHOLD}, Alpha moves forward and begins lease negotiation.
+                  {location.votes > 0
+                    ? <> {location.votes} {location.votes === 1 ? "family is" : "families are"} in. At {LAUNCH_THRESHOLD}, Alpha moves forward and begins lease negotiation.</>
+                    : <> At {LAUNCH_THRESHOLD} families, Alpha moves forward and begins lease negotiation.</>
+                  }
                 </p>
                 {location.notHereVotes > 0 && (
                   <p className="text-sm text-amber-600 mt-1">
@@ -242,15 +247,13 @@ export default function LocationDetailView({
                 <div className="flex gap-3 mt-4">
                   <button
                     onClick={handleVoteIn}
-                    disabled={!isAuthenticated}
-                    className="flex-1 py-2.5 rounded-lg text-sm font-semibold transition-colors bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="flex-1 py-2.5 rounded-lg text-sm font-semibold transition-colors bg-blue-600 text-white hover:bg-blue-700"
                   >
                     I&apos;m in
                   </button>
                   <button
                     onClick={handleVoteNotHere}
-                    disabled={!isAuthenticated}
-                    className="px-5 py-2.5 rounded-lg text-sm font-medium transition-colors border border-gray-300 text-gray-700 hover:bg-white disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="px-5 py-2.5 rounded-lg text-sm font-medium transition-colors border border-gray-300 text-gray-700 hover:bg-white"
                   >
                     Not here
                   </button>
@@ -387,6 +390,15 @@ export default function LocationDetailView({
           setNotHereModalOpen(false);
         }}
       />
+
+      <Dialog open={showSignIn} onOpenChange={setShowSignIn}>
+        <DialogContent className="sm:max-w-md">
+          <SignInPrompt
+            title="Sign in to vote"
+            description="Enter your email to receive a magic link. No password needed."
+          />
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

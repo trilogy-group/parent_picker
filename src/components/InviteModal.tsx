@@ -73,11 +73,8 @@ export function InviteModal() {
 
       <Dialog open={showSignIn} onOpenChange={setShowSignIn}>
         <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Sign in to invite</DialogTitle>
-          </DialogHeader>
           <SignInPrompt
-            title="Sign in first"
+            title="Sign in to invite"
             description="Enter your email to receive a magic link."
           />
         </DialogContent>
