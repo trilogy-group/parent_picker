@@ -169,7 +169,7 @@ export function AltPanel() {
               }`}
             >
               <Eye className="h-3 w-3" />
-              {viewAsParent ? "Parent view" : "View as parent"}
+              {viewAsParent ? "Parent" : "Admin"}
             </button>
           )}
         </div>
