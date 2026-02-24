@@ -81,26 +81,34 @@ export function AltLocationCard({
           </div>
         )}
 
-        {/* Avatar row + stats — only show if there are votes or concerns */}
-        {(location.votes > 0 || location.notHereVotes > 0) && (
-          <div className="flex items-center gap-2 mt-2">
+        {/* Avatar row */}
+        {voters.length > 0 && (
+          <div className="mt-2">
             <AvatarRow voters={voters} />
-            <span className="text-xs text-gray-600">
-              {location.votes > 0 && (
-                <>
-                  <strong>{location.votes}</strong> in
-                  {remaining > 0 && (
-                    <> &middot; <span className="text-gray-400">{remaining} more to launch</span></>
-                  )}
-                </>
-              )}
-              {location.notHereVotes > 0 && (
-                <>
-                  {location.votes > 0 && <> &middot; </>}
-                  <span className="text-amber-600">{location.notHereVotes} concern{location.notHereVotes !== 1 ? "s" : ""}</span>
-                </>
-              )}
-            </span>
+          </div>
+        )}
+
+        {/* Progress bar + concerns */}
+        {(location.votes > 0 || location.notHereVotes > 0) && (
+          <div className="mt-2">
+            {location.votes > 0 && (
+              <div>
+                <div className="w-full bg-gray-100 rounded-full h-5 relative overflow-hidden">
+                  <div
+                    className="bg-blue-600 h-5 rounded-full transition-all"
+                    style={{ width: `${Math.min(100, (location.votes / LAUNCH_THRESHOLD) * 100)}%` }}
+                  />
+                  <span className="absolute inset-0 flex items-center justify-center text-[11px] font-medium text-gray-700">
+                    {location.votes} in &middot; {remaining} to go
+                  </span>
+                </div>
+              </div>
+            )}
+            {location.notHereVotes > 0 && (
+              <p className="text-xs text-amber-600 mt-1">
+                {location.notHereVotes} concern{location.notHereVotes !== 1 ? "s" : ""}
+              </p>
+            )}
           </div>
         )}
 
