@@ -33,7 +33,7 @@ export function AltPanel() {
   const {
     locations, filteredLocations, selectedLocationId, setSelectedLocation,
     voteIn, voteNotHere, removeVote, votedLocationIds, votedNotHereIds,
-    mapCenter, mapBounds, sortMode, setSortMode,
+    mapBounds, sortMode, setSortMode,
     locationVoters, loadLocationVoters, zoomLevel,
     citySummaries, setFlyToTarget,
   } = useVotesStore(useShallow((s) => ({
@@ -46,7 +46,6 @@ export function AltPanel() {
     removeVote: s.removeVote,
     votedLocationIds: s.votedLocationIds,
     votedNotHereIds: s.votedNotHereIds,
-    mapCenter: s.mapCenter,
     mapBounds: s.mapBounds,
     sortMode: s.sortMode,
     setSortMode: s.setSortMode,
