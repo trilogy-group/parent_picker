@@ -152,7 +152,7 @@ export function AltPanel() {
   }
 
   return (
-    <div className="overflow-y-auto lg:flex lg:flex-col lg:h-full bg-white">
+    <div className="h-full overflow-y-auto bg-white">
       {/* Header */}
       <div className="px-5 pt-5 pb-4">
         <div className="flex items-center justify-between mb-1">
@@ -224,7 +224,7 @@ export function AltPanel() {
 
       {showCityCards ? (
         /* Zoomed-out: city summary cards */
-        <div className="lg:flex-1 lg:overflow-y-auto px-4 py-2 space-y-2">
+        <div className="px-4 py-2 space-y-2">
           {sortedCities.map((city) => (
             <button
               key={`${city.city}-${city.state}`}
@@ -247,7 +247,7 @@ export function AltPanel() {
         /* Zoomed-in: location cards with sort pills */
         <>
           {/* Sort pills */}
-          <div className="px-5 pb-3 flex items-center gap-2">
+          <div className="px-5 pb-3 flex items-center gap-2 sticky top-0 bg-white z-10">
             <span className="text-xs text-gray-500">Sort</span>
             {(['most_support', 'most_viable'] as const).map((mode) => (
               <button
@@ -265,7 +265,7 @@ export function AltPanel() {
           </div>
 
           {/* Location cards */}
-          <div className="lg:flex-1 lg:overflow-y-auto px-5 pb-5 space-y-3">
+          <div className="px-5 pb-5 space-y-3">
             {visibleLocations.map((loc) => (
               <AltLocationCard
                 key={loc.id}
