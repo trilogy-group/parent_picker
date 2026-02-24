@@ -67,14 +67,14 @@ export function AltLocationCard({
 
         {/* Status badge + distance */}
         {(badge || distanceMi != null) && (
-          <div className="flex items-center gap-2 mt-1.5">
+          <div className="flex items-center justify-between mt-1.5">
             {badge && (
               <span className={cn("text-xs font-medium", badge.className)}>
                 &#10003; {badge.label}
               </span>
             )}
             {distanceMi != null && (
-              <span className="text-xs text-gray-400">
+              <span className="text-xs text-gray-400 ml-auto">
                 {distanceMi.toFixed(1)} mi from you
               </span>
             )}
