@@ -7,6 +7,7 @@ import { useShallow } from "zustand/react/shallow";
 import { useAuth } from "./AuthProvider";
 import { AltLocationCard } from "./AltLocationCard";
 import LocationDetailView from "./LocationDetailView";
+import { InviteModal } from "./InviteModal";
 import { AuthButton } from "./AuthButton";
 import { Location } from "@/types";
 
@@ -160,28 +161,43 @@ export function AltPanel() {
         </p>
       </div>
 
-      {/* What Alpha Feels Like card — always visible */}
-      <div className="mx-5 mb-4 bg-gray-900 rounded-xl p-5 text-white">
-        <p className="text-[10px] font-semibold tracking-widest text-gray-400 mb-2">
-          WHAT ALPHA FEELS LIKE
-        </p>
-        <p className="text-[15px] leading-snug">
-          Two hours of focused academics. Then the rest of the day building real things &mdash; businesses, robots, films, friendships.
-        </p>
-        <div className="flex gap-3 mt-4">
-          <div className="flex-1 bg-gray-800 rounded-lg p-3">
-            <p className="text-lg font-bold">2 hrs</p>
-            <p className="text-[10px] text-gray-400">AI-powered academics</p>
-          </div>
-          <div className="flex-1 bg-gray-800 rounded-lg p-3">
-            <p className="text-lg font-bold">2&times;</p>
-            <p className="text-[10px] text-gray-400">the learning, measured</p>
-          </div>
-          <div className="flex-1 bg-gray-800 rounded-lg p-3">
-            <p className="text-lg font-bold">100%</p>
-            <p className="text-[10px] text-gray-400">of kids say they love school</p>
+      {/* 3 action boxes */}
+      <div className="px-5 mb-4 space-y-3">
+        {/* What Alpha Feels Like */}
+        <div className="bg-gray-900 rounded-xl p-5 text-white">
+          <p className="text-[10px] font-semibold tracking-widest text-gray-400 mb-2">
+            WHAT ALPHA FEELS LIKE
+          </p>
+          <p className="text-[15px] leading-snug">
+            Two hours of focused academics. Then the rest of the day building real things &mdash; businesses, robots, films, friendships.
+          </p>
+          <div className="flex gap-3 mt-4">
+            <div className="flex-1 bg-gray-800 rounded-lg p-3">
+              <p className="text-lg font-bold">2 hrs</p>
+              <p className="text-[10px] text-gray-400">AI-powered academics</p>
+            </div>
+            <div className="flex-1 bg-gray-800 rounded-lg p-3">
+              <p className="text-lg font-bold">2&times;</p>
+              <p className="text-[10px] text-gray-400">the learning, measured</p>
+            </div>
+            <div className="flex-1 bg-gray-800 rounded-lg p-3">
+              <p className="text-lg font-bold">100%</p>
+              <p className="text-[10px] text-gray-400">of kids say they love school</p>
+            </div>
           </div>
         </div>
+
+        {/* Invite someone */}
+        <InviteModal />
+
+        {/* Suggest a location */}
+        <a
+          href="/suggest"
+          className="block bg-gray-50 rounded-xl p-4 text-center hover:bg-gray-100 transition-colors"
+        >
+          <p className="font-semibold text-gray-900 text-sm">Know a space that&apos;s not here?</p>
+          <p className="text-xs text-gray-500 mt-0.5">We&apos;ll evaluate it within 24 hours.</p>
+        </a>
       </div>
 
       {showCityCards ? (
@@ -262,14 +278,6 @@ export function AltPanel() {
               </p>
             )}
 
-            {/* Know a space that's not here? */}
-            <a
-              href="/suggest"
-              className="block bg-gray-50 rounded-xl p-5 text-center hover:bg-gray-100 transition-colors"
-            >
-              <p className="font-semibold text-gray-900">Know a space that&apos;s not here?</p>
-              <p className="text-sm text-gray-500 mt-1">We&apos;ll evaluate it within 24 hours.</p>
-            </a>
           </div>
         </>
       )}
