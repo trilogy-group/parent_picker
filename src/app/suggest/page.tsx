@@ -19,7 +19,7 @@ import { validateSuggestForm, hasErrors, sanitizeText, FormErrors } from "@/lib/
 function SuggestPageInner() {
   const searchParams = useSearchParams();
   const standalone = searchParams.get("standalone") === "true";
-  const { addLocation, setSelectedLocation, userId, showAltUI } = useVotesStore();
+  const { addLocation, setSelectedLocation, userId } = useVotesStore();
   const { user, isOfflineMode } = useAuth();
   const canSuggest = isOfflineMode || !!user;
 
@@ -144,7 +144,7 @@ function SuggestPageInner() {
           </div>
           <div className="flex gap-3 justify-center">
             {!standalone && (
-              <Link href={showAltUI ? "/eliotUI" : "/"}>
+              <Link href={"/"}>
                 <Button>Back to Map</Button>
               </Link>
             )}
@@ -163,7 +163,7 @@ function SuggestPageInner() {
       <div className="bg-blue-600 text-white">
         <div className="max-w-3xl mx-auto px-4 py-6">
           {!standalone && (
-            <Link href={showAltUI ? "/eliotUI" : "/"} className="inline-flex items-center gap-1.5 text-blue-200 hover:text-white text-sm mb-4 transition-colors">
+            <Link href={"/"} className="inline-flex items-center gap-1.5 text-blue-200 hover:text-white text-sm mb-4 transition-colors">
               <ArrowLeft className="w-4 h-4" />
               Back to Map
             </Link>
@@ -456,7 +456,7 @@ function SuggestPageInner() {
               <div className="flex items-center justify-between pt-4 border-t">
                 <p className="text-xs text-muted-foreground">* Only address is required</p>
                 <div className="flex gap-3">
-                  <Link href={showAltUI ? "/eliotUI" : "/"}>
+                  <Link href={"/"}>
                     <Button variant="outline" type="button">Cancel</Button>
                   </Link>
                   <Button type="submit" disabled={isSubmitting} className="bg-blue-600 hover:bg-blue-700">

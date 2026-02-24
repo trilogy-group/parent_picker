@@ -1,7 +1,7 @@
 "use client";
 
-import { HomeContent } from "@/components/HomeContent";
+import { redirect } from "next/navigation";
 
 export default function EliotUI() {
-  return <HomeContent altUI={true} />;
+  redirect("/");
 }
