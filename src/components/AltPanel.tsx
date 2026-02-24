@@ -104,20 +104,15 @@ export function AltPanel() {
     <div className="flex flex-col h-full bg-white">
       {/* Header */}
       <div className="px-5 pt-5 pb-4">
-        {metroName && (
-          <p className="text-xs font-semibold text-blue-600 tracking-wide mb-1">
-            ALPHA SCHOOL &middot; {metroName.toUpperCase()}
+        <div className="flex items-center justify-between mb-1">
+          <p className="text-xs font-semibold text-blue-600 tracking-wide">
+            ALPHA SCHOOL{metroName ? <> &middot; {metroName.toUpperCase()}</> : null}
           </p>
-        )}
-
-        <div className="flex items-start justify-between gap-3">
-          <h1 className="text-[22px] font-bold text-gray-900 leading-tight">
-            Choose where your kid goes to school.
-          </h1>
-          <div className="shrink-0 pt-1">
-            <AuthButton darkBg={false} />
-          </div>
+          <AuthButton darkBg={false} />
         </div>
+        <h1 className="text-[20px] font-bold text-gray-900 leading-tight whitespace-nowrap">
+          Choose where your kid goes to school.
+        </h1>
         <p className="text-sm text-gray-500 mt-1.5">
           Say &ldquo;I&rsquo;m in.&rdquo; Share what you know. Enough families, and it happens.
         </p>
