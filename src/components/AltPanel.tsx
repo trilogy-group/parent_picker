@@ -1,10 +1,12 @@
 "use client";
 
 import { useState, useMemo, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { useVotesStore } from "@/lib/votes";
 import { useShallow } from "zustand/react/shallow";
 import { useAuth } from "./AuthProvider";
 import { AltLocationCard } from "./AltLocationCard";
+import LocationDetailView from "./LocationDetailView";
 import { InviteModal } from "./InviteModal";
 import { AuthButton } from "./AuthButton";
 import { getDistanceMiles } from "@/lib/locations";
@@ -55,8 +57,21 @@ export function AltPanel() {
     setFlyToTarget: s.setFlyToTarget,
   })));
 
-  const { user } = useAuth();
+  const { user, session } = useAuth();
   const isAuthenticated = !!user;
+  const router = useRouter();
+
+  // Find selected location for detail view
+  const selectedLocation = selectedLocationId
+    ? locations.find(l => l.id === selectedLocationId)
+    : null;
+
+  // Load voters when location selected (for detail view)
+  useEffect(() => {
+    if (selectedLocationId) {
+      loadLocationVoters([selectedLocationId]);
+    }
+  }, [selectedLocationId, loadLocationVoters]);
 
   // Determine metro name when zoomed in
   const metroName = useMemo(() => {
@@ -109,6 +124,24 @@ export function AltPanel() {
     const ids = visibleLocations.map(l => l.id);
     if (ids.length > 0) loadLocationVoters(ids);
   }, [visibleLocations.map(l => l.id).join(',')]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Desktop: render detail view when a location is selected
+  if (selectedLocation) {
+    const voters = locationVoters.get(selectedLocation.id) || [];
+    return (
+      <LocationDetailView
+        location={selectedLocation}
+        voters={voters}
+        hasVotedIn={votedLocationIds.has(selectedLocation.id)}
+        hasVotedNotHere={votedNotHereIds.has(selectedLocation.id)}
+        isAuthenticated={isAuthenticated}
+        session={session}
+        onBack={() => setSelectedLocation(null)}
+        onVoteIn={() => voteIn(selectedLocation.id)}
+        onVoteNotHere={(comment) => voteNotHere(selectedLocation.id, comment)}
+      />
+    );
+  }
 
   return (
     <div className="flex flex-col h-full bg-white">
@@ -209,7 +242,12 @@ export function AltPanel() {
                 hasVotedNotHere={votedNotHereIds.has(loc.id)}
                 isAuthenticated={isAuthenticated}
                 isSelected={selectedLocationId === loc.id}
-                onSelect={() => setSelectedLocation(loc.id)}
+                onSelect={() => {
+                  setSelectedLocation(loc.id);
+                  if (typeof window !== 'undefined' && window.innerWidth < 1024) {
+                    router.push(`/location/${loc.id}`);
+                  }
+                }}
                 onVoteIn={() => voteIn(loc.id)}
                 onVoteNotHere={(comment) => voteNotHere(loc.id, comment)}
               />
