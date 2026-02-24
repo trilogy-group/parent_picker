@@ -101,7 +101,7 @@ export function AltLocationCard({
         <div className="flex gap-2 mt-3">
           {hasVotedIn ? (
             <div className="flex items-center gap-1.5 text-sm text-gray-700 font-medium py-2">
-              <div className="w-5 h-5 rounded-full bg-gray-900 flex items-center justify-center">
+              <div className="w-5 h-5 rounded-full bg-blue-600 flex items-center justify-center">
                 <Check className="w-3 h-3 text-white" />
               </div>
               You&apos;re in
@@ -130,7 +130,7 @@ export function AltLocationCard({
             <>
               <button
                 onClick={handleVoteIn}
-                className="flex-1 py-2.5 rounded-lg text-sm font-semibold transition-colors bg-gray-900 text-white hover:bg-gray-800"
+                className="flex-1 py-2.5 rounded-lg text-sm font-semibold transition-colors bg-blue-600 text-white hover:bg-blue-700"
               >
                 I&apos;m in
               </button>

@@ -217,7 +217,7 @@ export function AltPanel() {
                 onClick={() => setSortMode(mode)}
                 className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
                   sortMode === mode
-                    ? 'bg-gray-900 text-white'
+                    ? 'bg-blue-600 text-white'
                     : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                 }`}
               >
