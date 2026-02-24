@@ -158,31 +158,37 @@ export default function LocationDetailView({
             <p className="text-sm text-gray-500 mt-0.5">
               {location.address}, {location.city}, {location.state}
             </p>
-            <div className="flex items-center gap-2 mt-2 flex-wrap">
-              {badge && (
-                <span
-                  className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${badge.bgClassName} ${badge.className}`}
-                >
-                  {badge.label}
-                </span>
-              )}
-              {sizeLabel && (
-                <span className="text-xs text-gray-500">{sizeLabel}</span>
-              )}
-              {distanceMi != null && (
-                <span className="text-xs text-gray-400">{distanceMi.toFixed(1)} mi from you</span>
-              )}
-              {location.scores?.overallDetailsUrl && (
-                <a
-                  href={location.scores.overallDetailsUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800"
-                >
-                  Details <ExternalLink className="w-3 h-3" />
-                </a>
-              )}
-            </div>
+            {(badge || sizeLabel) && (
+              <div className="flex items-center gap-2 mt-2">
+                {badge && (
+                  <span
+                    className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${badge.bgClassName} ${badge.className}`}
+                  >
+                    {badge.label}
+                  </span>
+                )}
+                {sizeLabel && (
+                  <span className="text-xs text-gray-500">{sizeLabel}</span>
+                )}
+              </div>
+            )}
+            {(distanceMi != null || location.scores?.overallDetailsUrl) && (
+              <div className="flex items-center gap-2 mt-1">
+                {distanceMi != null && (
+                  <span className="text-xs text-gray-400">{distanceMi.toFixed(1)} mi from you</span>
+                )}
+                {location.scores?.overallDetailsUrl && (
+                  <a
+                    href={location.scores.overallDetailsUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800"
+                  >
+                    Details <ExternalLink className="w-3 h-3" />
+                  </a>
+                )}
+              </div>
+            )}
           </div>
 
           {/* 4. Vote section */}
