@@ -18,18 +18,25 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const { email } = await request.json();
-  if (!email || typeof email !== "string") {
-    return NextResponse.json({ error: "Email required" }, { status: 400 });
+  let body: { email?: string };
+  try {
+    body = await request.json();
+  } catch {
+    return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
+  }
+  const { email } = body;
+  if (!email || typeof email !== "string" || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    return NextResponse.json({ error: "Valid email required" }, { status: 400 });
   }
 
-  // Get inviter name from profile or email
+  // Get inviter name — use auth.admin.getUserById (pp_profiles may not exist for pre-signup users)
   const { data: profile } = await supabaseAdmin
     .from("pp_profiles")
-    .select("display_name, email")
+    .select("display_name")
     .eq("id", user.id)
     .single();
-  const inviterName = profile?.display_name || profile?.email?.split("@")[0] || "A parent";
+  const { data: authUser } = await supabaseAdmin.auth.admin.getUserById(user.id);
+  const inviterName = profile?.display_name || authUser?.user?.email?.split("@")[0] || "A parent";
 
   // Record the invite
   await supabaseAdmin.from("pp_invites").insert({

@@ -30,11 +30,12 @@ const PAGE_SIZE = 25;
 
 export function AltPanel() {
   const {
-    filteredLocations, selectedLocationId, setSelectedLocation,
+    locations, filteredLocations, selectedLocationId, setSelectedLocation,
     voteIn, voteNotHere, votedLocationIds, votedNotHereIds,
     mapCenter, mapBounds, sortMode, setSortMode,
     locationVoters, loadLocationVoters, zoomLevel,
   } = useVotesStore(useShallow((s) => ({
+    locations: s.locations,
     filteredLocations: s.filteredLocations,
     selectedLocationId: s.selectedLocationId,
     setSelectedLocation: s.setSelectedLocation,
@@ -68,7 +69,7 @@ export function AltPanel() {
     if (entries.length === 0) return null;
     entries.sort((a, b) => b[1] - a[1]);
     return entries[0][0];
-  }, [zoomLevel, filteredLocations]);
+  }, [zoomLevel, filteredLocations, locations]);
 
   // Sort and filter locations in viewport
   const sortedLocations = useMemo(() => {
@@ -80,7 +81,7 @@ export function AltPanel() {
     );
     const sortFn = sortMode === 'most_support' ? sortMostSupport : sortMostViable;
     return [...inView].sort(sortFn);
-  }, [filteredLocations, mapBounds, sortMode]);
+  }, [filteredLocations, mapBounds, sortMode, locations]);
 
   // Pagination — track extra pages loaded beyond first page
   const [extraPages, setExtraPages] = useState(0);

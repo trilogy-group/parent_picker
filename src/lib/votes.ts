@@ -469,6 +469,19 @@ export const useVotesStore = create<VotesState>((set, get) => ({
         .then(({ error }) => {
           if (error) {
             console.error("Error removing vote:", error);
+            // Rollback
+            const s = get();
+            set({
+              locations: s.locations.map(loc =>
+                loc.id === locationId ? {
+                  ...loc,
+                  votes: wasIn ? loc.votes + 1 : loc.votes,
+                  notHereVotes: wasNotHere ? loc.notHereVotes + 1 : loc.notHereVotes,
+                } : loc
+              ),
+              votedLocationIds: wasIn ? new Set([...s.votedLocationIds, locationId]) : s.votedLocationIds,
+              votedNotHereIds: wasNotHere ? new Set([...s.votedNotHereIds, locationId]) : s.votedNotHereIds,
+            });
           }
         });
     }
@@ -478,23 +491,30 @@ export const useVotesStore = create<VotesState>((set, get) => ({
 
   loadLocationVoters: async (locationIds) => {
     if (!isSupabaseConfigured || !supabase || locationIds.length === 0) return;
+    // Deduplicate: skip if we already have data for all these IDs
+    const existing = get().locationVoters;
+    const needsFetch = locationIds.some(id => !existing.has(id));
+    if (!needsFetch) return;
     try {
       const { data, error } = await supabase.rpc('get_location_voters', {
         location_ids: locationIds,
       });
       if (error) { console.error("Error loading voters:", error); return; }
-      const voterMap = new Map<string, VoterInfo[]>();
+      // Merge into existing map (don't replace)
+      const merged = new Map(get().locationVoters);
+      // Clear entries for fetched IDs (they'll be rebuilt from fresh data)
+      for (const id of locationIds) merged.set(id, []);
       for (const row of data || []) {
-        const list = voterMap.get(row.location_id) || [];
+        const list = merged.get(row.location_id) || [];
         list.push({
           userId: row.user_id,
           voteType: row.vote_type as VoteType,
           displayName: row.display_name,
           email: row.email,
         });
-        voterMap.set(row.location_id, list);
+        merged.set(row.location_id, list);
       }
-      set({ locationVoters: voterMap });
+      set({ locationVoters: merged });
     } catch (error) {
       console.error("Failed to load voters:", error);
     }
