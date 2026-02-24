@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Location, VoterInfo } from "@/types";
 import { statusBadge, sizeTierLabel } from "@/lib/status";
 import { extractStreet } from "@/lib/address";
@@ -44,14 +44,35 @@ export default function LocationDetailView({
   const [notHereModalOpen, setNotHereModalOpen] = useState(false);
   const [showSignIn, setShowSignIn] = useState(false);
   const [activeTab, setActiveTab] = useState<"in" | "concerns">("in");
+  const [heroMode, setHeroMode] = useState<"street" | "map">("street");
+  const [streetViewAvailable, setStreetViewAvailable] = useState<boolean | null>(null);
   const [contribution, setContribution] = useState("");
   const [contributionSubmitted, setContributionSubmitted] = useState(false);
   const [contributionSubmitting, setContributionSubmitting] = useState(false);
 
+  const mapsKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_KEY;
+
+  // Check if street view is available for this location
+  useEffect(() => {
+    if (!mapsKey) return;
+    setStreetViewAvailable(null);
+    setHeroMode("street");
+    fetch(`https://maps.googleapis.com/maps/api/streetview/metadata?location=${location.lat},${location.lng}&key=${mapsKey}`)
+      .then(res => res.json())
+      .then(data => {
+        const available = data.status === "OK";
+        setStreetViewAvailable(available);
+        if (!available) setHeroMode("map");
+      })
+      .catch(() => {
+        setStreetViewAvailable(false);
+        setHeroMode("map");
+      });
+  }, [location.id, location.lat, location.lng, mapsKey]);
+
   const badge = statusBadge(location.scores?.overallColor);
   const sizeLabel = sizeTierLabel(location.scores?.sizeClassification);
   const remaining = Math.max(0, LAUNCH_THRESHOLD - location.votes);
-  const mapsKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_KEY;
 
   const inVoters = voters.filter((v) => v.voteType === "in");
   const concernVoters = voters.filter((v) => v.voteType === "not_here");
@@ -137,15 +158,29 @@ export default function LocationDetailView({
           Back to locations
         </button>
 
-        {/* 2. Street View hero image */}
+        {/* 2. Hero image — street view or map, with toggle */}
         {mapsKey && (
           <div className="w-full h-48 bg-gray-100 relative">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              src={`https://maps.googleapis.com/maps/api/streetview?size=800x300&location=${location.lat},${location.lng}&key=${mapsKey}`}
-              alt={`Street view of ${extractStreet(location.address, location.city)}`}
+              src={heroMode === "street"
+                ? `https://maps.googleapis.com/maps/api/streetview?size=800x300&location=${location.lat},${location.lng}&key=${mapsKey}`
+                : `https://maps.googleapis.com/maps/api/staticmap?center=${location.lat},${location.lng}&zoom=15&size=800x300&markers=color:blue%7C${location.lat},${location.lng}&key=${mapsKey}`
+              }
+              alt={heroMode === "street"
+                ? `Street view of ${extractStreet(location.address, location.city)}`
+                : `Map of ${extractStreet(location.address, location.city)}`
+              }
               className="w-full h-full object-cover"
             />
+            {streetViewAvailable && (
+              <button
+                onClick={() => setHeroMode(heroMode === "street" ? "map" : "street")}
+                className="absolute bottom-2 right-2 bg-white/90 backdrop-blur px-2.5 py-1 rounded-md text-xs font-medium text-gray-700 hover:bg-white shadow-sm transition-colors"
+              >
+                {heroMode === "street" ? "Map" : "Street View"}
+              </button>
+            )}
           </div>
         )}
 

@@ -164,7 +164,7 @@ export function AltPanel() {
         <h1 className="text-[20px] font-bold text-gray-900 leading-tight">
           Choose where your kid goes to school.
         </h1>
-        <ul className="text-sm text-gray-500 mt-1.5 space-y-0.5">
+        <ul className="text-sm text-gray-500 mt-1.5 space-y-0.5 list-disc list-inside">
           <li>Here are locations we&rsquo;re considering along with community opinions.</li>
           <li>Say &ldquo;I&rsquo;m in&rdquo; if you like a location. Share what you know.</li>
           <li>Enough families, and it happens.</li>
