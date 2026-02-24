@@ -97,3 +97,15 @@ export async function sendEmail(to: string, subject: string, html: string): Prom
     return { success: false, error: msg };
   }
 }
+
+export function generateInviteHtml(inviterName: string): string {
+  return `
+    <h2>${inviterName} invited you to help choose a school location</h2>
+    <p>Alpha School is opening new micro schools, and families are choosing where. ${inviterName} thinks you'd want to be part of it.</p>
+    <p><strong>What Alpha Feels Like:</strong> Two hours of focused academics. Then the rest of the day building real things — businesses, robots, films, friendships.</p>
+    <div style="margin-top:24px;">
+      <a href="https://parentpicker.vercel.app" style="display:inline-block;padding:14px 28px;background:#1a1a1a;color:#ffffff;text-decoration:none;border-radius:8px;font-weight:bold;font-size:14px;">See Locations Near You</a>
+    </div>
+    <p style="margin-top:20px;font-size:13px;color:#666;">Say "I'm in" on locations you like. Enough families, and it happens.</p>
+  `;
+}
