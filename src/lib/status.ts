@@ -1,7 +1,7 @@
 export function statusBadge(overallColor: string | null | undefined) {
   if (overallColor === "GREEN") return { label: "Promising", className: "text-green-700", bgClassName: "bg-green-50" };
   if (overallColor === "YELLOW" || overallColor === "AMBER") return { label: "Viable", className: "text-amber-600", bgClassName: "bg-amber-50" };
-  if (overallColor === "RED") return { label: "Concerning", className: "text-red-600", bgClassName: "bg-red-50" };
+  if (overallColor === "RED") return { label: "Needs Work", className: "text-red-600", bgClassName: "bg-red-50" };
   return null;
 }
 
