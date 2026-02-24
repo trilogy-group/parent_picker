@@ -132,9 +132,10 @@ export function MapView() {
         votes: loc.votes,
         overallColor: loc.scores?.overallColor || null,
         suggested: loc.suggested || false,
+        selected: loc.id === selectedLocationId,
       },
     })),
-  }), [displayLocations]);
+  }), [displayLocations, selectedLocationId]);
 
   const interactiveLayerIds = useMemo(
     () => (showCities ? ["city-clusters", "city-circles"] : ["unclustered-point"]),
@@ -444,8 +445,14 @@ export function MapView() {
                 "RED", "#ef4444",
                 "#475569",
               ],
-              "circle-radius": 6,
-              "circle-stroke-width": 2,
+              "circle-radius": [
+                "case", ["get", "selected"], 14,
+                6,
+              ],
+              "circle-stroke-width": [
+                "case", ["get", "selected"], 3,
+                2,
+              ],
               "circle-stroke-color": "#ffffff",
             }}
           />

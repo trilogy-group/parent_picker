@@ -145,7 +145,7 @@ export function AltPanel() {
   }
 
   return (
-    <div className="flex flex-col h-full bg-white">
+    <div className="overflow-y-auto lg:flex lg:flex-col lg:h-full bg-white">
       {/* Header */}
       <div className="px-5 pt-5 pb-4">
         <div className="flex items-center justify-between mb-1">
@@ -204,7 +204,7 @@ export function AltPanel() {
 
       {showCityCards ? (
         /* Zoomed-out: city summary cards */
-        <div className="flex-1 overflow-y-auto px-4 py-2 space-y-2">
+        <div className="lg:flex-1 lg:overflow-y-auto px-4 py-2 space-y-2">
           {sortedCities.map((city) => (
             <button
               key={`${city.city}-${city.state}`}
@@ -245,7 +245,7 @@ export function AltPanel() {
           </div>
 
           {/* Location cards */}
-          <div className="flex-1 overflow-y-auto px-5 pb-5 space-y-3">
+          <div className="lg:flex-1 lg:overflow-y-auto px-5 pb-5 space-y-3">
             {visibleLocations.map((loc) => (
               <AltLocationCard
                 key={loc.id}

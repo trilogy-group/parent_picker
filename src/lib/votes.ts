@@ -124,7 +124,7 @@ export const useVotesStore = create<VotesState>((set, get) => ({
   showUnscored: false,
   releasedFilter: "all",
   cardVersion: "v1",
-  showAltUI: false,
+  showAltUI: typeof window !== "undefined" && localStorage.getItem("showAltUI") === "true",
 
   toggleScoreFilter: (category, value) => {
     const filters = get().scoreFilters;
@@ -186,7 +186,10 @@ export const useVotesStore = create<VotesState>((set, get) => ({
 
   setCardVersion: (cardVersion) => set({ cardVersion }),
 
-  setShowAltUI: (showAltUI) => set({ showAltUI }),
+  setShowAltUI: (showAltUI) => {
+    if (typeof window !== "undefined") localStorage.setItem("showAltUI", String(showAltUI));
+    set({ showAltUI });
+  },
 
   loadCitySummaries: async () => {
     const { isAdmin, viewAsParent, releasedFilter, showUnscored } = get();
