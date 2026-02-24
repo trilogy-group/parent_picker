@@ -155,7 +155,7 @@ export function AltPanel() {
     <div className="h-full overflow-y-auto bg-white">
       {/* Header */}
       <div className="px-5 pt-5 pb-4">
-        <p className="text-xs font-semibold text-blue-600 tracking-wide">
+        <p className="text-lg font-bold text-blue-600 tracking-wide">
           ALPHA SCHOOL{metroName ? <> &middot; {metroName.toUpperCase()}</> : null}
         </p>
         <div className="flex justify-end mt-1">
