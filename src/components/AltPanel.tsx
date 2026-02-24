@@ -155,9 +155,24 @@ export function AltPanel() {
     <div className="h-full overflow-y-auto bg-white">
       {/* Header */}
       <div className="px-5 pt-5 pb-4">
-        <p className="text-lg font-bold text-blue-600 tracking-wide">
-          ALPHA SCHOOL{metroName ? <> &middot; {metroName.toUpperCase()}</> : null}
-        </p>
+        <div className="flex items-start justify-between">
+          <p className="text-lg font-bold text-blue-600 tracking-wide">
+            ALPHA SCHOOL{metroName ? <> &middot; {metroName.toUpperCase()}</> : null}
+          </p>
+          {isAdmin && (
+            <button
+              onClick={() => setViewAsParent(!viewAsParent)}
+              className={`flex items-center gap-1.5 text-[11px] font-medium px-2 py-1 rounded-md transition-colors shrink-0 ${
+                viewAsParent
+                  ? "bg-amber-100 text-amber-800 hover:bg-amber-200"
+                  : "bg-gray-100 text-gray-500 hover:bg-gray-200"
+              }`}
+            >
+              <Eye className="h-3 w-3" />
+              {viewAsParent ? "Parent view" : "View as parent"}
+            </button>
+          )}
+        </div>
         <div className="flex justify-end mt-1">
           <AuthButton darkBg={false} />
         </div>
@@ -167,19 +182,6 @@ export function AltPanel() {
             Here are locations we&rsquo;re considering along with community opinions. Tell us if you like a location. Share what you know. Enough families, and it happens.
           </p>
         </div>
-        {isAdmin && (
-          <button
-            onClick={() => setViewAsParent(!viewAsParent)}
-            className={`mt-2 flex items-center gap-1.5 text-[11px] font-medium px-2 py-1 rounded-md transition-colors ${
-              viewAsParent
-                ? "bg-amber-100 text-amber-800 hover:bg-amber-200"
-                : "bg-gray-100 text-gray-500 hover:bg-gray-200"
-            }`}
-          >
-            <Eye className="h-3 w-3" />
-            {viewAsParent ? "Viewing as parent \u2014 tap to exit" : "View as parent"}
-          </button>
-        )}
       </div>
 
       {/* Action boxes */}
