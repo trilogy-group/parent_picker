@@ -82,7 +82,7 @@ export function AltPanel() {
   const METRO_DISPLAY: Record<string, string> = {
     "Irvine": "Orange County",
     "Stamford": "Greenwich",
-    "Scottsdale": "Phoenix",
+    "Phoenix": "Scottsdale",
   };
 
   const metroName = useMemo(() => {
