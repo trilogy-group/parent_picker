@@ -236,9 +236,9 @@ export default function LocationDetailView({
               className="block mt-4 bg-blue-50 rounded-xl p-4 hover:bg-blue-100/60 transition-colors"
             >
               <p className="text-sm font-semibold text-blue-600 inline-flex items-center gap-1.5">
-                View full location details <ExternalLink className="w-3.5 h-3.5" />
+                Zoning info, neighborhood data, and more <ExternalLink className="w-3.5 h-3.5" />
               </p>
-              <p className="text-[13px] leading-snug text-gray-500 mt-0.5">Scoring breakdown, zoning info, and neighborhood data.</p>
+              <p className="text-[13px] leading-snug text-gray-500 mt-0.5">Full scoring breakdown and location details.</p>
             </a>
           )}
 

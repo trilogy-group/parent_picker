@@ -121,23 +121,28 @@ export function MapView() {
     })),
   }), [citySummaries]);
 
-  // GeoJSON for individual location dots
-  const locationGeojson = useMemo(() => ({
-    type: "FeatureCollection" as const,
-    features: displayLocations.map((loc) => ({
-      type: "Feature" as const,
-      geometry: { type: "Point" as const, coordinates: [loc.lng, loc.lat] },
-      properties: {
-        id: loc.id,
-        name: loc.name,
-        address: loc.address,
-        votes: loc.votes,
-        overallColor: loc.scores?.overallColor || null,
-        suggested: loc.suggested || false,
-        selected: loc.id === selectedLocationId,
-      },
-    })),
-  }), [displayLocations, selectedLocationId]);
+  // GeoJSON for individual location dots — show only selected when in detail view
+  const locationGeojson = useMemo(() => {
+    const locs = selectedLocationId
+      ? displayLocations.filter((loc) => loc.id === selectedLocationId)
+      : displayLocations;
+    return {
+      type: "FeatureCollection" as const,
+      features: locs.map((loc) => ({
+        type: "Feature" as const,
+        geometry: { type: "Point" as const, coordinates: [loc.lng, loc.lat] },
+        properties: {
+          id: loc.id,
+          name: loc.name,
+          address: loc.address,
+          votes: loc.votes,
+          overallColor: loc.scores?.overallColor || null,
+          suggested: loc.suggested || false,
+          selected: loc.id === selectedLocationId,
+        },
+      })),
+    };
+  }, [displayLocations, selectedLocationId]);
 
   const interactiveLayerIds = useMemo(
     () => (showCities ? ["city-clusters", "city-circles"] : ["unclustered-point"]),
