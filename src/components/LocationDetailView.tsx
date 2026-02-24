@@ -44,7 +44,7 @@ export default function LocationDetailView({
   const [notHereModalOpen, setNotHereModalOpen] = useState(false);
   const [showSignIn, setShowSignIn] = useState(false);
   const [activeTab, setActiveTab] = useState<"in" | "concerns">("in");
-  const [heroMode, setHeroMode] = useState<"street" | "map">("street");
+  const [heroMode, setHeroMode] = useState<"street" | "map">("map");
   const [streetViewAvailable, setStreetViewAvailable] = useState<boolean | null>(null);
   const [contribution, setContribution] = useState("");
   const [contributionSubmitted, setContributionSubmitted] = useState(false);
@@ -56,7 +56,7 @@ export default function LocationDetailView({
   useEffect(() => {
     if (!mapsKey) return;
     setStreetViewAvailable(null);
-    setHeroMode("street");
+    setHeroMode("map");
     fetch(`https://maps.googleapis.com/maps/api/streetview/metadata?location=${location.lat},${location.lng}&key=${mapsKey}`)
       .then(res => res.json())
       .then(data => {
