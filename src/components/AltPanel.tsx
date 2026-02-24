@@ -164,11 +164,13 @@ export function AltPanel() {
         <h1 className="text-[20px] font-bold text-gray-900 leading-tight">
           Choose where your kid goes to school.
         </h1>
-        <ul className="text-sm text-gray-500 mt-1.5 space-y-0.5 list-disc list-inside">
-          <li>Here are locations we&rsquo;re considering along with community opinions.</li>
-          <li>Say &ldquo;I&rsquo;m in&rdquo; if you like a location. Share what you know.</li>
-          <li>Enough families, and it happens.</li>
-        </ul>
+        <div className="bg-blue-50 rounded-lg p-3 mt-2">
+          <ul className="text-sm text-gray-700 space-y-1">
+            <li className="flex gap-2"><span className="text-blue-500 mt-0.5">&#8226;</span><span>Here are locations we&rsquo;re considering along with community opinions.</span></li>
+            <li className="flex gap-2"><span className="text-blue-500 mt-0.5">&#8226;</span><span>Say &ldquo;I&rsquo;m in&rdquo; if you like a location. Share what you know.</span></li>
+            <li className="flex gap-2"><span className="text-blue-500 mt-0.5">&#8226;</span><span>Enough families, and it happens.</span></li>
+          </ul>
+        </div>
         {isAdmin && (
           <button
             onClick={() => setViewAsParent(!viewAsParent)}
