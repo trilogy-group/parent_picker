@@ -80,7 +80,7 @@ export function InviteModal() {
       </Dialog>
 
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-md pb-10 sm:pb-6">
           <DialogHeader>
             <DialogTitle>Invite a family</DialogTitle>
           </DialogHeader>
