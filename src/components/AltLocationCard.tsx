@@ -75,7 +75,7 @@ export function AltLocationCard({
             )}
             {distanceMi != null && (
               <span className="text-xs text-gray-400">
-                {distanceMi.toFixed(1)} mi
+                {distanceMi.toFixed(1)} mi from you
               </span>
             )}
           </div>
