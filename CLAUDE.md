@@ -52,6 +52,7 @@ Duplicate the Sports Academy facilities map functionality:
 
 ## Deployment
 
+**Deployed:** https://real-estate.alpha.school (primary) + https://parentpicker.vercel.app
 **Vercel auto-deploy is broken** — Git integration has had issues connecting. Always deploy manually:
 1. Build and test locally first (`npm run dev`)
 2. When ready, deploy with `vercel --prod`
@@ -64,11 +65,11 @@ Duplicate the Sports Academy facilities map functionality:
 - `architecture.md` - Technical architecture, commands, tech stack, and file structure
 - `docs/brainlift-location-selection.md` - Location selection brainlift (scoring, zoning, parent override)
 
-## Session State (2026-02-22)
+## Session State (2026-02-24)
 
 **Current branch:** `main`
-**Deployed:** https://parentpicker.vercel.app
-**Last deploy:** 2026-02-22 — Admin history tab + help email improvements
+**Deployed:** https://real-estate.alpha.school + https://parentpicker.vercel.app
+**Last deploy:** 2026-02-24 — New UI promoted to /, custom domain live
 
 ### Workstreams 1-11: DONE (merged to main)
 
@@ -133,53 +134,47 @@ Duplicate the Sports Academy facilities map functionality:
 
 **What was built:**
 
-**New UI toggle** — "Try new UI" / "Back to current" button visible to all users (desktop + mobile). Stores `showAltUI` in Zustand so MapView can conditionally show popup (old UI) or let AltPanel handle detail (new UI).
+**Route structure:** `/` = new UI (primary), `/oldUI` = legacy UI, `/eliotUI` redirects to `/`. Shared via `HomeContent` component with `altUI` boolean prop. `showAltUI` persisted to localStorage for cross-page navigation (suggest page back links).
 
-**LocationDetailView** (`src/components/LocationDetailView.tsx`) — shared detail component used by AltPanel (desktop) and `/location/[id]` (mobile):
-- Street View hero image, location name, status badge, size tier, details link
-- Vote section with 3 states: not voted (VOTE eyebrow + I'm in / Not here buttons), voted in (YOU'RE IN + progress bar + undo), concern noted (CONCERN NOTED + undo)
-- "Not here" opens NotHereReasonModal for reason/comment before submitting
-- CONTRIBUTE section: "Help us fill in the gaps" textarea, writes to `pp_votes.comment` (appends, no separate pp_contributions table)
-- GET INVOLVED section (voted-in only): triggers HelpModal with location-specific guide
-- Who's in / Concerns tabs with avatar + name + comment display
+**LocationDetailView** (`src/components/LocationDetailView.tsx`):
+- Hero image with street view / map toggle (checks Street View Metadata API, falls back to map if unavailable)
+- Location name, status badge, size tier, distance from user
+- "View full location details" box linking to scoring breakdown
+- RED subscore breakdown showing which of Zoning/Price/Neighborhood/Building drive the rating
+- Vote section: "I'd choose this location" / "Not for me" buttons, progress bar when voted, undo support
+- CONTRIBUTE section, GET INVOLVED section (voted-in only), Who's in / Concerns tabs
 
-**AltPanel redesign** (`src/components/AltPanel.tsx`):
-- Header: ALPHA SCHOOL eyebrow + metro name, AuthButton inline, "Choose where your kid goes to school"
-- 3 action boxes at top (unified blue-50 card style with eyebrow labels): What Alpha Feels Like, Invite, Suggest
-- Sort pills (Most support / Most viable) + location cards below
-- City cards when zoomed out (< zoom 9), location cards when zoomed in
-- Clicking card opens detail view in panel (desktop) or navigates to `/location/[id]` (mobile)
-
-**Unified box styling** — all cards use consistent pattern:
-- `bg-blue-50 rounded-xl p-5`
-- Eyebrow: `text-[10px] font-semibold tracking-widest text-blue-600` ALL CAPS
-- Body: `text-[15px] leading-snug text-gray-900`
-- Action links: `text-sm font-semibold text-blue-600` with arrow (→)
-
-**Vote comment flow:**
-- "Fill in the gaps" contributions write directly to `pp_votes.comment` (appended with newline)
-- `pp_contributions` table no longer used by the API
-- `get_location_voters` RPC updated: `LEFT JOIN pp_profiles` + `LEFT JOIN auth.users` for resilience (handles users without pp_profiles row)
-- `loadLocationVoters(ids, force?)` — force param bypasses deduplication cache for post-vote refresh
+**AltPanel** (`src/components/AltPanel.tsx`):
+- Header: large "ALPHA SCHOOL · METRO" with metro display name mapping (Irvine→Orange County, Stamford→Greenwich, Phoenix→Scottsdale, + all OC cities)
+- Admin toggle (Parent/Admin) in upper right
+- Blue info box + compact Invite/Suggest action boxes
+- Color legend (Promising/Viable/Needs Work) above sticky sort pills
+- Progress bars on cards with dual-color text (white over blue fill, gray over background)
+- Distance from user (browser geolocation) right-justified on cards
+- Map shows only selected dot when viewing location detail
 
 **AltLocationCard** (`src/components/AltLocationCard.tsx`):
-- Vote buttons with undo support, NotHereReasonModal for concerns
-- Avatar row + vote/concern counts (hidden when all zero)
-- Sign-in prompt dialog for unauthenticated users
+- Progress bar showing "X in · Y to go" with LAUNCH_THRESHOLD of 30
+- Vote buttons with undo, NotHereReasonModal for concerns
+- Avatar row, status badge, distance display
+
+**Simplified suggest form** (`src/app/suggest/page.tsx`):
+- School type tabs (informational, unchanged)
+- Form: address (required), sq ft, asking rent, zoning status pills (School allowed / Needs approval / Prohibited / Not sure), notes textarea, file upload
+- Removed: current use, athletic/outdoor, traffic, neighborhood, NNN/CAM, zoning classification/hurdles fields
 
 **Other changes:**
-- `src/lib/status.ts` — shared `statusBadge()` (GREEN→Promising, YELLOW/AMBER→Viable, RED→Concerning) and `sizeTierLabel()` (Micro→"Micro (25 students)", etc.)
-- `src/lib/votes.ts` — `showAltUI` store field, `voteNotHere` accepts comment, `removeVote` action, force-refresh voters after vote operations
-- `src/components/MapView.tsx` — popup restored conditionally (only when `!showAltUI`), dot click sets `selectedLocationId` for AltPanel detail
-- `src/components/AvatarRow.tsx` — avatar colors updated to blue/emerald/purple/orange (no dark gray)
-- `src/components/InviteModal.tsx` — redesigned as blue-50 card with eyebrow label
-- `src/components/HelpModal.tsx` — "card" variant trigger updated to arrow link style
+- `src/lib/status.ts` — RED status renamed "Needs Work" (was "Concerning")
+- `src/lib/votes.ts` — `userLocation` in store (populated from browser geolocation), `showAltUI` persisted to localStorage
+- `src/components/MapView.tsx` — selected dot enlarged (radius 14 vs 6), filters to single dot in detail view, pushes geolocation to store
+- `src/components/HomeContent.tsx` — NEW: extracted shared page content for route reuse
 
 **DB changes:**
 - `get_location_voters` RPC: `LEFT JOIN` instead of `INNER JOIN`, `COALESCE` fallback chain for email
 - Backfilled `pp_profiles` for users missing profile rows
 
 ### Pending / Next steps
+- **Supabase auth redirect URL** — add `https://real-estate.alpha.school/**` to Authentication → URL Configuration so magic links work from the new domain
 - **REBL scoring bug**: `overall_color` wrong for ~74% of scored rows — needs fix in REBL
 - REBL needs to score ~1,166 unscored locations and fill sub-score gaps (Price: 140 missing)
 - **Resend domain switch** — add `alpha.school` domain in Resend dashboard, add DNS records (MX/SPF/DKIM), then update `FROM_EMAIL` in `src/lib/email.ts` to `real_estate@alpha.school` and remove `replyTo`
