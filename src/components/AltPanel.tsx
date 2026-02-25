@@ -17,27 +17,28 @@ const COLOR_RANK: Record<string, number> = { GREEN: 0, YELLOW: 1, AMBER: 2, RED:
 
 function sortMostSupport(a: Location, b: Location): number {
   if (b.votes !== a.votes) return b.votes - a.votes;
-  const aRank = COLOR_RANK[a.scores?.overallColor || ""] ?? 99;
-  const bRank = COLOR_RANK[b.scores?.overallColor || ""] ?? 99;
-  return aRank - bRank;
+  return sortMostViable(a, b);
 }
 
-// Within YELLOW, rank by non-price green subscores:
-// zoning(4) + neighborhood(2) + building(1) — ignoring price
-function yellowSubRank(loc: Location): number {
+// Count green subscores — used to sort within overall GREEN and YELLOW
+// Within GREEN: all 4 green best, then all-but-price, then all-but-building
+// price(1) + building(2) + neighborhood(4) + zoning(8)
+// building weighted higher than price so "all but price" ranks above "all but building"
+function greenSubRank(loc: Location): number {
   const s = loc.scores;
   if (!s) return 0;
-  return (s.zoning?.color === "GREEN" ? 4 : 0)
-       + (s.neighborhood?.color === "GREEN" ? 2 : 0)
-       + (s.building?.color === "GREEN" ? 1 : 0);
+  return (s.price?.color === "GREEN" ? 1 : 0)
+       + (s.building?.color === "GREEN" ? 2 : 0)
+       + (s.neighborhood?.color === "GREEN" ? 4 : 0)
+       + (s.zoning?.color === "GREEN" ? 8 : 0);
 }
 
 function sortMostViable(a: Location, b: Location): number {
   const aRank = COLOR_RANK[a.scores?.overallColor || ""] ?? 99;
   const bRank = COLOR_RANK[b.scores?.overallColor || ""] ?? 99;
   if (aRank !== bRank) return aRank - bRank;
-  // Within same overall color (especially YELLOW), sort by subscore strength
-  const subDiff = yellowSubRank(b) - yellowSubRank(a);
+  // Within same overall color, sort by number of green subscores
+  const subDiff = greenSubRank(b) - greenSubRank(a);
   if (subDiff !== 0) return subDiff;
   return b.votes - a.votes;
 }

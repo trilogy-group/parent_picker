@@ -338,6 +338,54 @@ export async function getNearbyLocations(centerLat: number, centerLng: number, l
 }
 
 
+export interface Bounds {
+  north: number;
+  south: number;
+  east: number;
+  west: number;
+}
+
+export async function getLocationsInBounds(bounds: Bounds, releasedOnly?: boolean): Promise<Location[]> {
+  if (!isSupabaseConfigured || !supabase) {
+    const locs = releasedOnly ? mockLocations.filter(l => l.released === true) : mockLocations;
+    return locs.filter(l =>
+      l.lat <= bounds.north && l.lat >= bounds.south &&
+      l.lng <= bounds.east && l.lng >= bounds.west
+    );
+  }
+
+  try {
+    const { data, error } = await supabase.rpc("get_locations_in_bounds", {
+      min_lat: bounds.south,
+      max_lat: bounds.north,
+      min_lng: bounds.west,
+      max_lng: bounds.east,
+      released_only: releasedOnly ?? false,
+    });
+    if (error) {
+      console.error("Error fetching locations in bounds:", error);
+      return mockLocations;
+    }
+    return (data || []).map((row: Record<string, unknown>) => ({
+      id: row.id as string,
+      name: row.name as string,
+      address: row.address as string,
+      city: row.city as string,
+      state: row.state as string,
+      lat: Number(row.lat),
+      lng: Number(row.lng),
+      votes: Number(row.vote_count),
+      notHereVotes: Number(row.not_here_count) || 0,
+      suggested: (row.source as string) === "parent_suggested",
+      released: row.released as boolean | undefined,
+      scores: mapRowToScores(row),
+    }));
+  } catch (error) {
+    console.error("Failed to fetch locations in bounds:", error);
+    return mockLocations;
+  }
+}
+
 interface GeocodeResult {
   lat: number;
   lng: number;

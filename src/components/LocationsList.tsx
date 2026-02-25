@@ -12,13 +12,14 @@ import { Location } from "@/types";
 // Score-based sort: GREEN first, then YELLOW (most green subscores first), then AMBER, then RED, then unscored
 const COLOR_RANK: Record<string, number> = { GREEN: 0, YELLOW: 1, AMBER: 2, RED: 3 };
 
-function countGreenSubscores(loc: Location): number {
-  if (!loc.scores) return 0;
-  let count = 0;
-  for (const key of ["neighborhood", "zoning", "building", "price"] as const) {
-    if (loc.scores[key]?.color === "GREEN") count++;
-  }
-  return count;
+// Weighted subscore rank: building > price so "all but price" ranks above "all but building"
+function greenSubRank(loc: Location): number {
+  const s = loc.scores;
+  if (!s) return 0;
+  return (s.price?.color === "GREEN" ? 1 : 0)
+       + (s.building?.color === "GREEN" ? 2 : 0)
+       + (s.neighborhood?.color === "GREEN" ? 4 : 0)
+       + (s.zoning?.color === "GREEN" ? 8 : 0);
 }
 
 function scoreSort(a: Location, b: Location): number {
@@ -27,8 +28,8 @@ function scoreSort(a: Location, b: Location): number {
   const aRank = COLOR_RANK[aColor] ?? 99;
   const bRank = COLOR_RANK[bColor] ?? 99;
   if (aRank !== bRank) return aRank - bRank;
-  // Within same overall color, sort by green subscore count descending
-  return countGreenSubscores(b) - countGreenSubscores(a);
+  // Within same overall color, sort by weighted green subscore rank
+  return greenSubRank(b) - greenSubRank(a);
 }
 
 // Check if a location is within viewport bounds
@@ -249,7 +250,6 @@ export function LocationsList() {
     mapBounds,
     zoomLevel,
     citySummaries,
-    fetchNearbyForce,
     scoreFilters,
     toggleScoreFilter,
     clearScoreFilters,
@@ -274,7 +274,6 @@ export function LocationsList() {
     mapBounds: s.mapBounds,
     zoomLevel: s.zoomLevel,
     citySummaries: s.citySummaries,
-    fetchNearbyForce: s.fetchNearbyForce,
     scoreFilters: s.scoreFilters,
     toggleScoreFilter: s.toggleScoreFilter,
     clearScoreFilters: s.clearScoreFilters,
@@ -401,7 +400,6 @@ export function LocationsList() {
                   className="w-full text-left p-3 rounded-lg border bg-white hover:bg-blue-50 hover:border-blue-200 transition-colors"
                   onClick={() => {
                     setFlyToTarget({ lat: city.lat, lng: city.lng, zoom: 10 });
-                    fetchNearbyForce({ lat: city.lat, lng: city.lng });
                   }}
                 >
                   <div className="flex items-center justify-between">

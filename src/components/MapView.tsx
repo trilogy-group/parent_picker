@@ -17,6 +17,18 @@ import type { MapMouseEvent } from "react-map-gl/mapbox";
 
 const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN?.trim();
 
+// Calculate a generous bounding box for a center+zoom when actual map bounds aren't available yet.
+// Uses ~3x the typical viewport width to ensure all visible locations are captured.
+function approxBounds(center: { lat: number; lng: number }, zoom: number) {
+  const half = (360 / Math.pow(2, Math.max(zoom, 4))) * 3;
+  return {
+    north: Math.min(85, center.lat + half * 0.6),
+    south: Math.max(-85, center.lat - half * 0.6),
+    east: center.lng + half,
+    west: center.lng - half,
+  };
+}
+
 export function MapView() {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const mapRef = useRef<any>(null);
@@ -203,7 +215,7 @@ export function MapView() {
 
     // If zooming to city level, fetch nearby locations
     if (zoom >= 9) {
-      fetchNearbyForce(center);
+      fetchNearbyForce(approxBounds(center, zoom));
     }
 
     setTimeout(() => {
@@ -249,8 +261,9 @@ export function MapView() {
   // Fly to search target (city cards)
   useEffect(() => {
     if (flyToTarget) {
-      flyToCoords(flyToTarget, flyToTarget.zoom);
-      fetchNearbyForce(flyToTarget);
+      const targetZoom = flyToTarget.zoom ?? 14;
+      flyToCoords(flyToTarget, targetZoom);
+      fetchNearbyForce(approxBounds(flyToTarget, targetZoom));
       setFlyToTarget(null);
     }
   }, [flyToTarget, flyToCoords, setFlyToTarget, fetchNearbyForce]);
@@ -278,7 +291,7 @@ export function MapView() {
         const lng = coords[0];
         const lat = coords[1];
         flyToCoords({ lat, lng }, 9);
-        fetchNearbyForce({ lat, lng });
+        fetchNearbyForce(approxBounds({ lat, lng }, 9));
       }
     } else if (feature.layer?.id === "unclustered-point") {
       const props = feature.properties;
@@ -289,6 +302,13 @@ export function MapView() {
       }
     }
   }, [setSelectedLocation, fetchNearbyForce, flyToCoords]);
+
+  // onZoom: update zoomLevel live so panel switches layers immediately
+  const handleZoom = useCallback(() => {
+    const map = mapRef.current?.getMap();
+    if (!map) return;
+    setZoomLevel(map.getZoom());
+  }, [setZoomLevel]);
 
   // onMoveEnd: update bounds/center/zoom, trigger fetches
   const handleMoveEnd = useCallback(() => {
@@ -319,7 +339,12 @@ export function MapView() {
     });
 
     if (zoom >= 9) {
-      fetchNearby({ lat: center.lat, lng: center.lng });
+      fetchNearby({
+        north: bounds.getNorth(),
+        south: bounds.getSouth(),
+        east: bounds.getEast(),
+        west: bounds.getWest(),
+      });
     }
   }, [setMapCenter, setZoomLevel, setMapBounds, fetchNearby, setSelectedLocation]);
 
@@ -351,6 +376,7 @@ export function MapView() {
       mapboxAccessToken={MAPBOX_TOKEN}
       onLoad={() => setMapReady(true)}
       onClick={handleMapClick}
+      onZoom={handleZoom}
       onMoveEnd={handleMoveEnd}
       interactiveLayerIds={interactiveLayerIds}
       cursor="auto"

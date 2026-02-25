@@ -3,7 +3,7 @@
 import { create } from "zustand";
 import { Location, CitySummary, VoterInfo, VoteType } from "@/types";
 import { supabase, isSupabaseConfigured } from "./supabase";
-import { getCitySummaries, getNearbyLocations, getDistanceMiles } from "./locations";
+import { getCitySummaries, getNearbyLocations, getLocationsInBounds, getDistanceMiles } from "./locations";
 import { consolidateToMetros } from "./metros";
 
 interface MapBounds {
@@ -29,7 +29,7 @@ export type ReleasedFilter = "all" | "released" | "unreleased";
 interface VotesState {
   locations: Location[];
   citySummaries: CitySummary[];
-  lastFetchCenter: { lat: number; lng: number } | null;
+  lastFetchBounds: MapBounds | null;
   zoomLevel: number;
   votedLocationIds: Set<string>;
   votedNotHereIds: Set<string>;
@@ -88,8 +88,8 @@ interface VotesState {
   setShowAltUI: (show: boolean) => void;
   setUserLocation: (coords: { lat: number; lng: number } | null, source?: "geo" | "profile") => void;
   loadCitySummaries: () => Promise<void>;
-  fetchNearby: (center: { lat: number; lng: number }) => Promise<void>;
-  fetchNearbyForce: (center: { lat: number; lng: number }) => Promise<void>;
+  fetchNearby: (bounds: MapBounds) => Promise<void>;
+  fetchNearbyForce: (bounds: MapBounds) => Promise<void>;
   loadUserVotes: (userId: string) => Promise<void>;
   clearUserVotes: () => void;
   filteredLocations: () => Location[];
@@ -98,7 +98,7 @@ interface VotesState {
 export const useVotesStore = create<VotesState>((set, get) => ({
   locations: [],
   citySummaries: [],
-  lastFetchCenter: null,
+  lastFetchBounds: null,
   zoomLevel: 4,
   votedLocationIds: new Set<string>(),
   votedNotHereIds: new Set<string>(),
@@ -213,34 +213,38 @@ export const useVotesStore = create<VotesState>((set, get) => ({
     set({ citySummaries: summaries, isLoading: false });
   },
 
-  fetchNearby: async (center) => {
-    const { lastFetchCenter, isAdmin, viewAsParent, releasedFilter, selectedLocationId, locations: prev } = get();
-    const effectiveAdmin = isAdmin && !viewAsParent;
-    if (lastFetchCenter) {
-      const dist = getDistanceMiles(lastFetchCenter.lat, lastFetchCenter.lng, center.lat, center.lng);
-      if (dist < 5) return;
+  fetchNearby: async (bounds) => {
+    const { lastFetchBounds, isAdmin, viewAsParent, releasedFilter, selectedLocationId, locations: prev } = get();
+    // Skip if the new bounds are fully contained within the last fetched bounds
+    if (lastFetchBounds &&
+        bounds.north <= lastFetchBounds.north &&
+        bounds.south >= lastFetchBounds.south &&
+        bounds.east <= lastFetchBounds.east &&
+        bounds.west >= lastFetchBounds.west) {
+      return;
     }
+    const effectiveAdmin = isAdmin && !viewAsParent;
     const releasedOnly = !effectiveAdmin ? true : releasedFilter === "released" ? true : releasedFilter === "unreleased" ? false : undefined;
-    const fetched = await getNearbyLocations(center.lat, center.lng, 500, releasedOnly);
+    const fetched = await getLocationsInBounds(bounds, releasedOnly);
     // Preserve the deep-linked / selected location if it wasn't in the fetch results
     if (selectedLocationId && !fetched.some((l) => l.id === selectedLocationId)) {
       const kept = prev.find((l) => l.id === selectedLocationId);
       if (kept) fetched.push(kept);
     }
-    set({ locations: fetched, lastFetchCenter: center });
+    set({ locations: fetched, lastFetchBounds: bounds });
   },
 
-  fetchNearbyForce: async (center) => {
+  fetchNearbyForce: async (bounds) => {
     const { isAdmin, viewAsParent, releasedFilter, selectedLocationId, locations: prev } = get();
     const effectiveAdmin = isAdmin && !viewAsParent;
     const releasedOnly = !effectiveAdmin ? true : releasedFilter === "released" ? true : releasedFilter === "unreleased" ? false : undefined;
-    const fetched = await getNearbyLocations(center.lat, center.lng, 500, releasedOnly);
+    const fetched = await getLocationsInBounds(bounds, releasedOnly);
     // Preserve the deep-linked / selected location if it wasn't in the fetch results
     if (selectedLocationId && !fetched.some((l) => l.id === selectedLocationId)) {
       const kept = prev.find((l) => l.id === selectedLocationId);
       if (kept) fetched.push(kept);
     }
-    set({ locations: fetched, lastFetchCenter: center });
+    set({ locations: fetched, lastFetchBounds: bounds });
   },
 
   loadUserVotes: async (userId: string) => {
