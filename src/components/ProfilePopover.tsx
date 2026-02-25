@@ -64,6 +64,10 @@ export function ProfilePopover() {
   // Attach Places Autocomplete when popover opens
   const initAutocomplete = useCallback(() => {
     if (!addressInputRef.current || autocompleteRef.current) return;
+    if (!window.google?.maps?.places?.Autocomplete) {
+      console.warn("Google Maps Places not available");
+      return;
+    }
     autocompleteRef.current = new google.maps.places.Autocomplete(addressInputRef.current, {
       types: ["address"],
       componentRestrictions: { country: "us" },
@@ -82,8 +86,15 @@ export function ProfilePopover() {
       return;
     }
     loadMapsScript(() => {
-      // Small delay to ensure input is rendered
-      setTimeout(initAutocomplete, 50);
+      // Wait for input to render and Places library to be fully ready
+      const tryInit = (attempts: number) => {
+        if (addressInputRef.current && window.google?.maps?.places?.Autocomplete) {
+          initAutocomplete();
+        } else if (attempts < 10) {
+          setTimeout(() => tryInit(attempts + 1), 100);
+        }
+      };
+      tryInit(0);
     });
   }, [open, initAutocomplete]);
 
