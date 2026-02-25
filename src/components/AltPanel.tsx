@@ -8,7 +8,7 @@ import { useAuth } from "./AuthProvider";
 import { AltLocationCard } from "./AltLocationCard";
 import LocationDetailView from "./LocationDetailView";
 import { InviteModal } from "./InviteModal";
-import { AuthButton } from "./AuthButton";
+import { ProfilePopover } from "./ProfilePopover";
 import { Location } from "@/types";
 import { getDistanceMiles } from "@/lib/locations";
 import { Eye } from "lucide-react";
@@ -22,10 +22,23 @@ function sortMostSupport(a: Location, b: Location): number {
   return aRank - bRank;
 }
 
+// Within YELLOW, rank by non-price green subscores:
+// zoning(4) + neighborhood(2) + building(1) — ignoring price
+function yellowSubRank(loc: Location): number {
+  const s = loc.scores;
+  if (!s) return 0;
+  return (s.zoning?.color === "GREEN" ? 4 : 0)
+       + (s.neighborhood?.color === "GREEN" ? 2 : 0)
+       + (s.building?.color === "GREEN" ? 1 : 0);
+}
+
 function sortMostViable(a: Location, b: Location): number {
   const aRank = COLOR_RANK[a.scores?.overallColor || ""] ?? 99;
   const bRank = COLOR_RANK[b.scores?.overallColor || ""] ?? 99;
   if (aRank !== bRank) return aRank - bRank;
+  // Within same overall color (especially YELLOW), sort by subscore strength
+  const subDiff = yellowSubRank(b) - yellowSubRank(a);
+  if (subDiff !== 0) return subDiff;
   return b.votes - a.votes;
 }
 
@@ -185,7 +198,7 @@ export function AltPanel() {
           )}
         </div>
         <div className="flex justify-end mt-1">
-          <AuthButton darkBg={false} />
+          <ProfilePopover />
         </div>
         <div className="bg-blue-50 rounded-xl p-4 mt-2">
           <p className="text-sm font-semibold text-blue-600">Choose where your kid goes to school.</p>
