@@ -57,6 +57,7 @@ interface VotesState {
   userLocation: { lat: number; lng: number } | null;  // Browser geolocation or saved profile
   userLocationSource: "geo" | "profile" | null;       // Where userLocation came from
   showTopOnly: boolean;                                // Top 10 vs Show all toggle (shared with MapView)
+  altSizeFilter: Set<string>;                          // New UI size filter: "Micro", "Growth", "Flagship"
 
   setLocations: (locations: Location[]) => void;
   toggleScoreFilter: (category: ScoreFilterCategory, value: string) => void;
@@ -89,6 +90,7 @@ interface VotesState {
   setShowAltUI: (show: boolean) => void;
   setUserLocation: (coords: { lat: number; lng: number } | null, source?: "geo" | "profile") => void;
   setShowTopOnly: (show: boolean) => void;
+  toggleAltSizeFilter: (value: string) => void;
   loadCitySummaries: () => Promise<void>;
   fetchNearby: (bounds: MapBounds) => Promise<void>;
   fetchNearbyForce: (bounds: MapBounds) => Promise<void>;
@@ -133,6 +135,7 @@ export const useVotesStore = create<VotesState>((set, get) => ({
   userLocation: null,
   userLocationSource: null,
   showTopOnly: true,
+  altSizeFilter: new Set<string>(["Micro"]),
 
   toggleScoreFilter: (category, value) => {
     const filters = get().scoreFilters;
@@ -202,6 +205,16 @@ export const useVotesStore = create<VotesState>((set, get) => ({
   setUserLocation: (userLocation, source) => set({ userLocation, userLocationSource: source || null }),
 
   setShowTopOnly: (showTopOnly) => set({ showTopOnly }),
+
+  toggleAltSizeFilter: (value) => {
+    const current = new Set(get().altSizeFilter);
+    if (current.has(value)) {
+      if (current.size > 1) current.delete(value); // don't allow empty
+    } else {
+      current.add(value);
+    }
+    set({ altSizeFilter: current });
+  },
 
   loadCitySummaries: async () => {
     const { isAdmin, viewAsParent, releasedFilter, showUnscored } = get();
@@ -591,7 +604,21 @@ export const useVotesStore = create<VotesState>((set, get) => ({
       filtered = filtered.filter((loc) => loc.released !== true);
     }
 
-    // Step 2: Apply score/size filters based on admin status
+    // Step 2: Apply alt UI size filter (Micro/Growth/Flagship)
+    const { showAltUI, altSizeFilter } = get();
+    if (showAltUI && altSizeFilter.size > 0) {
+      // Map UI labels to DB size_classification values
+      const allowed = new Set<string>();
+      if (altSizeFilter.has("Micro")) { allowed.add("Micro"); allowed.add("Micro2"); }
+      if (altSizeFilter.has("Growth")) allowed.add("Growth");
+      if (altSizeFilter.has("Flagship")) allowed.add("Full Size");
+      filtered = filtered.filter((loc) => {
+        const size = loc.scores?.sizeClassification;
+        return size ? allowed.has(size) : false;
+      });
+    }
+
+    // Step 3: Apply score/size filters based on admin status
     if (!effectiveAdmin) {
       // Non-admin: always hide unscored, show all scored (including RED)
       return ensureSelected(filtered.filter((loc) => loc.scores?.overallColor != null));

@@ -24,6 +24,7 @@ export function AltPanel() {
     citySummaries, setFlyToTarget, userLocation,
     viewAsParent, setViewAsParent,
     showTopOnly, setShowTopOnly,
+    altSizeFilter, toggleAltSizeFilter,
   } = useVotesStore(useShallow((s) => ({
     locations: s.locations,
     filteredLocations: s.filteredLocations,
@@ -47,6 +48,8 @@ export function AltPanel() {
     setViewAsParent: s.setViewAsParent,
     showTopOnly: s.showTopOnly,
     setShowTopOnly: s.setShowTopOnly,
+    altSizeFilter: s.altSizeFilter,
+    toggleAltSizeFilter: s.toggleAltSizeFilter,
   })));
 
   const { user, session, isAdmin } = useAuth();
@@ -226,12 +229,32 @@ export function AltPanel() {
       ) : (
         /* Zoomed-in: location cards with sort pills */
         <>
-          {/* Legend + Sort pills */}
+          {/* Legend + Size filter + Sort pills */}
           <div className="px-5 pb-2 pt-1 sticky top-0 bg-white z-10">
             <div className="flex items-center gap-3 text-[11px] text-gray-500 mb-2">
               <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-green-500 inline-block" /> Promising</span>
               <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-amber-400 inline-block" /> Viable</span>
               <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-red-500 inline-block" /> Needs Work</span>
+            </div>
+            <div className="flex items-center gap-2 mb-2">
+              <span className="text-xs text-gray-500">Size</span>
+              {([
+                { key: "Micro", label: "Micro (25-50)" },
+                { key: "Growth", label: "Growth (250)" },
+                { key: "Flagship", label: "Flagship (1000)" },
+              ] as const).map(({ key, label }) => (
+                <button
+                  key={key}
+                  onClick={() => toggleAltSizeFilter(key)}
+                  className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
+                    altSizeFilter.has(key)
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
             </div>
           </div>
           <div className="px-5 pb-3 flex items-center gap-2">
