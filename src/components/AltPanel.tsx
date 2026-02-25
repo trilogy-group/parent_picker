@@ -138,7 +138,11 @@ export function AltPanel() {
     return [...inView].sort(sortFn);
   }, [filteredLocations, mapBounds, sortMode, locations]);
 
-  // Pagination — track extra pages loaded beyond first page
+  // Top 10 vs Show all toggle
+  const [showTopOnly, setShowTopOnly] = useState(true);
+  const TOP_N = 10;
+
+  // Pagination — track extra pages loaded beyond first page (only used in "show all" mode)
   const [extraPages, setExtraPages] = useState(0);
   // Reset extra pages when sort or bounds change
   const resetKey = `${sortMode}-${mapBounds?.north}-${mapBounds?.south}-${mapBounds?.east}-${mapBounds?.west}`;
@@ -147,7 +151,9 @@ export function AltPanel() {
     setPrevResetKey(resetKey);
     if (extraPages !== 0) setExtraPages(0);
   }
-  const visibleLocations = sortedLocations.slice(0, (extraPages + 1) * PAGE_SIZE);
+  const visibleLocations = showTopOnly
+    ? sortedLocations.slice(0, TOP_N)
+    : sortedLocations.slice(0, (extraPages + 1) * PAGE_SIZE);
 
   // Load voter details for visible cards
   useEffect(() => {
@@ -271,6 +277,12 @@ export function AltPanel() {
                 {mode === 'most_support' ? 'Most support' : 'Most viable'}
               </button>
             ))}
+            <button
+              onClick={() => { setShowTopOnly(!showTopOnly); setExtraPages(0); }}
+              className="ml-auto text-xs text-blue-600 font-medium hover:underline"
+            >
+              {showTopOnly ? `Show all (${sortedLocations.length})` : 'Top 10'}
+            </button>
           </div>
 
           {/* Location cards */}
@@ -296,7 +308,7 @@ export function AltPanel() {
                 onRemoveVote={() => removeVote(loc.id)}
               />
             ))}
-            {sortedLocations.length > visibleLocations.length && (
+            {!showTopOnly && sortedLocations.length > visibleLocations.length && (
               <button
                 onClick={() => setExtraPages(p => p + 1)}
                 className="w-full py-2 text-sm text-blue-600 font-medium hover:underline"
