@@ -54,6 +54,7 @@ export function MapView() {
     votedLocationIds,
     vote,
     unvote,
+    visibleLocationIds,
   } = useVotesStore(useShallow((s) => ({
     filteredLocations: s.filteredLocations,
     selectedLocationId: s.selectedLocationId,
@@ -81,6 +82,7 @@ export function MapView() {
     cardVersion: s.cardVersion,
     showAltUI: s.showAltUI,
     setUserLocationStore: s.setUserLocation,
+    visibleLocationIds: s.visibleLocationIds,
   })));
 
   const { user, isOfflineMode } = useAuth();
@@ -133,11 +135,13 @@ export function MapView() {
     })),
   }), [citySummaries]);
 
-  // GeoJSON for individual location dots — show only selected when in detail view
+  // GeoJSON for individual location dots — filtered by panel visibility when top-N active
   const locationGeojson = useMemo(() => {
     const locs = selectedLocationId
       ? displayLocations.filter((loc) => loc.id === selectedLocationId)
-      : displayLocations;
+      : showAltUI && visibleLocationIds
+        ? displayLocations.filter((loc) => visibleLocationIds.has(loc.id))
+        : displayLocations;
     return {
       type: "FeatureCollection" as const,
       features: locs.map((loc) => ({
@@ -154,7 +158,7 @@ export function MapView() {
         },
       })),
     };
-  }, [displayLocations, selectedLocationId]);
+  }, [displayLocations, selectedLocationId, showAltUI, visibleLocationIds]);
 
   const interactiveLayerIds = useMemo(
     () => (showCities ? ["city-clusters", "city-circles"] : ["unclustered-point"]),

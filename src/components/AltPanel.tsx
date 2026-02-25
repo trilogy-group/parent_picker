@@ -52,7 +52,7 @@ export function AltPanel() {
     mapBounds, sortMode, setSortMode,
     locationVoters, loadLocationVoters, zoomLevel,
     citySummaries, setFlyToTarget, userLocation,
-    viewAsParent, setViewAsParent,
+    viewAsParent, setViewAsParent, setVisibleLocationIds,
   } = useVotesStore(useShallow((s) => ({
     locations: s.locations,
     filteredLocations: s.filteredLocations,
@@ -74,6 +74,7 @@ export function AltPanel() {
     userLocation: s.userLocation,
     viewAsParent: s.viewAsParent,
     setViewAsParent: s.setViewAsParent,
+    setVisibleLocationIds: s.setVisibleLocationIds,
   })));
 
   const { user, session, isAdmin } = useAuth();
@@ -155,11 +156,22 @@ export function AltPanel() {
     ? sortedLocations.slice(0, TOP_N)
     : sortedLocations.slice(0, (extraPages + 1) * PAGE_SIZE);
 
+  // Sync visible IDs to store so MapView can filter dots
+  const visibleIdKey = visibleLocations.map(l => l.id).join(',');
+  useEffect(() => {
+    if (showTopOnly) {
+      setVisibleLocationIds(new Set(visibleLocations.map(l => l.id)));
+    } else {
+      setVisibleLocationIds(null); // show all dots
+    }
+    return () => setVisibleLocationIds(null); // cleanup on unmount
+  }, [showTopOnly, visibleIdKey, setVisibleLocationIds]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // Load voter details for visible cards
   useEffect(() => {
     const ids = visibleLocations.map(l => l.id);
     if (ids.length > 0) loadLocationVoters(ids);
-  }, [visibleLocations.map(l => l.id).join(',')]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [visibleIdKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Desktop: render detail view when a location is selected
   if (selectedLocation) {
