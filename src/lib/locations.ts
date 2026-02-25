@@ -345,6 +345,23 @@ export interface Bounds {
   west: number;
 }
 
+function mapBoundsRows(rows: Record<string, unknown>[]): Location[] {
+  return rows.map((row) => ({
+    id: row.id as string,
+    name: row.name as string,
+    address: row.address as string,
+    city: row.city as string,
+    state: row.state as string,
+    lat: Number(row.lat),
+    lng: Number(row.lng),
+    votes: Number(row.vote_count),
+    notHereVotes: Number(row.not_here_count) || 0,
+    suggested: (row.source as string) === "parent_suggested",
+    released: row.released as boolean | undefined,
+    scores: mapRowToScores(row),
+  }));
+}
+
 export async function getLocationsInBounds(bounds: Bounds, releasedOnly?: boolean): Promise<Location[]> {
   if (!isSupabaseConfigured || !supabase) {
     const locs = releasedOnly ? mockLocations.filter(l => l.released === true) : mockLocations;
@@ -355,31 +372,33 @@ export async function getLocationsInBounds(bounds: Bounds, releasedOnly?: boolea
   }
 
   try {
-    const { data, error } = await supabase.rpc("get_locations_in_bounds", {
-      min_lat: bounds.south,
-      max_lat: bounds.north,
-      min_lng: bounds.west,
-      max_lng: bounds.east,
-      released_only: releasedOnly ?? false,
-    });
-    if (error) {
-      console.error("Error fetching locations in bounds:", error);
-      return mockLocations;
+    // PostgREST enforces a 1000-row max per request (even for RPCs),
+    // so we paginate with .range() to fetch all locations in the bounds.
+    const PAGE_SIZE = 1000;
+    const allRows: Record<string, unknown>[] = [];
+    let from = 0;
+    let hasMore = true;
+
+    while (hasMore) {
+      const { data, error } = await supabase.rpc("get_locations_in_bounds", {
+        min_lat: bounds.south,
+        max_lat: bounds.north,
+        min_lng: bounds.west,
+        max_lng: bounds.east,
+        released_only: releasedOnly ?? false,
+      }).range(from, from + PAGE_SIZE - 1);
+
+      if (error) {
+        console.error("Error fetching locations in bounds:", error);
+        return allRows.length > 0 ? mapBoundsRows(allRows) : mockLocations;
+      }
+
+      allRows.push(...(data as Record<string, unknown>[]));
+      hasMore = data.length === PAGE_SIZE;
+      from += PAGE_SIZE;
     }
-    return (data || []).map((row: Record<string, unknown>) => ({
-      id: row.id as string,
-      name: row.name as string,
-      address: row.address as string,
-      city: row.city as string,
-      state: row.state as string,
-      lat: Number(row.lat),
-      lng: Number(row.lng),
-      votes: Number(row.vote_count),
-      notHereVotes: Number(row.not_here_count) || 0,
-      suggested: (row.source as string) === "parent_suggested",
-      released: row.released as boolean | undefined,
-      scores: mapRowToScores(row),
-    }));
+
+    return mapBoundsRows(allRows);
   } catch (error) {
     console.error("Failed to fetch locations in bounds:", error);
     return mockLocations;
