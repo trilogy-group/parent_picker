@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Parent Picker - Vote for School Locations",
+  title: "Alpha Parent Community",
   description: "Help choose the next Alpha micro school location in your community",
 };
 
