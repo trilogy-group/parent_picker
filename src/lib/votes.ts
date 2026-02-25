@@ -206,7 +206,7 @@ export const useVotesStore = create<VotesState>((set, get) => ({
 
   setShowTopOnly: (showTopOnly) => set({ showTopOnly }),
 
-  setAltSizeFilter: (value) => set({ altSizeFilter: value, showTopOnly: false }),
+  setAltSizeFilter: (value) => set({ altSizeFilter: value }),
 
   loadCitySummaries: async () => {
     const { isAdmin, viewAsParent, releasedFilter, showUnscored } = get();
