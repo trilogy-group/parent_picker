@@ -105,16 +105,13 @@ export function AltPanel() {
   // Sort and filter locations in viewport
   const sortedLocations = useMemo(() => {
     const filtered = filteredLocations();
-    console.log('[AltPanel] sortedLocations recomputing', { altSizeFilter, filteredCount: filtered.length, hasBounds: !!mapBounds });
     if (!mapBounds) return filtered;
     const inView = filtered.filter(loc =>
       loc.lat <= mapBounds.north && loc.lat >= mapBounds.south &&
       loc.lng <= mapBounds.east && loc.lng >= mapBounds.west
     );
     const sortFn = sortMode === 'most_support' ? sortMostSupport : sortMostViable;
-    const sorted = [...inView].sort(sortFn);
-    console.log('[AltPanel] inView:', inView.length, 'top10 ids:', sorted.slice(0, 10).map(l => l.id.slice(0, 8)));
-    return sorted;
+    return [...inView].sort(sortFn);
   }, [filteredLocations, mapBounds, sortMode, locations, altSizeFilter]);
 
   const TOP_N = 10;
