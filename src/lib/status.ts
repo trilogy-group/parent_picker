@@ -10,7 +10,7 @@ export function sizeTierLabel(sizeClassification: string | null | undefined): st
   const tiers: Record<string, string> = {
     micro: "Micro (25 students)",
     micro2: "Micro (50 students)",
-    growth: "Growth (100 students)",
+    growth: "Growth (250 students)",
     "full size": "Flagship (1000 students)",
   };
   return tiers[sizeClassification.toLowerCase()] || sizeClassification;
