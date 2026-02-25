@@ -179,6 +179,24 @@ git push  # pushes to both
 - `get_location_voters` RPC: `LEFT JOIN` instead of `INNER JOIN`, `COALESCE` fallback chain for email
 - Backfilled `pp_profiles` for users missing profile rows
 
+### Workstream 14: Parent Profile Page — DONE
+
+**What was built:**
+- `/profile` page — name, home address (with Places Autocomplete via `/api/places-autocomplete` proxy), save, sign out
+- `GET/PUT /api/profile` — fetch/update profile with server-side geocoding (Google Geocoding API)
+- Gear icon in AltPanel header links to `/profile` (replaced old AuthButton)
+- Saved address lat/lng overrides browser geolocation for distance calcs (`userLocationSource: "profile" | "geo"` in store)
+- DB: added `home_address`, `home_lat`, `home_lng` columns to `pp_profiles`
+
+**Key files:**
+- `src/app/profile/page.tsx` — profile form page
+- `src/app/api/profile/route.ts` — GET/PUT with geocoding
+- `src/app/api/places-autocomplete/route.ts` — proxy for Google Places Autocomplete REST API
+- `src/components/ProfilePopover.tsx` — simplified to gear icon link + sign-in dialog
+- `src/lib/votes.ts` — `userLocationSource` field to prevent geolocation overwrite
+- `src/components/MapView.tsx` — respects profile location source priority
+- `src/components/AuthProvider.tsx` — loads profile on auth, sets userLocation with "profile" source
+
 ### Pending / Next steps
 - **Supabase auth redirect URL** — add `https://real-estate.alpha.school/**` to Authentication → URL Configuration so magic links work from the new domain
 - **REBL scoring bug**: `overall_color` wrong for ~74% of scored rows — needs fix in REBL
