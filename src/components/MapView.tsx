@@ -163,7 +163,10 @@ export function MapView() {
           lng: position.coords.longitude,
         };
         setUserLocation(coords);
-        setUserLocationStore(coords);
+        // Only push to store if no saved profile address (profile takes priority)
+        if (useVotesStore.getState().userLocationSource !== "profile") {
+          setUserLocationStore(coords);
+        }
         setGeoResolved(true);
       },
       (error) => {

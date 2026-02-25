@@ -54,7 +54,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       if (res.ok) {
         const profile = await res.json();
         if (profile.home_lat && profile.home_lng) {
-          setUserLocation({ lat: profile.home_lat, lng: profile.home_lng });
+          setUserLocation({ lat: profile.home_lat, lng: profile.home_lng }, "profile");
         }
       }
     } catch {}

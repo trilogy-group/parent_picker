@@ -96,7 +96,7 @@ export default function ProfilePage() {
 
       const data = await res.json();
       if (data.home_lat && data.home_lng) {
-        setUserLocation({ lat: data.home_lat, lng: data.home_lng });
+        setUserLocation({ lat: data.home_lat, lng: data.home_lng }, "profile");
       }
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
