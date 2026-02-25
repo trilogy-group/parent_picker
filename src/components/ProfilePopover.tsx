@@ -46,7 +46,6 @@ export function ProfilePopover() {
 
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
-  const [address, setAddress] = useState("");
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -74,8 +73,8 @@ export function ProfilePopover() {
     });
     autocompleteRef.current.addListener("place_changed", () => {
       const place = autocompleteRef.current?.getPlace();
-      if (place?.formatted_address) {
-        setAddress(place.formatted_address);
+      if (place?.formatted_address && addressInputRef.current) {
+        addressInputRef.current.value = place.formatted_address;
       }
     });
   }, []);
@@ -107,7 +106,9 @@ export function ProfilePopover() {
       .then((res) => res.json())
       .then((data) => {
         if (data.display_name) setName(data.display_name);
-        if (data.home_address) setAddress(data.home_address);
+        if (data.home_address && addressInputRef.current) {
+          addressInputRef.current.value = data.home_address;
+        }
       })
       .catch(() => {});
   }, [open, session?.access_token]);
@@ -139,7 +140,7 @@ export function ProfilePopover() {
           "Content-Type": "application/json",
           Authorization: `Bearer ${session.access_token}`,
         },
-        body: JSON.stringify({ display_name: name, home_address: address }),
+        body: JSON.stringify({ display_name: name, home_address: addressInputRef.current?.value || "" }),
       });
 
       if (!res.ok) {
@@ -319,8 +320,6 @@ export function ProfilePopover() {
                 ref={addressInputRef}
                 type="text"
                 placeholder="123 Main St, City, State"
-                value={address}
-                onChange={(e) => setAddress(e.target.value)}
                 className="h-8 text-sm w-full rounded-md border border-input bg-transparent px-3 py-1 shadow-xs outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]"
               />
               <p className="text-[11px] text-gray-400 mt-1">Used for distance to locations</p>
