@@ -24,7 +24,7 @@ export function AltPanel() {
     citySummaries, setFlyToTarget, userLocation,
     viewAsParent, setViewAsParent,
     showTopOnly, setShowTopOnly,
-    altSizeFilter, toggleAltSizeFilter,
+    altSizeFilter, setAltSizeFilter,
   } = useVotesStore(useShallow((s) => ({
     locations: s.locations,
     filteredLocations: s.filteredLocations,
@@ -49,7 +49,7 @@ export function AltPanel() {
     showTopOnly: s.showTopOnly,
     setShowTopOnly: s.setShowTopOnly,
     altSizeFilter: s.altSizeFilter,
-    toggleAltSizeFilter: s.toggleAltSizeFilter,
+    setAltSizeFilter: s.setAltSizeFilter,
   })));
 
   const { user, session, isAdmin } = useAuth();
@@ -93,7 +93,7 @@ export function AltPanel() {
     entries.sort((a, b) => b[1] - a[1]);
     const topCity = entries[0][0];
     return METRO_DISPLAY[topCity] || topCity;
-  }, [zoomLevel, filteredLocations, locations]);
+  }, [zoomLevel, filteredLocations, locations, altSizeFilter]);
 
   // City summaries sorted by location count (for zoomed-out view)
   const sortedCities = useMemo(() => {
@@ -112,14 +112,14 @@ export function AltPanel() {
     );
     const sortFn = sortMode === 'most_support' ? sortMostSupport : sortMostViable;
     return [...inView].sort(sortFn);
-  }, [filteredLocations, mapBounds, sortMode, locations]);
+  }, [filteredLocations, mapBounds, sortMode, locations, altSizeFilter]);
 
   const TOP_N = 10;
 
   // Pagination — track extra pages loaded beyond first page (only used in "show all" mode)
   const [extraPages, setExtraPages] = useState(0);
   // Reset extra pages when sort or bounds change
-  const resetKey = `${sortMode}-${mapBounds?.north}-${mapBounds?.south}-${mapBounds?.east}-${mapBounds?.west}`;
+  const resetKey = `${sortMode}-${altSizeFilter}-${mapBounds?.north}-${mapBounds?.south}-${mapBounds?.east}-${mapBounds?.west}`;
   const [prevResetKey, setPrevResetKey] = useState(resetKey);
   if (resetKey !== prevResetKey) {
     setPrevResetKey(resetKey);
@@ -238,23 +238,32 @@ export function AltPanel() {
             </div>
             <div className="flex items-center gap-2 mb-2">
               <span className="text-xs text-gray-500">Size</span>
-              {([
-                { key: "Micro", label: "Micro (25-50)" },
-                { key: "Growth", label: "Growth (250)" },
-                { key: "Flagship", label: "Flagship (1000)" },
-              ] as const).map(({ key, label }) => (
+              <span className="relative">
                 <button
-                  key={key}
-                  onClick={() => toggleAltSizeFilter(key)}
+                  onClick={() => setAltSizeFilter("micro")}
                   className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
-                    altSizeFilter.has(key)
+                    altSizeFilter === "micro"
                       ? 'bg-blue-600 text-white'
                       : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                   }`}
                 >
-                  {label}
+                  Micro
+                  <span className={`ml-1 text-[10px] ${altSizeFilter === "micro" ? 'text-blue-200' : 'text-gray-400'}`}>(25-50)</span>
                 </button>
-              ))}
+                <span className="absolute -top-2 -right-1 text-[8px] font-bold text-white bg-amber-500 px-1.5 py-0.5 rounded-full uppercase tracking-wider shadow-sm">
+                  Focus
+                </span>
+              </span>
+              <button
+                onClick={() => setAltSizeFilter("all")}
+                className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
+                  altSizeFilter === "all"
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                }`}
+              >
+                All sizes
+              </button>
             </div>
           </div>
           <div className="px-5 pb-3 flex items-center gap-2">

@@ -88,6 +88,7 @@ export function MapView() {
     showTopOnly: s.showTopOnly,
     sortMode: s.sortMode,
     mapBounds: s.mapBounds,
+    altSizeFilter: s.altSizeFilter,
   })));
 
   const { user, isOfflineMode } = useAuth();
