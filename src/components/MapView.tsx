@@ -11,6 +11,7 @@ import { useVotesStore } from "@/lib/votes";
 import { useShallow } from "zustand/react/shallow";
 import { useAuth } from "./AuthProvider";
 import { getInitialMapView, US_CENTER, US_ZOOM } from "@/lib/locations";
+import { sortMostSupport, sortMostViable } from "@/lib/sort";
 import { fetchIsochrone } from "@/lib/isochrone";
 import "mapbox-gl/dist/mapbox-gl.css";
 import type { MapMouseEvent } from "react-map-gl/mapbox";
@@ -54,7 +55,9 @@ export function MapView() {
     votedLocationIds,
     vote,
     unvote,
-    visibleLocationIds,
+    showTopOnly,
+    sortMode,
+    mapBounds,
   } = useVotesStore(useShallow((s) => ({
     filteredLocations: s.filteredLocations,
     selectedLocationId: s.selectedLocationId,
@@ -82,7 +85,9 @@ export function MapView() {
     cardVersion: s.cardVersion,
     showAltUI: s.showAltUI,
     setUserLocationStore: s.setUserLocation,
-    visibleLocationIds: s.visibleLocationIds,
+    showTopOnly: s.showTopOnly,
+    sortMode: s.sortMode,
+    mapBounds: s.mapBounds,
   })));
 
   const { user, isOfflineMode } = useAuth();
@@ -135,12 +140,24 @@ export function MapView() {
     })),
   }), [citySummaries]);
 
-  // GeoJSON for individual location dots — filtered by panel visibility when top-N active
+  // Compute top-N IDs for dot filtering (only when showTopOnly + altUI)
+  const topLocationIds = useMemo(() => {
+    if (!showAltUI || !showTopOnly || !mapBounds) return null;
+    const inView = displayLocations.filter(loc =>
+      loc.lat <= mapBounds.north && loc.lat >= mapBounds.south &&
+      loc.lng <= mapBounds.east && loc.lng >= mapBounds.west
+    );
+    const sortFn = sortMode === 'most_support' ? sortMostSupport : sortMostViable;
+    const sorted = [...inView].sort(sortFn);
+    return new Set(sorted.slice(0, 10).map(loc => loc.id));
+  }, [showAltUI, showTopOnly, mapBounds, displayLocations, sortMode]);
+
+  // GeoJSON for individual location dots — filtered by top-N when active
   const locationGeojson = useMemo(() => {
     const locs = selectedLocationId
       ? displayLocations.filter((loc) => loc.id === selectedLocationId)
-      : showAltUI && visibleLocationIds
-        ? displayLocations.filter((loc) => visibleLocationIds.has(loc.id))
+      : topLocationIds
+        ? displayLocations.filter((loc) => topLocationIds.has(loc.id))
         : displayLocations;
     return {
       type: "FeatureCollection" as const,
@@ -158,7 +175,7 @@ export function MapView() {
         },
       })),
     };
-  }, [displayLocations, selectedLocationId, showAltUI, visibleLocationIds]);
+  }, [displayLocations, selectedLocationId, topLocationIds]);
 
   const interactiveLayerIds = useMemo(
     () => (showCities ? ["city-clusters", "city-circles"] : ["unclustered-point"]),

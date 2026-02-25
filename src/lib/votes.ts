@@ -56,7 +56,7 @@ interface VotesState {
   showAltUI: boolean;              // Admin toggle: new UI vs old UI
   userLocation: { lat: number; lng: number } | null;  // Browser geolocation or saved profile
   userLocationSource: "geo" | "profile" | null;       // Where userLocation came from
-  visibleLocationIds: Set<string> | null;             // Panel-driven dot filter (null = show all)
+  showTopOnly: boolean;                                // Top 10 vs Show all toggle (shared with MapView)
 
   setLocations: (locations: Location[]) => void;
   toggleScoreFilter: (category: ScoreFilterCategory, value: string) => void;
@@ -88,7 +88,7 @@ interface VotesState {
   setCardVersion: (version: "v1" | "v2") => void;
   setShowAltUI: (show: boolean) => void;
   setUserLocation: (coords: { lat: number; lng: number } | null, source?: "geo" | "profile") => void;
-  setVisibleLocationIds: (ids: Set<string> | null) => void;
+  setShowTopOnly: (show: boolean) => void;
   loadCitySummaries: () => Promise<void>;
   fetchNearby: (bounds: MapBounds) => Promise<void>;
   fetchNearbyForce: (bounds: MapBounds) => Promise<void>;
@@ -132,7 +132,7 @@ export const useVotesStore = create<VotesState>((set, get) => ({
   showAltUI: typeof window !== "undefined" && localStorage.getItem("showAltUI") === "true",
   userLocation: null,
   userLocationSource: null,
-  visibleLocationIds: null,
+  showTopOnly: true,
 
   toggleScoreFilter: (category, value) => {
     const filters = get().scoreFilters;
@@ -201,7 +201,7 @@ export const useVotesStore = create<VotesState>((set, get) => ({
 
   setUserLocation: (userLocation, source) => set({ userLocation, userLocationSource: source || null }),
 
-  setVisibleLocationIds: (visibleLocationIds) => set({ visibleLocationIds }),
+  setShowTopOnly: (showTopOnly) => set({ showTopOnly }),
 
   loadCitySummaries: async () => {
     const { isAdmin, viewAsParent, releasedFilter, showUnscored } = get();

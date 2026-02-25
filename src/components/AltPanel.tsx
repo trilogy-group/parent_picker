@@ -9,39 +9,9 @@ import { AltLocationCard } from "./AltLocationCard";
 import LocationDetailView from "./LocationDetailView";
 import { InviteModal } from "./InviteModal";
 import { ProfilePopover } from "./ProfilePopover";
-import { Location } from "@/types";
 import { getDistanceMiles } from "@/lib/locations";
+import { sortMostSupport, sortMostViable } from "@/lib/sort";
 import { Eye } from "lucide-react";
-
-const COLOR_RANK: Record<string, number> = { GREEN: 0, YELLOW: 1, AMBER: 2, RED: 3 };
-
-function sortMostSupport(a: Location, b: Location): number {
-  if (b.votes !== a.votes) return b.votes - a.votes;
-  return sortMostViable(a, b);
-}
-
-// Count green subscores — used to sort within overall GREEN and YELLOW
-// Within GREEN: all 4 green best, then all-but-price, then all-but-building
-// price(1) + building(2) + neighborhood(4) + zoning(8)
-// building weighted higher than price so "all but price" ranks above "all but building"
-function greenSubRank(loc: Location): number {
-  const s = loc.scores;
-  if (!s) return 0;
-  return (s.price?.color === "GREEN" ? 1 : 0)
-       + (s.building?.color === "GREEN" ? 2 : 0)
-       + (s.neighborhood?.color === "GREEN" ? 4 : 0)
-       + (s.zoning?.color === "GREEN" ? 8 : 0);
-}
-
-function sortMostViable(a: Location, b: Location): number {
-  const aRank = COLOR_RANK[a.scores?.overallColor || ""] ?? 99;
-  const bRank = COLOR_RANK[b.scores?.overallColor || ""] ?? 99;
-  if (aRank !== bRank) return aRank - bRank;
-  // Within same overall color, sort by number of green subscores
-  const subDiff = greenSubRank(b) - greenSubRank(a);
-  if (subDiff !== 0) return subDiff;
-  return b.votes - a.votes;
-}
 
 const PAGE_SIZE = 25;
 
@@ -52,7 +22,8 @@ export function AltPanel() {
     mapBounds, sortMode, setSortMode,
     locationVoters, loadLocationVoters, zoomLevel,
     citySummaries, setFlyToTarget, userLocation,
-    viewAsParent, setViewAsParent, setVisibleLocationIds,
+    viewAsParent, setViewAsParent,
+    showTopOnly, setShowTopOnly,
   } = useVotesStore(useShallow((s) => ({
     locations: s.locations,
     filteredLocations: s.filteredLocations,
@@ -74,7 +45,8 @@ export function AltPanel() {
     userLocation: s.userLocation,
     viewAsParent: s.viewAsParent,
     setViewAsParent: s.setViewAsParent,
-    setVisibleLocationIds: s.setVisibleLocationIds,
+    showTopOnly: s.showTopOnly,
+    setShowTopOnly: s.setShowTopOnly,
   })));
 
   const { user, session, isAdmin } = useAuth();
@@ -139,8 +111,6 @@ export function AltPanel() {
     return [...inView].sort(sortFn);
   }, [filteredLocations, mapBounds, sortMode, locations]);
 
-  // Top 10 vs Show all toggle
-  const [showTopOnly, setShowTopOnly] = useState(true);
   const TOP_N = 10;
 
   // Pagination — track extra pages loaded beyond first page (only used in "show all" mode)
@@ -156,18 +126,8 @@ export function AltPanel() {
     ? sortedLocations.slice(0, TOP_N)
     : sortedLocations.slice(0, (extraPages + 1) * PAGE_SIZE);
 
-  // Sync visible IDs to store so MapView can filter dots
-  const visibleIdKey = visibleLocations.map(l => l.id).join(',');
-  useEffect(() => {
-    if (showTopOnly) {
-      setVisibleLocationIds(new Set(visibleLocations.map(l => l.id)));
-    } else {
-      setVisibleLocationIds(null); // show all dots
-    }
-    return () => setVisibleLocationIds(null); // cleanup on unmount
-  }, [showTopOnly, visibleIdKey, setVisibleLocationIds]); // eslint-disable-line react-hooks/exhaustive-deps
-
   // Load voter details for visible cards
+  const visibleIdKey = visibleLocations.map(l => l.id).join(',');
   useEffect(() => {
     const ids = visibleLocations.map(l => l.id);
     if (ids.length > 0) loadLocationVoters(ids);
