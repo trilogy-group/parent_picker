@@ -36,6 +36,7 @@ export function ProfilePopover() {
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pickingRef = useRef(false);
 
   // Sign-in dialog state
   const [showSignIn, setShowSignIn] = useState(false);
@@ -66,9 +67,14 @@ export function ProfilePopover() {
   };
 
   const selectSuggestion = (s: Suggestion) => {
-    if (addressInputRef.current) addressInputRef.current.value = s.description;
+    pickingRef.current = true;
+    if (addressInputRef.current) {
+      addressInputRef.current.value = s.description;
+      addressInputRef.current.focus();
+    }
     setSuggestions([]);
     setShowSuggestions(false);
+    setTimeout(() => { pickingRef.current = false; }, 0);
   };
 
   // Load profile when popover opens
@@ -294,7 +300,7 @@ export function ProfilePopover() {
                   type="text"
                   placeholder="123 Main St, City, State"
                   onChange={(e) => fetchSuggestions(e.target.value)}
-                  onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
+                  onBlur={() => setTimeout(() => { if (!pickingRef.current) setShowSuggestions(false); }, 150)}
                   autoComplete="off"
                   className="h-8 text-sm w-full rounded-md border border-input bg-transparent px-3 py-1 shadow-xs outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]"
                 />
@@ -305,7 +311,7 @@ export function ProfilePopover() {
                         key={s.place_id}
                         type="button"
                         className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-blue-50 transition-colors"
-                        onMouseDown={() => selectSuggestion(s)}
+                        onMouseDown={(e) => { e.preventDefault(); selectSuggestion(s); }}
                       >
                         {s.description}
                       </button>
