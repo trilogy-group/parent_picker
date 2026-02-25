@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { Settings, LogIn, LogOut, Loader2, Check } from "lucide-react";
 import { useAuth } from "./AuthProvider";
 import { signInWithMagicLink, signOut } from "@/lib/auth";
@@ -15,6 +15,31 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 
+// Load Google Maps Places script once
+let mapsScriptLoaded = false;
+let mapsScriptLoading = false;
+const mapsCallbacks: (() => void)[] = [];
+
+function loadMapsScript(callback: () => void) {
+  if (mapsScriptLoaded) { callback(); return; }
+  mapsCallbacks.push(callback);
+  if (mapsScriptLoading) return;
+  mapsScriptLoading = true;
+
+  const key = process.env.NEXT_PUBLIC_GOOGLE_MAPS_KEY;
+  if (!key) return;
+
+  const script = document.createElement("script");
+  script.src = `https://maps.googleapis.com/maps/api/js?key=${key}&libraries=places`;
+  script.async = true;
+  script.onload = () => {
+    mapsScriptLoaded = true;
+    mapsCallbacks.forEach((cb) => cb());
+    mapsCallbacks.length = 0;
+  };
+  document.head.appendChild(script);
+}
+
 export function ProfilePopover() {
   const { user, session, isLoading, isOfflineMode } = useAuth();
   const setUserLocation = useVotesStore((s) => s.setUserLocation);
@@ -26,6 +51,8 @@ export function ProfilePopover() {
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const popoverRef = useRef<HTMLDivElement>(null);
+  const addressInputRef = useRef<HTMLInputElement>(null);
+  const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
 
   // Sign-in dialog state
   const [showSignIn, setShowSignIn] = useState(false);
@@ -33,6 +60,32 @@ export function ProfilePopover() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [emailSent, setEmailSent] = useState(false);
   const [signInError, setSignInError] = useState<string | null>(null);
+
+  // Attach Places Autocomplete when popover opens
+  const initAutocomplete = useCallback(() => {
+    if (!addressInputRef.current || autocompleteRef.current) return;
+    autocompleteRef.current = new google.maps.places.Autocomplete(addressInputRef.current, {
+      types: ["address"],
+      componentRestrictions: { country: "us" },
+    });
+    autocompleteRef.current.addListener("place_changed", () => {
+      const place = autocompleteRef.current?.getPlace();
+      if (place?.formatted_address) {
+        setAddress(place.formatted_address);
+      }
+    });
+  }, []);
+
+  useEffect(() => {
+    if (!open) {
+      autocompleteRef.current = null;
+      return;
+    }
+    loadMapsScript(() => {
+      // Small delay to ensure input is rendered
+      setTimeout(initAutocomplete, 50);
+    });
+  }, [open, initAutocomplete]);
 
   // Load profile when popover opens
   useEffect(() => {
@@ -48,11 +101,13 @@ export function ProfilePopover() {
       .catch(() => {});
   }, [open, session?.access_token]);
 
-  // Close on outside click
+  // Close on outside click (ignore clicks on Places autocomplete dropdown)
   useEffect(() => {
     if (!open) return;
     function handleClick(e: MouseEvent) {
-      if (popoverRef.current && !popoverRef.current.contains(e.target as Node)) {
+      const target = e.target as HTMLElement;
+      if (target.closest(".pac-container")) return;
+      if (popoverRef.current && !popoverRef.current.contains(target)) {
         setOpen(false);
       }
     }
@@ -248,13 +303,14 @@ export function ProfilePopover() {
               <label htmlFor="profile-address" className="text-xs font-medium text-gray-600 block mb-1">
                 Home address
               </label>
-              <Input
+              <input
                 id="profile-address"
+                ref={addressInputRef}
                 type="text"
                 placeholder="123 Main St, City, State"
                 value={address}
                 onChange={(e) => setAddress(e.target.value)}
-                className="h-8 text-sm"
+                className="h-8 text-sm w-full rounded-md border border-input bg-transparent px-3 py-1 shadow-xs outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]"
               />
               <p className="text-[11px] text-gray-400 mt-1">Used for distance to locations</p>
             </div>
