@@ -53,9 +53,15 @@ Duplicate the Sports Academy facilities map functionality:
 ## Deployment
 
 **Deployed:** https://real-estate.alpha.school (primary) + https://parentpicker.vercel.app
-**Vercel auto-deploy is broken** — Git integration has had issues connecting. Always deploy manually:
-1. Build and test locally first (`npm run dev`)
-2. When ready, deploy with `vercel --prod`
+**Auto-deploy via git push** — `origin` pushes to both `trilogy-group/parent_picker` (primary) and `asiprice/parent_picker` (mirror). Vercel is connected to the mirror repo and auto-deploys on push. Just `git push` — no `vercel --prod` needed.
+
+**Trilogy-group Vercel workaround:** Vercel can't connect to `trilogy-group` org repos without an org admin installing the Vercel GitHub App. The workaround is to mirror to a personal repo (`asiprice/parent_picker`) via a second push URL on `origin`, then connect Vercel to the personal repo. To set this up for other trilogy-group projects:
+```bash
+gh repo create asiprice/<repo> --private
+git remote set-url --add origin git@github.com:asiprice/<repo>.git
+git push  # pushes to both
+# Then: Vercel dashboard → project Settings → Git → connect asiprice/<repo>
+```
 
 
 **Key files:**
