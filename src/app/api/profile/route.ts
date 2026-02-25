@@ -76,6 +76,7 @@ export async function PUT(request: NextRequest) {
     .from("pp_profiles")
     .upsert({
       id: user.id,
+      email: user.email,
       display_name: display_name?.trim() || null,
       home_address: home_address?.trim() || null,
       home_lat,
