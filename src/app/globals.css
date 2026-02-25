@@ -141,8 +141,3 @@
   font-size: 18px;
   color: #6b7280;
 }
-
-/* Google Places autocomplete dropdown above popover */
-.pac-container {
-  z-index: 9999 !important;
-}

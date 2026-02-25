@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Settings, LogIn, LogOut, Loader2, Check } from "lucide-react";
 import { useAuth } from "./AuthProvider";
 import { signInWithMagicLink, signOut } from "@/lib/auth";
@@ -15,29 +15,9 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 
-// Load Google Maps Places script once
-let mapsScriptLoaded = false;
-let mapsScriptLoading = false;
-const mapsCallbacks: (() => void)[] = [];
-
-function loadMapsScript(callback: () => void) {
-  if (mapsScriptLoaded) { callback(); return; }
-  mapsCallbacks.push(callback);
-  if (mapsScriptLoading) return;
-  mapsScriptLoading = true;
-
-  const key = process.env.NEXT_PUBLIC_GOOGLE_MAPS_KEY;
-  if (!key) return;
-
-  const script = document.createElement("script");
-  script.src = `https://maps.googleapis.com/maps/api/js?key=${key}&libraries=places`;
-  script.async = true;
-  script.onload = () => {
-    mapsScriptLoaded = true;
-    mapsCallbacks.forEach((cb) => cb());
-    mapsCallbacks.length = 0;
-  };
-  document.head.appendChild(script);
+interface Suggestion {
+  description: string;
+  place_id: string;
 }
 
 export function ProfilePopover() {
@@ -51,7 +31,11 @@ export function ProfilePopover() {
   const [error, setError] = useState<string | null>(null);
   const popoverRef = useRef<HTMLDivElement>(null);
   const addressInputRef = useRef<HTMLInputElement>(null);
-  const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
+
+  // Autocomplete suggestions state
+  const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Sign-in dialog state
   const [showSignIn, setShowSignIn] = useState(false);
@@ -60,42 +44,32 @@ export function ProfilePopover() {
   const [emailSent, setEmailSent] = useState(false);
   const [signInError, setSignInError] = useState<string | null>(null);
 
-  // Attach Places Autocomplete when popover opens
-  const initAutocomplete = useCallback(() => {
-    if (!addressInputRef.current || autocompleteRef.current) return;
-    if (!window.google?.maps?.places?.Autocomplete) {
-      console.warn("Google Maps Places not available");
-      return;
-    }
-    autocompleteRef.current = new google.maps.places.Autocomplete(addressInputRef.current, {
-      types: ["address"],
-      componentRestrictions: { country: "us" },
-    });
-    autocompleteRef.current.addListener("place_changed", () => {
-      const place = autocompleteRef.current?.getPlace();
-      if (place?.formatted_address && addressInputRef.current) {
-        addressInputRef.current.value = place.formatted_address;
-      }
-    });
-  }, []);
-
-  useEffect(() => {
-    if (!open) {
-      autocompleteRef.current = null;
-      return;
-    }
-    loadMapsScript(() => {
-      // Wait for input to render and Places library to be fully ready
-      const tryInit = (attempts: number) => {
-        if (addressInputRef.current && window.google?.maps?.places?.Autocomplete) {
-          initAutocomplete();
-        } else if (attempts < 10) {
-          setTimeout(() => tryInit(attempts + 1), 100);
+  // Fetch address suggestions via server-side proxy
+  const fetchSuggestions = (input: string) => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    if (input.length < 3) { setSuggestions([]); setShowSuggestions(false); return; }
+    debounceRef.current = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/places-autocomplete?input=${encodeURIComponent(input)}`);
+        const data = await res.json();
+        if (data.predictions?.length) {
+          setSuggestions(data.predictions);
+          setShowSuggestions(true);
+        } else {
+          setSuggestions([]);
+          setShowSuggestions(false);
         }
-      };
-      tryInit(0);
-    });
-  }, [open, initAutocomplete]);
+      } catch {
+        setSuggestions([]);
+      }
+    }, 300);
+  };
+
+  const selectSuggestion = (s: Suggestion) => {
+    if (addressInputRef.current) addressInputRef.current.value = s.description;
+    setSuggestions([]);
+    setShowSuggestions(false);
+  };
 
   // Load profile when popover opens
   useEffect(() => {
@@ -113,13 +87,11 @@ export function ProfilePopover() {
       .catch(() => {});
   }, [open, session?.access_token]);
 
-  // Close on outside click (ignore clicks on Places autocomplete dropdown)
+  // Close on outside click
   useEffect(() => {
     if (!open) return;
     function handleClick(e: MouseEvent) {
-      const target = e.target as HTMLElement;
-      if (target.closest(".pac-container")) return;
-      if (popoverRef.current && !popoverRef.current.contains(target)) {
+      if (popoverRef.current && !popoverRef.current.contains(e.target as Node)) {
         setOpen(false);
       }
     }
@@ -315,13 +287,32 @@ export function ProfilePopover() {
               <label htmlFor="profile-address" className="text-xs font-medium text-gray-600 block mb-1">
                 Home address
               </label>
-              <input
-                id="profile-address"
-                ref={addressInputRef}
-                type="text"
-                placeholder="123 Main St, City, State"
-                className="h-8 text-sm w-full rounded-md border border-input bg-transparent px-3 py-1 shadow-xs outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]"
-              />
+              <div className="relative">
+                <input
+                  id="profile-address"
+                  ref={addressInputRef}
+                  type="text"
+                  placeholder="123 Main St, City, State"
+                  onChange={(e) => fetchSuggestions(e.target.value)}
+                  onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
+                  autoComplete="off"
+                  className="h-8 text-sm w-full rounded-md border border-input bg-transparent px-3 py-1 shadow-xs outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]"
+                />
+                {showSuggestions && suggestions.length > 0 && (
+                  <div className="absolute left-0 right-0 top-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-[9999] max-h-48 overflow-y-auto">
+                    {suggestions.map((s) => (
+                      <button
+                        key={s.place_id}
+                        type="button"
+                        className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-blue-50 transition-colors"
+                        onMouseDown={() => selectSuggestion(s)}
+                      >
+                        {s.description}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
               <p className="text-[11px] text-gray-400 mt-1">Used for distance to locations</p>
             </div>
 
