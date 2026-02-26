@@ -293,22 +293,22 @@ export function AltPanel() {
                     <p className="text-[13px] text-gray-600 mt-3 leading-snug">
                       We&rsquo;re in late-stage talks for this space. Enough family support helps us finalize.
                     </p>
-                    {/* Progress bar */}
-                    <div className="mt-3">
-                      <div className="w-full bg-indigo-100 rounded-full h-5 relative overflow-hidden">
-                        <div className="bg-indigo-600 h-5 rounded-full transition-all" style={{ width: `${pct}%` }} />
-                        <span className="absolute inset-0 flex items-center justify-center text-[11px] font-medium text-gray-700">
-                          {loc.votes} in &middot; {remaining} to go
-                        </span>
-                        {pct > 0 && (
+                    {/* Progress bar — only show when there are votes */}
+                    {loc.votes > 0 && (
+                      <div className="mt-3">
+                        <div className="w-full bg-indigo-100 rounded-full h-5 relative overflow-hidden">
+                          <div className="bg-indigo-600 h-5 rounded-full transition-all" style={{ width: `${pct}%` }} />
+                          <span className="absolute inset-0 flex items-center justify-center text-[11px] font-medium text-gray-700">
+                            {loc.votes} in &middot; {remaining} to go
+                          </span>
                           <div className="absolute inset-y-0 left-0 overflow-hidden" style={{ width: `${pct}%` }}>
                             <span className="flex items-center justify-center text-[11px] font-medium text-white h-full whitespace-nowrap" style={{ width: `${10000 / pct}%` }}>
                               {loc.votes} in &middot; {remaining} to go
                             </span>
                           </div>
-                        )}
+                        </div>
                       </div>
-                    </div>
+                    )}
                     {/* Vote buttons */}
                     <div className="flex gap-2 mt-4">
                       {hasVoted ? (
