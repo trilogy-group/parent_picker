@@ -23,6 +23,7 @@ interface AltLocationCardProps {
   hasVotedNotHere: boolean;
   isAuthenticated: boolean;
   isSelected: boolean;
+  isProposed?: boolean;
   distanceMi?: number | null;
   onSelect: () => void;
   onVoteIn: () => void;
@@ -32,7 +33,7 @@ interface AltLocationCardProps {
 
 export function AltLocationCard({
   location, voters, hasVotedIn, hasVotedNotHere,
-  isAuthenticated, isSelected, distanceMi, onSelect, onVoteIn, onVoteNotHere, onRemoveVote,
+  isAuthenticated, isSelected, isProposed, distanceMi, onSelect, onVoteIn, onVoteNotHere, onRemoveVote,
 }: AltLocationCardProps) {
   const [showSignIn, setShowSignIn] = useState(false);
   const [notHereModalOpen, setNotHereModalOpen] = useState(false);
@@ -57,9 +58,16 @@ export function AltLocationCard({
         onClick={onSelect}
         className={cn(
           "border rounded-lg p-4 cursor-pointer transition-all hover:shadow-md",
-          isSelected ? "border-gray-900 shadow-md" : "border-gray-200",
+          isProposed
+            ? "border-2 border-indigo-300 bg-indigo-50/30"
+            : isSelected ? "border-gray-900 shadow-md" : "border-gray-200",
         )}
       >
+        {/* Proposed badge */}
+        {isProposed && (
+          <span className="text-[10px] font-bold tracking-widest text-indigo-600 uppercase block mb-1">Proposed</span>
+        )}
+
         {/* Name */}
         <h3 className="font-semibold text-[15px] leading-tight">
           {extractStreet(location.address, location.city)}
@@ -79,6 +87,13 @@ export function AltLocationCard({
               </span>
             )}
           </div>
+        )}
+
+        {/* Proposed one-liner */}
+        {isProposed && (
+          <p className="text-[12px] text-gray-500 mt-1 leading-snug">
+            We&rsquo;re pursuing this &mdash; your vote helps finalize
+          </p>
         )}
 
         {/* Avatar row */}
