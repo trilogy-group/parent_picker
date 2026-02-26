@@ -360,6 +360,7 @@ function mapBoundsRows(rows: Record<string, unknown>[]): Location[] {
     suggested: (row.source as string) === "parent_suggested",
     released: row.released as boolean | undefined,
     scores: mapRowToScores(row),
+    proposed: row.proposed === true,
   }));
 }
 
