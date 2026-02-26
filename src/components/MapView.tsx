@@ -173,6 +173,7 @@ export function MapView() {
           overallColor: loc.scores?.overallColor || null,
           suggested: loc.suggested || false,
           selected: loc.id === selectedLocationId,
+          proposed: loc.proposed === true,
         },
       })),
     };
@@ -514,6 +515,18 @@ export function MapView() {
                 2,
               ],
               "circle-stroke-color": "#ffffff",
+            }}
+          />
+          <Layer
+            id="proposed-dots"
+            type="circle"
+            source="locations"
+            filter={["==", ["get", "proposed"], true]}
+            paint={{
+              "circle-radius": 10,
+              "circle-color": "#6366f1",
+              "circle-stroke-width": 3,
+              "circle-stroke-color": "#c7d2fe",
             }}
           />
         </Source>

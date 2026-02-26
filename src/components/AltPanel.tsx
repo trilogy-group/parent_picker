@@ -11,7 +11,9 @@ import { InviteModal } from "./InviteModal";
 import { ProfilePopover } from "./ProfilePopover";
 import { getDistanceMiles } from "@/lib/locations";
 import { sortMostSupport, sortMostViable } from "@/lib/sort";
-import { Eye } from "lucide-react";
+import { Eye, Check } from "lucide-react";
+import { extractStreet } from "@/lib/address";
+import { AvatarRow } from "./AvatarRow";
 
 const PAGE_SIZE = 25;
 
@@ -55,6 +57,8 @@ export function AltPanel() {
   const { user, session, isAdmin } = useAuth();
   const isAuthenticated = !!user;
   const router = useRouter();
+
+
 
   // Find selected location for detail view
   const selectedLocation = selectedLocationId
@@ -114,6 +118,14 @@ export function AltPanel() {
     return [...inView].sort(sortFn);
   }, [filteredLocations, mapBounds, sortMode, locations, altSizeFilter]);
 
+  const proposedLocations = useMemo(() => {
+    return sortedLocations.filter(loc => loc.proposed);
+  }, [sortedLocations]);
+
+  const regularLocations = useMemo(() => {
+    return sortedLocations.filter(loc => !loc.proposed);
+  }, [sortedLocations]);
+
   const TOP_N = 10;
 
   // Pagination — track extra pages loaded beyond first page (only used in "show all" mode)
@@ -125,9 +137,10 @@ export function AltPanel() {
     setPrevResetKey(resetKey);
     if (extraPages !== 0) setExtraPages(0);
   }
+  const listLocations = proposedLocations.length > 0 ? regularLocations : sortedLocations;
   const visibleLocations = showTopOnly
-    ? sortedLocations.slice(0, TOP_N)
-    : sortedLocations.slice(0, (extraPages + 1) * PAGE_SIZE);
+    ? listLocations.slice(0, TOP_N)
+    : listLocations.slice(0, (extraPages + 1) * PAGE_SIZE);
 
   // Load voter details for visible cards
   const visibleIdKey = visibleLocations.map(l => l.id).join(',');
@@ -229,6 +242,85 @@ export function AltPanel() {
       ) : (
         /* Zoomed-in: location cards with sort pills */
         <>
+          {/* Hero section for proposed locations (Approach A) */}
+          {proposedLocations.length > 0 && (
+            <div className="px-5 pb-4">
+              {proposedLocations.map((loc) => {
+                const hasVoted = votedLocationIds.has(loc.id);
+                const dist = userLocation ? getDistanceMiles(userLocation.lat, userLocation.lng, loc.lat, loc.lng) : null;
+                return (
+                  <div
+                    key={loc.id}
+                    onClick={() => {
+                      setSelectedLocation(loc.id);
+                      if (typeof window !== 'undefined' && window.innerWidth < 1024) {
+                        router.push(`/location/${loc.id}`);
+                      }
+                    }}
+                    className="border-2 border-indigo-300 bg-indigo-50/50 rounded-xl p-5 cursor-pointer hover:shadow-lg transition-all"
+                  >
+                    <span className="text-[10px] font-bold tracking-widest text-indigo-600 uppercase">Proposed Location</span>
+                    <h3 className="text-lg font-bold text-gray-900 mt-1">
+                      {extractStreet(loc.address, loc.city)}
+                    </h3>
+                    <p className="text-sm text-gray-500 mt-0.5">
+                      {loc.city}, {loc.state}
+                      {dist != null ? ` · ${dist.toFixed(1)} mi` : ''}
+                    </p>
+                    <p className="text-[13px] text-gray-600 mt-3 leading-snug">
+                      We&rsquo;re in late-stage talks for this space. Enough family support helps us finalize.
+                    </p>
+                    {/* Avatars + count */}
+                    {loc.votes > 0 && (
+                      <div className="flex items-center gap-2 mt-3">
+                        <AvatarRow voters={locationVoters.get(loc.id) || []} />
+                        <span className="text-sm text-gray-600 font-medium">{loc.votes} in</span>
+                      </div>
+                    )}
+                    {/* Concerns */}
+                    {loc.notHereVotes > 0 && (
+                      <p className="text-xs text-amber-600 mt-1">
+                        {loc.notHereVotes} concern{loc.notHereVotes !== 1 ? "s" : ""}
+                      </p>
+                    )}
+                    {/* Vote buttons */}
+                    <div className="flex gap-2 mt-4">
+                      {hasVoted ? (
+                        <div className="flex items-center gap-1.5 text-sm text-gray-700 font-medium py-2">
+                          <div className="w-5 h-5 rounded-full bg-indigo-600 flex items-center justify-center">
+                            <Check className="w-3 h-3 text-white" />
+                          </div>
+                          You&apos;re in
+                          <button onClick={(e) => { e.stopPropagation(); removeVote(loc.id); }} className="ml-2 text-xs text-gray-400 hover:text-gray-600 underline">undo</button>
+                        </div>
+                      ) : (
+                        <>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); voteIn(loc.id); }}
+                            className="flex-1 py-2.5 rounded-lg text-sm font-semibold bg-indigo-600 text-white hover:bg-indigo-700 transition-colors"
+                          >
+                            I&apos;d choose this location
+                          </button>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); }}
+                            className="px-4 py-2.5 rounded-lg text-sm font-medium border border-gray-300 text-gray-700 hover:bg-gray-50 transition-colors"
+                          >
+                            Not for me
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+              <div className="flex items-center gap-3 mt-4 mb-1">
+                <div className="flex-1 h-px bg-gray-200" />
+                <span className="text-xs text-gray-400 font-medium">Also in this area</span>
+                <div className="flex-1 h-px bg-gray-200" />
+              </div>
+            </div>
+          )}
+
           {/* Legend + Size filter + Sort pills */}
           <div className="px-5 pb-2 pt-1 sticky top-0 bg-white z-10">
             <div className="flex items-center gap-3 text-[11px] text-gray-500 mb-2">
@@ -285,7 +377,7 @@ export function AltPanel() {
               onClick={() => { setShowTopOnly(!showTopOnly); setExtraPages(0); }}
               className="ml-auto text-xs text-blue-600 font-medium hover:underline"
             >
-              {showTopOnly ? `Show all (${sortedLocations.length})` : 'Top 10'}
+              {showTopOnly ? `Show all (${listLocations.length})` : 'Top 10'}
             </button>
           </div>
 
@@ -300,6 +392,7 @@ export function AltPanel() {
                 hasVotedNotHere={votedNotHereIds.has(loc.id)}
                 isAuthenticated={isAuthenticated}
                 isSelected={false}
+                isProposed={false}
                 distanceMi={userLocation ? getDistanceMiles(userLocation.lat, userLocation.lng, loc.lat, loc.lng) : null}
                 onSelect={() => {
                   setSelectedLocation(loc.id);
@@ -312,7 +405,7 @@ export function AltPanel() {
                 onRemoveVote={() => removeVote(loc.id)}
               />
             ))}
-            {!showTopOnly && sortedLocations.length > visibleLocations.length && (
+            {!showTopOnly && listLocations.length > visibleLocations.length && (
               <button
                 onClick={() => setExtraPages(p => p + 1)}
                 className="w-full py-2 text-sm text-blue-600 font-medium hover:underline"

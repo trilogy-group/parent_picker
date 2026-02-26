@@ -14,6 +14,9 @@ export function greenSubRank(loc: Location): number {
 }
 
 export function sortMostViable(a: Location, b: Location): number {
+  // Proposed locations always first
+  if (a.proposed && !b.proposed) return -1;
+  if (!a.proposed && b.proposed) return 1;
   const aRank = COLOR_RANK[a.scores?.overallColor || ""] ?? 99;
   const bRank = COLOR_RANK[b.scores?.overallColor || ""] ?? 99;
   if (aRank !== bRank) return aRank - bRank;
@@ -23,6 +26,9 @@ export function sortMostViable(a: Location, b: Location): number {
 }
 
 export function sortMostSupport(a: Location, b: Location): number {
+  // Proposed locations always first
+  if (a.proposed && !b.proposed) return -1;
+  if (!a.proposed && b.proposed) return 1;
   if (b.votes !== a.votes) return b.votes - a.votes;
   return sortMostViable(a, b);
 }

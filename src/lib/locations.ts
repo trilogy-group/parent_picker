@@ -236,6 +236,7 @@ function mapRows(rows: Record<string, unknown>[]): Location[] {
     notHereVotes: Number(row.not_here_count) || 0,
     suggested: row.source === "parent_suggested",
     scores: mapRowToScores(row),
+    proposed: row.proposed === true,
   }));
 }
 
@@ -359,6 +360,7 @@ function mapBoundsRows(rows: Record<string, unknown>[]): Location[] {
     suggested: (row.source as string) === "parent_suggested",
     released: row.released as boolean | undefined,
     scores: mapRowToScores(row),
+    proposed: row.proposed === true,
   }));
 }
 
