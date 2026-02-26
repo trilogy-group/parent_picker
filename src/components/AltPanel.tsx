@@ -58,7 +58,7 @@ export function AltPanel() {
   const isAuthenticated = !!user;
   const router = useRouter();
 
-  const [proposedStyle, setProposedStyle] = useState<"hero" | "pinned">("hero");
+
 
   // Find selected location for detail view
   const selectedLocation = selectedLocationId
@@ -137,7 +137,7 @@ export function AltPanel() {
     setPrevResetKey(resetKey);
     if (extraPages !== 0) setExtraPages(0);
   }
-  const listLocations = proposedStyle === "hero" ? regularLocations : sortedLocations;
+  const listLocations = proposedLocations.length > 0 ? regularLocations : sortedLocations;
   const visibleLocations = showTopOnly
     ? listLocations.slice(0, TOP_N)
     : listLocations.slice(0, (extraPages + 1) * PAGE_SIZE);
@@ -218,27 +218,6 @@ export function AltPanel() {
         </a>
       </div>
 
-      {/* Admin A/B toggle for proposed style */}
-      {isAdmin && !showCityCards && proposedLocations.length > 0 && (
-        <div className="px-5 pb-2">
-          <div className="flex items-center gap-2 text-[11px]">
-            <span className="text-gray-400">Proposed style:</span>
-            <button
-              onClick={() => setProposedStyle("hero")}
-              className={`px-2 py-0.5 rounded ${proposedStyle === "hero" ? "bg-indigo-100 text-indigo-700 font-medium" : "text-gray-500 hover:text-gray-700"}`}
-            >
-              A: Hero
-            </button>
-            <button
-              onClick={() => setProposedStyle("pinned")}
-              className={`px-2 py-0.5 rounded ${proposedStyle === "pinned" ? "bg-indigo-100 text-indigo-700 font-medium" : "text-gray-500 hover:text-gray-700"}`}
-            >
-              B: Pinned
-            </button>
-          </div>
-        </div>
-      )}
-
       {showCityCards ? (
         /* Zoomed-out: city summary cards */
         <div className="px-4 py-2 space-y-2">
@@ -264,7 +243,7 @@ export function AltPanel() {
         /* Zoomed-in: location cards with sort pills */
         <>
           {/* Hero section for proposed locations (Approach A) */}
-          {proposedStyle === "hero" && proposedLocations.length > 0 && (
+          {proposedLocations.length > 0 && (
             <div className="px-5 pb-4">
               {proposedLocations.map((loc) => {
                 const hasVoted = votedLocationIds.has(loc.id);
@@ -413,7 +392,7 @@ export function AltPanel() {
                 hasVotedNotHere={votedNotHereIds.has(loc.id)}
                 isAuthenticated={isAuthenticated}
                 isSelected={false}
-                isProposed={proposedStyle === "pinned" && loc.proposed === true}
+                isProposed={false}
                 distanceMi={userLocation ? getDistanceMiles(userLocation.lat, userLocation.lng, loc.lat, loc.lng) : null}
                 onSelect={() => {
                   setSelectedLocation(loc.id);
