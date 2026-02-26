@@ -24,6 +24,7 @@ export interface Location {
   notHereVotes: number;   // count of 'not_here' votes
   suggested?: boolean;
   released?: boolean;
+  proposed?: boolean;
   scores?: LocationScores;
 }
 

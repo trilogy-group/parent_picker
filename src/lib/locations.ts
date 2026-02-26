@@ -236,6 +236,7 @@ function mapRows(rows: Record<string, unknown>[]): Location[] {
     notHereVotes: Number(row.not_here_count) || 0,
     suggested: row.source === "parent_suggested",
     scores: mapRowToScores(row),
+    proposed: row.proposed === true,
   }));
 }
 
