@@ -4,7 +4,7 @@ const resend = process.env.RESEND_API_KEY
   ? new Resend(process.env.RESEND_API_KEY)
   : null;
 
-const FROM_EMAIL = "Alpha Schools <alpha_school@resend.dev>";
+const FROM_EMAIL = "Alpha Schools <info@real-estate.alpha.school>";
 
 export interface EmailLocationInfo {
   name: string;
@@ -85,7 +85,7 @@ export async function sendEmail(to: string, subject: string, html: string): Prom
   }
 
   try {
-    const result = await resend.emails.send({ from: FROM_EMAIL, replyTo: "real_estate@alpha.school", to, subject, html });
+    const result = await resend.emails.send({ from: FROM_EMAIL, to, subject, html });
     if (result.error) {
       console.error("Resend error:", result.error);
       return { success: false, error: result.error.message };

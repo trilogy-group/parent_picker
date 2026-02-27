@@ -40,6 +40,7 @@ export const US_METROS: Metro[] = [
   { name: "Bakersfield", state: "CA", lat: 35.3733, lng: -119.0187 },
 
   // Northeast
+  { name: "Greenwich", state: "CT", lat: 41.0262, lng: -73.6282 },
   { name: "New York", state: "NY", lat: 40.7128, lng: -74.0060 },
   { name: "Boston", state: "MA", lat: 42.3601, lng: -71.0589 },
   { name: "Philadelphia", state: "PA", lat: 39.9526, lng: -75.1652 },
