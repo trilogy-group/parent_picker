@@ -187,13 +187,13 @@ export const useVotesStore = create<VotesState>((set, get) => ({
 
   setIsAdmin: (isAdmin) => set({ isAdmin }),
 
-  setViewAsParent: (viewAsParent) => set({ viewAsParent }),
+  setViewAsParent: (viewAsParent) => set({ viewAsParent, lastFetchBounds: null }),
 
   setShowRedLocations: (showRedLocations) => set({ showRedLocations }),
 
   setShowUnscored: (showUnscored) => set({ showUnscored }),
 
-  setReleasedFilter: (releasedFilter) => set({ releasedFilter }),
+  setReleasedFilter: (releasedFilter) => set({ releasedFilter, lastFetchBounds: null }),
 
   setCardVersion: (cardVersion) => set({ cardVersion }),
 
