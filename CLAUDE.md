@@ -197,6 +197,20 @@ git push  # pushes to both
 - `src/components/MapView.tsx` — respects profile location source priority
 - `src/components/AuthProvider.tsx` — loads profile on auth, sets userLocation with "profile" source
 
+### Mobile View Fixes (2026-02-27) — DONE
+
+**Three issues fixed:**
+
+1. **Hero view not rendering on mobile**: Map is CSS-hidden on mobile (`hidden lg:block`), so `handleMoveEnd` never fired properly → `mapBounds` never set → `sortedLocations` filtered everything out. Fix: set `mapBounds` + `mapCenter` immediately from `approxBounds()` in flyToTarget handler.
+
+2. **Metro zoom too tight**: City card click was hardcoded to zoom 11, showing only a small geographic slice. Changed to zoom 9 (widest location-level view before city cards appear).
+
+3. **Hidden map overwriting bounds**: `handleMoveEnd` fired on the zero-size hidden map canvas, overwriting correct bounds with garbage from `getBounds()`. Fix: bail out of `handleMoveEnd` when `container.clientWidth === 0`.
+
+4. **"Show all" count off by proposed locations**: Used `sortedLocations.length` instead of `listLocations.length` so proposed locations (shown in hero) are included in the total.
+
+**Key files modified:** `src/components/MapView.tsx`, `src/components/AltPanel.tsx`
+
 ### Pending / Next steps
 - **Supabase auth redirect URL** — add `https://real-estate.alpha.school/**` to Authentication → URL Configuration so magic links work from the new domain
 - **REBL scoring bug**: `overall_color` wrong for ~74% of scored rows — needs fix in REBL
