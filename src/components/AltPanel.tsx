@@ -377,7 +377,7 @@ export function AltPanel() {
               onClick={() => { setShowTopOnly(!showTopOnly); setExtraPages(0); }}
               className="ml-auto text-xs text-blue-600 font-medium hover:underline"
             >
-              {showTopOnly ? `Show all (${listLocations.length})` : 'Top 10'}
+              {showTopOnly ? `Show all (${sortedLocations.length})` : 'Top 10'}
             </button>
           </div>
 
