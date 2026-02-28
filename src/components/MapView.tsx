@@ -345,6 +345,12 @@ export function MapView() {
 
     flyingRef.current = false;
 
+    // Skip bounds update if map container is hidden/zero-size (mobile altUI).
+    // getBounds() returns garbage on a zero-size canvas and would overwrite
+    // the correct approxBounds set by the flyToTarget handler.
+    const container = map.getContainer();
+    if (!container || container.clientWidth === 0 || container.clientHeight === 0) return;
+
     const center = map.getCenter();
     const zoom = map.getZoom();
     const bounds = map.getBounds();
