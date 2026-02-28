@@ -224,7 +224,7 @@ export function AltPanel() {
           {sortedCities.map((city) => (
             <button
               key={`${city.city}-${city.state}`}
-              onClick={() => setFlyToTarget({ lat: city.lat, lng: city.lng, zoom: 11 })}
+              onClick={() => setFlyToTarget({ lat: city.lat, lng: city.lng, zoom: 9 })}
               className="w-full p-4 bg-white rounded-xl border border-gray-200 text-left hover:border-blue-300 transition-colors"
             >
               <p className="font-semibold text-gray-900">{city.city}, {city.state}</p>

@@ -286,10 +286,15 @@ export function MapView() {
     if (flyToTarget) {
       const targetZoom = flyToTarget.zoom ?? 14;
       flyToCoords(flyToTarget, targetZoom);
-      fetchNearbyForce(approxBounds(flyToTarget, targetZoom));
+      const bounds = approxBounds(flyToTarget, targetZoom);
+      fetchNearbyForce(bounds);
+      // Set bounds/center immediately so the panel filters correctly even if
+      // the map is hidden (mobile) and handleMoveEnd never fires.
+      setMapBounds(bounds);
+      setMapCenter({ lat: flyToTarget.lat, lng: flyToTarget.lng });
       setFlyToTarget(null);
     }
-  }, [flyToTarget, flyToCoords, setFlyToTarget, fetchNearbyForce]);
+  }, [flyToTarget, flyToCoords, setFlyToTarget, fetchNearbyForce, setMapBounds, setMapCenter]);
 
   // Fly to preview location
   useEffect(() => {
