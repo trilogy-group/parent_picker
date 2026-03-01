@@ -85,7 +85,7 @@ export async function sendEmail(to: string, subject: string, html: string): Prom
   }
 
   try {
-    const result = await resend.emails.send({ from: FROM_EMAIL, to, subject, html });
+    const result = await resend.emails.send({ from: FROM_EMAIL, replyTo: "real-estate@alpha.school", to, subject, html });
     if (result.error) {
       console.error("Resend error:", result.error);
       return { success: false, error: result.error.message };
