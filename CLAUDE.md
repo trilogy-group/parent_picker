@@ -212,11 +212,8 @@ git push  # pushes to both
 **Key files modified:** `src/components/MapView.tsx`, `src/components/AltPanel.tsx`
 
 ### Pending / Next steps
-- **Supabase auth redirect URL** — add `https://real-estate.alpha.school/**` to Authentication → URL Configuration so magic links work from the new domain
-- **REBL scoring bug**: `overall_color` wrong for ~74% of scored rows — needs fix in REBL
-- REBL needs to score ~1,166 unscored locations and fill sub-score gaps (Price: 140 missing)
-- **Resend domain switch** — add `alpha.school` domain in Resend dashboard, add DNS records (MX/SPF/DKIM), then update `FROM_EMAIL` in `src/lib/email.ts` to `real_estate@alpha.school` and remove `replyTo`
-- Vercel env vars already set: `SUPABASE_SERVICE_ROLE_KEY`, `RESEND_API_KEY`, `ADMIN_EMAILS`, `NEXT_PUBLIC_ADMIN_EMAILS`, `NEXT_PUBLIC_GOOGLE_MAPS_KEY`
+- Complete remaining proposed location uploads (brochures in Google Drive)
+- Push and test LocationDetailView changes for proposed locations
 
 ## File Structure
 
