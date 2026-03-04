@@ -399,7 +399,7 @@ export function AltPanel() {
           <div className="px-5 pb-3 flex items-center gap-2 flex-wrap">
             <span className="text-xs text-gray-500">Sort</span>
             {([
-              { mode: 'most_support' as const, label: 'Most support' },
+              { mode: 'most_support' as const, label: 'Supported' },
               ...( userLocation ? [{ mode: 'nearest' as const, label: 'Nearest' }] : []),
             ]).map(({ mode, label }) => (
               <button
@@ -430,7 +430,7 @@ export function AltPanel() {
                     : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                 }`}
               >
-                Most viable{viableSubPriority && sortMode === 'most_viable' ? ` · ${viableSubPriority.charAt(0).toUpperCase() + viableSubPriority.slice(1)}` : ''}
+                Viable{viableSubPriority && sortMode === 'most_viable' ? ` · ${viableSubPriority.charAt(0).toUpperCase() + viableSubPriority.slice(1)}` : ''}
                 {effectiveAdmin && sortMode === 'most_viable' && (
                   <ChevronDown className="w-3 h-3" />
                 )}
