@@ -128,18 +128,11 @@ export function AltPanel() {
   // Sort and filter locations in viewport
   const sortedLocations = useMemo(() => {
     const filtered = filteredLocations();
-    // "Nearest" sorts ALL locations (not just in-viewport) so top 10 nearest is meaningful
-    let pool: typeof filtered;
-    if (sortMode === 'nearest') {
-      pool = filtered;
-    } else if (!mapBounds) {
-      pool = filtered;
-    } else {
-      pool = filtered.filter(loc =>
-        loc.lat <= mapBounds.north && loc.lat >= mapBounds.south &&
-        loc.lng <= mapBounds.east && loc.lng >= mapBounds.west
-      );
-    }
+    if (!mapBounds) return filtered;
+    const pool = filtered.filter(loc =>
+      loc.lat <= mapBounds.north && loc.lat >= mapBounds.south &&
+      loc.lng <= mapBounds.east && loc.lng >= mapBounds.west
+    );
     let sortFn: (a: typeof pool[0], b: typeof pool[0]) => number;
     if (sortMode === 'nearest' && userLocation) {
       sortFn = makeSortNearest(userLocation.lat, userLocation.lng);
