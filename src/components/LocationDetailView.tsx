@@ -8,7 +8,7 @@ import NotHereReasonModal from "./NotHereReasonModal";
 import { HelpModal } from "./HelpModal";
 import { SignInPrompt } from "./SignInPrompt";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
-import { ArrowLeft, ExternalLink, ChevronLeft, ChevronRight, FileText } from "lucide-react";
+import { ArrowLeft, ExternalLink, ChevronLeft, ChevronRight, FileText, Plus, Minus } from "lucide-react";
 
 const LAUNCH_THRESHOLD = 30;
 
@@ -52,6 +52,7 @@ export default function LocationDetailView({
   const [photos, setPhotos] = useState<string[]>([]);
   const [brochureUrl, setBrochureUrl] = useState<string | null>(null);
   const [photoIndex, setPhotoIndex] = useState(0);
+  const [mapZoom, setMapZoom] = useState(15);
 
   const mapsKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_KEY;
 
@@ -222,7 +223,7 @@ export default function LocationDetailView({
                 <img
                   src={heroMode === "street"
                     ? `https://maps.googleapis.com/maps/api/streetview?size=800x300&location=${location.lat},${location.lng}&key=${mapsKey}`
-                    : `https://maps.googleapis.com/maps/api/staticmap?center=${location.lat},${location.lng}&zoom=15&size=800x300&markers=color:blue%7C${location.lat},${location.lng}&key=${mapsKey}`
+                    : `https://maps.googleapis.com/maps/api/staticmap?center=${location.lat},${location.lng}&zoom=${mapZoom}&size=800x300&markers=color:blue%7C${location.lat},${location.lng}&key=${mapsKey}`
                   }
                   alt={heroMode === "street"
                     ? `Street view of ${extractStreet(location.address, location.city)}`
@@ -230,6 +231,22 @@ export default function LocationDetailView({
                   }
                   className="w-full h-full object-cover"
                 />
+                {heroMode === "map" && (
+                  <div className="absolute top-2 left-2 flex flex-col gap-1">
+                    <button
+                      onClick={() => setMapZoom(z => Math.min(z + 1, 20))}
+                      className="bg-white/90 backdrop-blur hover:bg-white shadow-sm rounded-md w-7 h-7 flex items-center justify-center transition-colors"
+                    >
+                      <Plus className="w-4 h-4 text-gray-700" />
+                    </button>
+                    <button
+                      onClick={() => setMapZoom(z => Math.max(z - 1, 5))}
+                      className="bg-white/90 backdrop-blur hover:bg-white shadow-sm rounded-md w-7 h-7 flex items-center justify-center transition-colors"
+                    >
+                      <Minus className="w-4 h-4 text-gray-700" />
+                    </button>
+                  </div>
+                )}
               </>
             )}
             {/* Toggle button — always exactly 2 options: photos/street + map */}
