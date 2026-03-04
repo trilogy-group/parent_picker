@@ -400,7 +400,6 @@ export function AltPanel() {
             <span className="text-xs text-gray-500">Sort</span>
             {([
               { mode: 'most_support' as const, label: 'Supported' },
-              ...( userLocation ? [{ mode: 'nearest' as const, label: 'Nearest' }] : []),
             ]).map(({ mode, label }) => (
               <button
                 key={mode}
@@ -457,8 +456,20 @@ export function AltPanel() {
                 </div>
               )}
             </div>
+            {userLocation && (
+              <button
+                onClick={() => { setSortMode('nearest'); setViableSubPriority(null); }}
+                className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
+                  sortMode === 'nearest'
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                }`}
+              >
+                Nearest
+              </button>
+            )}
           </div>
-          {/* Search + Show all row (search admin-only, show all always visible) */}
+          {/* Search + Show all row */}
           <div className="px-5 pb-3 flex items-center gap-2">
             <div className="flex items-center flex-1 gap-1 relative">
               <Search className="w-3.5 h-3.5 text-gray-400 absolute left-2.5 pointer-events-none" />
