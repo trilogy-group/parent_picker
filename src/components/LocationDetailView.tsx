@@ -8,7 +8,7 @@ import NotHereReasonModal from "./NotHereReasonModal";
 import { HelpModal } from "./HelpModal";
 import { SignInPrompt } from "./SignInPrompt";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
-import { ArrowLeft, ExternalLink } from "lucide-react";
+import { ArrowLeft, ExternalLink, ChevronLeft, ChevronRight, FileText } from "lucide-react";
 
 const LAUNCH_THRESHOLD = 30;
 
@@ -49,8 +49,26 @@ export default function LocationDetailView({
   const [contribution, setContribution] = useState("");
   const [contributionSubmitted, setContributionSubmitted] = useState(false);
   const [contributionSubmitting, setContributionSubmitting] = useState(false);
+  const [photos, setPhotos] = useState<string[]>([]);
+  const [brochureUrl, setBrochureUrl] = useState<string | null>(null);
+  const [photoIndex, setPhotoIndex] = useState(0);
 
   const mapsKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_KEY;
+
+  // Fetch photos and brochure for proposed locations
+  useEffect(() => {
+    if (!location.proposed) return;
+    setPhotos([]);
+    setBrochureUrl(null);
+    setPhotoIndex(0);
+    fetch(`/api/locations/${location.id}/photos`)
+      .then(res => res.json())
+      .then(data => {
+        if (data.photos) setPhotos(data.photos);
+        if (data.brochureUrl) setBrochureUrl(data.brochureUrl);
+      })
+      .catch(() => {});
+  }, [location.id, location.proposed]);
 
   // Check if street view is available for this location
   useEffect(() => {
@@ -158,8 +176,47 @@ export default function LocationDetailView({
           Back to locations
         </button>
 
-        {/* 2. Hero image — street view or map, with toggle */}
-        {mapsKey && (
+        {/* 2. Hero image — photo carousel for proposed locations, or street view/map */}
+        {photos.length > 0 ? (
+          <div className="w-full h-56 bg-gray-100 relative overflow-hidden">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={photos[photoIndex]}
+              alt={`${extractStreet(location.address, location.city)} photo ${photoIndex + 1}`}
+              className="w-full h-full object-cover"
+            />
+            {photos.length > 1 && (
+              <>
+                <button
+                  onClick={() => setPhotoIndex((photoIndex - 1 + photos.length) % photos.length)}
+                  className="absolute left-2 top-1/2 -translate-y-1/2 bg-black/40 hover:bg-black/60 text-white rounded-full w-8 h-8 flex items-center justify-center transition-colors"
+                >
+                  <ChevronLeft className="w-5 h-5" />
+                </button>
+                <button
+                  onClick={() => setPhotoIndex((photoIndex + 1) % photos.length)}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 bg-black/40 hover:bg-black/60 text-white rounded-full w-8 h-8 flex items-center justify-center transition-colors"
+                >
+                  <ChevronRight className="w-5 h-5" />
+                </button>
+                <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1.5">
+                  {photos.map((_, i) => (
+                    <button
+                      key={i}
+                      onClick={() => setPhotoIndex(i)}
+                      className={`w-2 h-2 rounded-full transition-colors ${i === photoIndex ? "bg-white" : "bg-white/50"}`}
+                    />
+                  ))}
+                </div>
+              </>
+            )}
+            {location.proposed && (
+              <span className="absolute top-2 left-2 bg-blue-600 text-white text-[10px] font-bold tracking-wider px-2.5 py-1 rounded-full">
+                PROPOSED
+              </span>
+            )}
+          </div>
+        ) : mapsKey ? (
           <div className="w-full h-48 bg-gray-100 relative">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
@@ -181,8 +238,13 @@ export default function LocationDetailView({
                 {heroMode === "street" ? "Map" : "Street View"}
               </button>
             )}
+            {location.proposed && (
+              <span className="absolute top-2 left-2 bg-blue-600 text-white text-[10px] font-bold tracking-wider px-2.5 py-1 rounded-full">
+                PROPOSED
+              </span>
+            )}
           </div>
-        )}
+        ) : null}
 
         <div className="px-4 pb-8">
           {/* 3. Location name + status badge + size tier */}
@@ -226,6 +288,20 @@ export default function LocationDetailView({
               ) : null;
             })()}
           </div>
+
+          {/* Brochure link for proposed locations */}
+          {brochureUrl && (
+            <a
+              href={brochureUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-2 mt-3 text-sm text-blue-600 hover:text-blue-700 font-medium"
+            >
+              <FileText className="w-4 h-4" />
+              View property brochure
+              <ExternalLink className="w-3 h-3" />
+            </a>
+          )}
 
           {/* Details link box */}
           {location.scores?.overallDetailsUrl && (

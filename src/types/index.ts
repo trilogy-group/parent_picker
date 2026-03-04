@@ -26,6 +26,8 @@ export interface Location {
   released?: boolean;
   proposed?: boolean;
   scores?: LocationScores;
+  photos?: string[];
+  brochureUrl?: string | null;
 }
 
 export type VoteType = 'in' | 'not_here';
