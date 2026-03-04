@@ -8,6 +8,7 @@ export interface LocationScores {
   price: SubScore;
   zoning: SubScore;
   neighborhood: SubScore;
+  playArea: SubScore;
   building: SubScore;
   sizeClassification: string | null;
 }

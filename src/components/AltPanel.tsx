@@ -446,6 +446,7 @@ export function AltPanel() {
                     { value: null, label: 'Default (overall)' },
                     { value: 'zoning' as const, label: 'Zoning' },
                     { value: 'neighborhood' as const, label: 'Neighborhood' },
+                    { value: 'playArea' as const, label: 'Play Area' },
                     { value: 'building' as const, label: 'Building' },
                     { value: 'price' as const, label: 'Price' },
                   ]).map((opt) => (

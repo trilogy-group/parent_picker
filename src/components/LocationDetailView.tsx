@@ -404,6 +404,7 @@ export default function LocationDetailView({
               if (location.scores?.zoning?.color === "RED") issues.push("Zoning");
               if (location.scores?.price?.color === "RED") issues.push("Price");
               if (location.scores?.neighborhood?.color === "RED") issues.push("Neighborhood");
+              if (location.scores?.playArea?.color === "RED") issues.push("Play Area");
               if (location.scores?.building?.color === "RED") issues.push("Building");
               return issues.length > 0 ? (
                 <p className="text-xs text-red-500 mt-1.5">

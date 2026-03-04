@@ -56,7 +56,7 @@ interface VotesState {
   userLocationSource: "geo" | "profile" | null;       // Where userLocation came from
   showTopOnly: boolean;                                // Top 10 vs Show all toggle (shared with MapView)
   altSizeFilter: "micro" | "all";                      // New UI size filter: micro-only or all sizes
-  viableSubPriority: 'zoning' | 'neighborhood' | 'building' | 'price' | null;  // Admin: subscore sort priority
+  viableSubPriority: 'zoning' | 'neighborhood' | 'playArea' | 'building' | 'price' | null;  // Admin: subscore sort priority
   deepLinkTab: "in" | "concerns" | "other" | null;  // Tab from URL deep link
 
   setLocations: (locations: Location[]) => void;
@@ -91,7 +91,7 @@ interface VotesState {
   setAltSizeFilter: (value: "micro" | "all") => void;
   updateVoteComment: (locationId: string, comment: string) => void;
   setDeepLinkTab: (tab: "in" | "concerns" | "other" | null) => void;
-  setViableSubPriority: (priority: 'zoning' | 'neighborhood' | 'building' | 'price' | null) => void;
+  setViableSubPriority: (priority: 'zoning' | 'neighborhood' | 'playArea' | 'building' | 'price' | null) => void;
   loadCitySummaries: () => Promise<void>;
   fetchNearby: (bounds: MapBounds) => Promise<void>;
   fetchNearbyForce: (bounds: MapBounds) => Promise<void>;

@@ -22,6 +22,7 @@ function mockScores(index: number): LocationScores {
     price: { color: COLORS[Math.floor(rand() * 4)] },
     zoning: { color: COLORS[Math.floor(rand() * 4)] },
     neighborhood: { color: COLORS[Math.floor(rand() * 4)] },
+    playArea: { color: null },
     building: { color: COLORS[Math.floor(rand() * 4)] },
     sizeClassification: ["Micro", "Micro2", "Growth", "Full Size"][Math.floor(rand() * 4)],
   };
@@ -36,6 +37,7 @@ function mapRowToScores(row: Record<string, unknown>): LocationScores | undefine
     price: { color: (row.price_color as string) || null },
     zoning: { color: (row.zoning_color as string) || null },
     neighborhood: { color: (row.neighborhood_color as string) || null },
+    playArea: { color: (row.play_area_color as string) || null },
     building: { color: (row.building_color as string) || null },
     sizeClassification: (row.size_classification as string) || null,
   };
