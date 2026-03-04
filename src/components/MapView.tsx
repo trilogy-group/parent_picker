@@ -11,7 +11,7 @@ import { useVotesStore } from "@/lib/votes";
 import { useShallow } from "zustand/react/shallow";
 import { useAuth } from "./AuthProvider";
 import { getInitialMapView, US_CENTER, US_ZOOM } from "@/lib/locations";
-import { sortMostSupport, sortMostViable } from "@/lib/sort";
+import { sortMostSupport, sortMostViable, sortMostViableWithPriority, makeSortNearest } from "@/lib/sort";
 import { fetchIsochrone } from "@/lib/isochrone";
 import "mapbox-gl/dist/mapbox-gl.css";
 import type { MapMouseEvent } from "react-map-gl/mapbox";
@@ -58,6 +58,8 @@ export function MapView() {
     showTopOnly,
     sortMode,
     mapBounds,
+    viableSubPriority,
+    storeUserLocation,
   } = useVotesStore(useShallow((s) => ({
     filteredLocations: s.filteredLocations,
     selectedLocationId: s.selectedLocationId,
@@ -89,6 +91,8 @@ export function MapView() {
     sortMode: s.sortMode,
     mapBounds: s.mapBounds,
     altSizeFilter: s.altSizeFilter,
+    viableSubPriority: s.viableSubPriority,
+    storeUserLocation: s.userLocation,
   })));
 
   const { user, isOfflineMode } = useAuth();
@@ -148,10 +152,19 @@ export function MapView() {
       loc.lat <= mapBounds.north && loc.lat >= mapBounds.south &&
       loc.lng <= mapBounds.east && loc.lng >= mapBounds.west
     );
-    const sortFn = sortMode === 'most_support' ? sortMostSupport : sortMostViable;
+    let sortFn: (a: typeof inView[0], b: typeof inView[0]) => number;
+    if (sortMode === 'nearest' && storeUserLocation) {
+      sortFn = makeSortNearest(storeUserLocation.lat, storeUserLocation.lng);
+    } else if (sortMode === 'most_support') {
+      sortFn = sortMostSupport;
+    } else if (viableSubPriority && sortMode === 'most_viable') {
+      sortFn = (a, b) => sortMostViableWithPriority(a, b, viableSubPriority);
+    } else {
+      sortFn = sortMostViable;
+    }
     const sorted = [...inView].sort(sortFn);
     return new Set(sorted.slice(0, 10).map(loc => loc.id));
-  }, [showAltUI, showTopOnly, mapBounds, displayLocations, sortMode]);
+  }, [showAltUI, showTopOnly, mapBounds, displayLocations, sortMode, viableSubPriority, storeUserLocation]);
 
   // GeoJSON for individual location dots — filtered by top-N when active
   const locationGeojson = useMemo(() => {
