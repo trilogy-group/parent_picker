@@ -1,4 +1,5 @@
 import { Location } from "@/types";
+import { getDistanceMiles } from "./locations";
 
 const COLOR_RANK: Record<string, number> = { GREEN: 0, YELLOW: 1, AMBER: 2, RED: 3 };
 
@@ -58,4 +59,16 @@ export function sortMostSupport(a: Location, b: Location): number {
   if (!a.proposed && b.proposed) return 1;
   if (b.votes !== a.votes) return b.votes - a.votes;
   return sortMostViable(a, b);
+}
+
+export function makeSortNearest(userLat: number, userLng: number) {
+  return (a: Location, b: Location): number => {
+    // Proposed locations always first
+    if (a.proposed && !b.proposed) return -1;
+    if (!a.proposed && b.proposed) return 1;
+    const distA = getDistanceMiles(userLat, userLng, a.lat, a.lng);
+    const distB = getDistanceMiles(userLat, userLng, b.lat, b.lng);
+    if (distA !== distB) return distA - distB;
+    return sortMostViable(a, b);
+  };
 }

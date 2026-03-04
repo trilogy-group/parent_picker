@@ -34,7 +34,7 @@ interface VotesState {
   votedLocationIds: Set<string>;
   votedNotHereIds: Set<string>;
   locationVoters: Map<string, VoterInfo[]>;
-  sortMode: 'most_support' | 'most_viable';
+  sortMode: 'most_support' | 'most_viable' | 'nearest';
   selectedLocationId: string | null;
   searchQuery: string;
   flyToTarget: { lat: number; lng: number; zoom?: number } | null;
@@ -70,7 +70,7 @@ interface VotesState {
   voteIn: (locationId: string) => void;
   voteNotHere: (locationId: string, comment?: string) => void;
   removeVote: (locationId: string) => void;
-  setSortMode: (mode: 'most_support' | 'most_viable') => void;
+  setSortMode: (mode: 'most_support' | 'most_viable' | 'nearest') => void;
   loadLocationVoters: (locationIds: string[], force?: boolean) => Promise<void>;
   setSelectedLocation: (id: string | null) => void;
   setSearchQuery: (query: string) => void;

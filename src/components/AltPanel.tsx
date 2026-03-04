@@ -10,7 +10,7 @@ import LocationDetailView from "./LocationDetailView";
 import { InviteModal } from "./InviteModal";
 import { ProfilePopover } from "./ProfilePopover";
 import { getDistanceMiles } from "@/lib/locations";
-import { sortMostSupport, sortMostViable, sortMostViableWithPriority } from "@/lib/sort";
+import { sortMostSupport, sortMostViable, sortMostViableWithPriority, makeSortNearest } from "@/lib/sort";
 import { Eye, Check, ChevronDown, Search, X } from "lucide-react";
 import { extractStreet } from "@/lib/address";
 import { AvatarRow } from "./AvatarRow";
@@ -134,15 +134,17 @@ export function AltPanel() {
       loc.lng <= mapBounds.east && loc.lng >= mapBounds.west
     );
     let sortFn: (a: typeof inView[0], b: typeof inView[0]) => number;
-    if (sortMode === 'most_support') {
+    if (sortMode === 'nearest' && userLocation) {
+      sortFn = makeSortNearest(userLocation.lat, userLocation.lng);
+    } else if (sortMode === 'most_support') {
       sortFn = sortMostSupport;
-    } else if (viableSubPriority) {
+    } else if (viableSubPriority && sortMode === 'most_viable') {
       sortFn = (a, b) => sortMostViableWithPriority(a, b, viableSubPriority);
     } else {
       sortFn = sortMostViable;
     }
     return [...inView].sort(sortFn);
-  }, [filteredLocations, mapBounds, sortMode, viableSubPriority, locations, altSizeFilter]);
+  }, [filteredLocations, mapBounds, sortMode, viableSubPriority, userLocation, locations, altSizeFilter]);
 
   // Apply admin search filter
   const searchFilteredLocations = useMemo(() => {
@@ -396,16 +398,22 @@ export function AltPanel() {
           </div>
           <div className="px-5 pb-3 flex items-center gap-2 flex-wrap">
             <span className="text-xs text-gray-500">Sort</span>
-            <button
-              onClick={() => { setSortMode('most_support'); setViableSubPriority(null); }}
-              className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
-                sortMode === 'most_support'
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-              }`}
-            >
-              Most support
-            </button>
+            {([
+              { mode: 'most_support' as const, label: 'Most support' },
+              ...( userLocation ? [{ mode: 'nearest' as const, label: 'Nearest' }] : []),
+            ]).map(({ mode, label }) => (
+              <button
+                key={mode}
+                onClick={() => { setSortMode(mode); setViableSubPriority(null); }}
+                className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
+                  sortMode === mode
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                }`}
+              >
+                {label}
+              </button>
+            ))}
             {/* Most viable pill with subscore popover (admin only) */}
             <div className="relative" ref={subPopoverRef}>
               <button
