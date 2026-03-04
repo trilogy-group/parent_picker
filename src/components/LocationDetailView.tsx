@@ -83,7 +83,7 @@ export default function LocationDetailView({
       .then(data => {
         const available = data.status === "OK";
         setStreetViewAvailable(available);
-        if (!available) setHeroMode("map");
+        if (available) setHeroMode("street");
       })
       .catch(() => {
         setStreetViewAvailable(false);
