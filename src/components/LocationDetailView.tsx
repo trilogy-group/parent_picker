@@ -694,7 +694,7 @@ export default function LocationDetailView({
         <DialogContent className="sm:max-w-md">
           <SignInPrompt
             title="Sign in to vote"
-            description="Enter your email to receive a magic link. No password needed."
+            description="Enter your email and we'll send you a code. No password needed."
           />
         </DialogContent>
       </Dialog>

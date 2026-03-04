@@ -74,7 +74,7 @@ export function InviteModal() {
         <DialogContent className="sm:max-w-md">
           <SignInPrompt
             title="Sign in to invite"
-            description="Enter your email to receive a magic link."
+            description="Enter your email and we'll send you a code."
           />
         </DialogContent>
       </Dialog>

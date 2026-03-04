@@ -385,7 +385,7 @@ function SuggestPageInner() {
             <div className="p-6">
               <SignInPrompt
                 title="Sign in to suggest a location"
-                description="Enter your email to receive a magic link. No password needed."
+                description="Enter your email and we'll send you a code. No password needed."
               />
             </div>
           )}

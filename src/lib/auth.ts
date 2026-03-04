@@ -1,15 +1,26 @@
 import { supabase, isSupabaseConfigured } from "./supabase";
 
-export async function signInWithMagicLink(email: string): Promise<{ error: Error | null }> {
+export async function signInWithOtpCode(email: string): Promise<{ error: Error | null }> {
   if (!isSupabaseConfigured || !supabase) {
     return { error: new Error("Authentication not available in offline mode") };
   }
 
   const { error } = await supabase.auth.signInWithOtp({
     email,
-    options: {
-      emailRedirectTo: `${window.location.origin}/`,
-    },
+  });
+
+  return { error: error ? new Error(error.message) : null };
+}
+
+export async function verifyOtpCode(email: string, token: string): Promise<{ error: Error | null }> {
+  if (!isSupabaseConfigured || !supabase) {
+    return { error: new Error("Authentication not available in offline mode") };
+  }
+
+  const { error } = await supabase.auth.verifyOtp({
+    email,
+    token,
+    type: "email",
   });
 
   return { error: error ? new Error(error.message) : null };
