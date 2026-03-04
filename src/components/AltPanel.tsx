@@ -173,7 +173,7 @@ export function AltPanel() {
     setPrevResetKey(resetKey);
     if (extraPages !== 0) setExtraPages(0);
   }
-  const listLocations = proposedLocations.length > 0 ? regularLocations : sortedLocations;
+  const listLocations = proposedLocations.length > 0 ? regularLocations : searchFilteredLocations;
   const visibleLocations = showTopOnly
     ? listLocations.slice(0, TOP_N)
     : listLocations.slice(0, (extraPages + 1) * PAGE_SIZE);
