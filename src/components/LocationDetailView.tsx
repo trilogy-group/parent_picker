@@ -44,7 +44,7 @@ export default function LocationDetailView({
   const [notHereModalOpen, setNotHereModalOpen] = useState(false);
   const [showSignIn, setShowSignIn] = useState(false);
   const [activeTab, setActiveTab] = useState<"in" | "concerns">("in");
-  const [heroMode, setHeroMode] = useState<"street" | "map">("map");
+  const [heroMode, setHeroMode] = useState<"photos" | "street" | "map">("map");
   const [streetViewAvailable, setStreetViewAvailable] = useState<boolean | null>(null);
   const [contribution, setContribution] = useState("");
   const [contributionSubmitted, setContributionSubmitted] = useState(false);
@@ -64,7 +64,10 @@ export default function LocationDetailView({
     fetch(`/api/locations/${location.id}/photos`)
       .then(res => res.json())
       .then(data => {
-        if (data.photos) setPhotos(data.photos);
+        if (data.photos?.length) {
+          setPhotos(data.photos);
+          setHeroMode("photos");
+        }
         if (data.brochureUrl) setBrochureUrl(data.brochureUrl);
       })
       .catch(() => {});
@@ -176,68 +179,77 @@ export default function LocationDetailView({
           Back to locations
         </button>
 
-        {/* 2. Hero image — photo carousel for proposed locations, or street view/map */}
-        {photos.length > 0 ? (
-          <div className="w-full h-56 bg-gray-100 relative overflow-hidden">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={photos[photoIndex]}
-              alt={`${extractStreet(location.address, location.city)} photo ${photoIndex + 1}`}
-              className="w-full h-full object-cover"
-            />
-            {photos.length > 1 && (
+        {/* 2. Hero image — photo carousel, street view, or map with toggle */}
+        {(photos.length > 0 || mapsKey) ? (
+          <div className={`w-full ${heroMode === "photos" ? "h-56" : "h-48"} bg-gray-100 relative overflow-hidden`}>
+            {heroMode === "photos" ? (
               <>
-                <button
-                  onClick={() => setPhotoIndex((photoIndex - 1 + photos.length) % photos.length)}
-                  className="absolute left-2 top-1/2 -translate-y-1/2 bg-black/40 hover:bg-black/60 text-white rounded-full w-8 h-8 flex items-center justify-center transition-colors"
-                >
-                  <ChevronLeft className="w-5 h-5" />
-                </button>
-                <button
-                  onClick={() => setPhotoIndex((photoIndex + 1) % photos.length)}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 bg-black/40 hover:bg-black/60 text-white rounded-full w-8 h-8 flex items-center justify-center transition-colors"
-                >
-                  <ChevronRight className="w-5 h-5" />
-                </button>
-                <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1.5">
-                  {photos.map((_, i) => (
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={photos[photoIndex]}
+                  alt={`${extractStreet(location.address, location.city)} photo ${photoIndex + 1}`}
+                  className="w-full h-full object-cover"
+                />
+                {photos.length > 1 && (
+                  <>
                     <button
-                      key={i}
-                      onClick={() => setPhotoIndex(i)}
-                      className={`w-2 h-2 rounded-full transition-colors ${i === photoIndex ? "bg-white" : "bg-white/50"}`}
-                    />
-                  ))}
-                </div>
+                      onClick={() => setPhotoIndex((photoIndex - 1 + photos.length) % photos.length)}
+                      className="absolute left-2 top-1/2 -translate-y-1/2 bg-black/40 hover:bg-black/60 text-white rounded-full w-8 h-8 flex items-center justify-center transition-colors"
+                    >
+                      <ChevronLeft className="w-5 h-5" />
+                    </button>
+                    <button
+                      onClick={() => setPhotoIndex((photoIndex + 1) % photos.length)}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 bg-black/40 hover:bg-black/60 text-white rounded-full w-8 h-8 flex items-center justify-center transition-colors"
+                    >
+                      <ChevronRight className="w-5 h-5" />
+                    </button>
+                    <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1.5">
+                      {photos.map((_, i) => (
+                        <button
+                          key={i}
+                          onClick={() => setPhotoIndex(i)}
+                          className={`w-2 h-2 rounded-full transition-colors ${i === photoIndex ? "bg-white" : "bg-white/50"}`}
+                        />
+                      ))}
+                    </div>
+                  </>
+                )}
+              </>
+            ) : (
+              <>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={heroMode === "street"
+                    ? `https://maps.googleapis.com/maps/api/streetview?size=800x300&location=${location.lat},${location.lng}&key=${mapsKey}`
+                    : `https://maps.googleapis.com/maps/api/staticmap?center=${location.lat},${location.lng}&zoom=15&size=800x300&markers=color:blue%7C${location.lat},${location.lng}&key=${mapsKey}`
+                  }
+                  alt={heroMode === "street"
+                    ? `Street view of ${extractStreet(location.address, location.city)}`
+                    : `Map of ${extractStreet(location.address, location.city)}`
+                  }
+                  className="w-full h-full object-cover"
+                />
               </>
             )}
-            {location.proposed && (
-              <span className="absolute top-2 left-2 bg-blue-600 text-white text-[10px] font-bold tracking-wider px-2.5 py-1 rounded-full">
-                PROPOSED
-              </span>
-            )}
-          </div>
-        ) : mapsKey ? (
-          <div className="w-full h-48 bg-gray-100 relative">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={heroMode === "street"
-                ? `https://maps.googleapis.com/maps/api/streetview?size=800x300&location=${location.lat},${location.lng}&key=${mapsKey}`
-                : `https://maps.googleapis.com/maps/api/staticmap?center=${location.lat},${location.lng}&zoom=15&size=800x300&markers=color:blue%7C${location.lat},${location.lng}&key=${mapsKey}`
-              }
-              alt={heroMode === "street"
-                ? `Street view of ${extractStreet(location.address, location.city)}`
-                : `Map of ${extractStreet(location.address, location.city)}`
-              }
-              className="w-full h-full object-cover"
-            />
-            {streetViewAvailable && (
-              <button
-                onClick={() => setHeroMode(heroMode === "street" ? "map" : "street")}
-                className="absolute bottom-2 right-2 bg-white/90 backdrop-blur px-2.5 py-1 rounded-md text-xs font-medium text-gray-700 hover:bg-white shadow-sm transition-colors"
-              >
-                {heroMode === "street" ? "Map" : "Street View"}
-              </button>
-            )}
+            {/* Toggle button — always exactly 2 options: photos/street + map */}
+            {mapsKey && (() => {
+              const hasPhotos = photos.length > 0;
+              // If photos exist: toggle between Photos and Map
+              // If no photos: toggle between Street View and Map (when street view available)
+              const otherMode = hasPhotos ? "photos" : (streetViewAvailable ? "street" : null);
+              if (!otherMode) return null;
+              const showToggle = heroMode === "map" ? otherMode : "map";
+              const label = showToggle === "photos" ? "Photos" : showToggle === "street" ? "Street View" : "Map";
+              return (
+                <button
+                  onClick={() => setHeroMode(showToggle as "photos" | "street" | "map")}
+                  className="absolute bottom-2 right-2 bg-white/90 backdrop-blur px-2.5 py-1 rounded-md text-xs font-medium text-gray-700 hover:bg-white shadow-sm transition-colors"
+                >
+                  {label}
+                </button>
+              );
+            })()}
             {location.proposed && (
               <span className="absolute top-2 left-2 bg-blue-600 text-white text-[10px] font-bold tracking-wider px-2.5 py-1 rounded-full">
                 PROPOSED
