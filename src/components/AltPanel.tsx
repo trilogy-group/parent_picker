@@ -128,12 +128,19 @@ export function AltPanel() {
   // Sort and filter locations in viewport
   const sortedLocations = useMemo(() => {
     const filtered = filteredLocations();
-    if (!mapBounds) return filtered;
-    const inView = filtered.filter(loc =>
-      loc.lat <= mapBounds.north && loc.lat >= mapBounds.south &&
-      loc.lng <= mapBounds.east && loc.lng >= mapBounds.west
-    );
-    let sortFn: (a: typeof inView[0], b: typeof inView[0]) => number;
+    // "Nearest" sorts ALL locations (not just in-viewport) so top 10 nearest is meaningful
+    let pool: typeof filtered;
+    if (sortMode === 'nearest') {
+      pool = filtered;
+    } else if (!mapBounds) {
+      pool = filtered;
+    } else {
+      pool = filtered.filter(loc =>
+        loc.lat <= mapBounds.north && loc.lat >= mapBounds.south &&
+        loc.lng <= mapBounds.east && loc.lng >= mapBounds.west
+      );
+    }
+    let sortFn: (a: typeof pool[0], b: typeof pool[0]) => number;
     if (sortMode === 'nearest' && userLocation) {
       sortFn = makeSortNearest(userLocation.lat, userLocation.lng);
     } else if (sortMode === 'most_support') {
@@ -143,7 +150,7 @@ export function AltPanel() {
     } else {
       sortFn = sortMostViable;
     }
-    return [...inView].sort(sortFn);
+    return [...pool].sort(sortFn);
   }, [filteredLocations, mapBounds, sortMode, viableSubPriority, userLocation, locations, altSizeFilter]);
 
   // Apply admin search filter
