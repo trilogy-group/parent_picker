@@ -20,7 +20,7 @@ const PAGE_SIZE = 25;
 export function AltPanel() {
   const {
     locations, filteredLocations, selectedLocationId, setSelectedLocation,
-    voteIn, voteNotHere, removeVote, votedLocationIds, votedNotHereIds,
+    voteIn, voteNotHere, removeVote, updateVoteComment, votedLocationIds, votedNotHereIds,
     mapBounds, sortMode, setSortMode,
     locationVoters, loadLocationVoters, zoomLevel,
     citySummaries, setFlyToTarget, userLocation,
@@ -28,6 +28,7 @@ export function AltPanel() {
     showTopOnly, setShowTopOnly,
     altSizeFilter, setAltSizeFilter,
     viableSubPriority, setViableSubPriority,
+    deepLinkTab, setDeepLinkTab,
   } = useVotesStore(useShallow((s) => ({
     locations: s.locations,
     filteredLocations: s.filteredLocations,
@@ -36,6 +37,7 @@ export function AltPanel() {
     voteIn: s.voteIn,
     voteNotHere: s.voteNotHere,
     removeVote: s.removeVote,
+    updateVoteComment: s.updateVoteComment,
     votedLocationIds: s.votedLocationIds,
     votedNotHereIds: s.votedNotHereIds,
     mapBounds: s.mapBounds,
@@ -55,6 +57,8 @@ export function AltPanel() {
     setAltSizeFilter: s.setAltSizeFilter,
     viableSubPriority: s.viableSubPriority,
     setViableSubPriority: s.setViableSubPriority,
+    deepLinkTab: s.deepLinkTab,
+    setDeepLinkTab: s.setDeepLinkTab,
   })));
 
   const { user, session, isAdmin } = useAuth();
@@ -203,7 +207,9 @@ export function AltPanel() {
         onVoteNotHere={(comment) => voteNotHere(selectedLocation.id, comment)}
         onRemoveVote={() => removeVote(selectedLocation.id)}
         onContributionSubmitted={() => loadLocationVoters([selectedLocation.id], true)}
+        onUpdateVoteComment={(comment) => updateVoteComment(selectedLocation.id, comment)}
         distanceMi={userLocation ? getDistanceMiles(userLocation.lat, userLocation.lng, selectedLocation.lat, selectedLocation.lng) : null}
+        initialTab={deepLinkTab || undefined}
       />
     );
   }
@@ -519,6 +525,7 @@ export function AltPanel() {
                 onVoteIn={() => voteIn(loc.id)}
                 onVoteNotHere={(comment) => voteNotHere(loc.id, comment)}
                 onRemoveVote={() => removeVote(loc.id)}
+                onUpdateVoteComment={(comment) => updateVoteComment(loc.id, comment)}
               />
             ))}
             {!showTopOnly && listLocations.length > visibleLocations.length && (

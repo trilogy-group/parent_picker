@@ -28,3 +28,10 @@ For each feedback item:
 - **Root Cause**: Mobile collapsed view only had title/votes/auth/buttons — the 3 bullet points explaining how parents can help were never added.
 - **Action Taken**: Added the 3 bullet points to the mobile collapsed view (styled for white background: `text-gray-500` with amber bullets).
 - **Status**: Resolved
+
+### FB-3: City cards appear/disappear after admin toggle (2026-03-04)
+
+- **Feedback**: On initial load, only 2 metro cards show (Orange County, Greenwich). After toggling admin mode and back to parent, extra small cities appear (Los Angeles 3, Riverside 1).
+- **Root Cause**: Likely a timing issue. `loadCitySummaries` fires on initial load before `isAdmin` resolves from auth, fetching with non-admin filters. Admin toggle triggers a refetch that picks up additional cities. When toggling back, the refetched data includes cities that weren't in the original load. Small cities (LA, Riverside) may have locations that don't consolidate into existing metros.
+- **Action Taken**: Noted for fix. Need to ensure initial city summaries fetch waits for auth state to settle, or re-consolidate after admin state changes.
+- **Status**: Open

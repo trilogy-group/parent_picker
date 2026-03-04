@@ -52,7 +52,7 @@ function generateHelpRequestHtml(loc: AdminLocation | LikedLocation, scores?: Lo
     <h2>We need your help with a location you care about</h2>
     <p>You voted for <strong>${loc.address}</strong>, ${loc.city}, ${loc.state} — and we're making progress! Parents have 100x the local knowledge we do, and your involvement makes a real difference.</p>
     <div style="margin-top:24px;">
-      ${helpLink}<a href="${mapUrl}" style="display:inline-block;padding:12px 24px;background:#2563eb;color:#ffffff;text-decoration:none;border-radius:8px;font-weight:bold;font-size:14px;">View on Map</a>
+      ${helpLink}<a href="https://real-estate.alpha.school/?location=${loc.id}&tab=other" style="display:inline-block;padding:12px 24px;background:#2563eb;color:#ffffff;text-decoration:none;border-radius:8px;font-weight:bold;font-size:14px;">Contribute a Comment</a>
     </div>
     <p style="margin-top:20px;font-size:13px;color:#666;">Know the landlord? Have a zoning contact? Even small connections help us move faster. Click above to see specific ways you can help.</p>
   `;

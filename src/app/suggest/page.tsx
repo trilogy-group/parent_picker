@@ -19,8 +19,8 @@ import { validateSuggestForm, hasErrors, sanitizeText, FormErrors } from "@/lib/
 function SuggestPageInner() {
   const searchParams = useSearchParams();
   const standalone = searchParams.get("standalone") === "true";
-  const { addLocation, setSelectedLocation, userId, showAltUI } = useVotesStore();
-  const backHref = showAltUI ? "/" : "/oldUI";
+  const { addLocation, setSelectedLocation, userId } = useVotesStore();
+  const backHref = "/";
   const { user, isOfflineMode } = useAuth();
   const canSuggest = isOfflineMode || !!user;
 

@@ -12,7 +12,6 @@ import {
   DialogContent,
 } from "@/components/ui/dialog";
 import { SignInPrompt } from "./SignInPrompt";
-import NotHereReasonModal from "./NotHereReasonModal";
 
 const LAUNCH_THRESHOLD = 30;
 
@@ -29,14 +28,16 @@ interface AltLocationCardProps {
   onVoteIn: () => void;
   onVoteNotHere: (comment?: string) => void;
   onRemoveVote?: () => void;
+  onUpdateVoteComment?: (comment: string) => void;
 }
 
 export function AltLocationCard({
   location, voters, hasVotedIn, hasVotedNotHere,
-  isAuthenticated, isSelected, isProposed, distanceMi, onSelect, onVoteIn, onVoteNotHere, onRemoveVote,
+  isAuthenticated, isSelected, isProposed, distanceMi, onSelect, onVoteIn, onVoteNotHere, onRemoveVote, onUpdateVoteComment,
 }: AltLocationCardProps) {
   const [showSignIn, setShowSignIn] = useState(false);
-  const [notHereModalOpen, setNotHereModalOpen] = useState(false);
+  const [voteComment, setVoteComment] = useState("");
+  const [voteCommentSaved, setVoteCommentSaved] = useState(false);
   const badge = statusBadge(location.scores?.overallColor);
   const remaining = Math.max(0, LAUNCH_THRESHOLD - location.votes);
 
@@ -49,7 +50,15 @@ export function AltLocationCard({
   const handleVoteNotHere = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (!isAuthenticated) { setShowSignIn(true); return; }
-    setNotHereModalOpen(true);
+    onVoteNotHere();
+  };
+
+  const handleSaveComment = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!voteComment.trim() || !onUpdateVoteComment) return;
+    onUpdateVoteComment(voteComment.trim());
+    setVoteCommentSaved(true);
+    setTimeout(() => setVoteCommentSaved(false), 2000);
   };
 
   return (
@@ -146,30 +155,76 @@ export function AltLocationCard({
         {/* Vote buttons */}
         <div className="flex gap-2 mt-3">
           {hasVotedIn ? (
-            <div className="flex items-center gap-1.5 text-sm text-gray-700 font-medium py-2">
-              <div className="w-5 h-5 rounded-full bg-blue-600 flex items-center justify-center">
-                <Check className="w-3 h-3 text-white" />
+            <div className="w-full">
+              <div className="flex items-center gap-1.5 text-sm text-gray-700 font-medium py-2">
+                <div className="w-5 h-5 rounded-full bg-blue-600 flex items-center justify-center">
+                  <Check className="w-3 h-3 text-white" />
+                </div>
+                You&apos;re in
+                {onRemoveVote && (
+                  <button
+                    onClick={(e) => { e.stopPropagation(); onRemoveVote(); }}
+                    className="ml-2 text-xs text-gray-400 hover:text-gray-600 underline"
+                  >
+                    undo
+                  </button>
+                )}
               </div>
-              You&apos;re in
-              {onRemoveVote && (
-                <button
-                  onClick={(e) => { e.stopPropagation(); onRemoveVote(); }}
-                  className="ml-2 text-xs text-gray-400 hover:text-gray-600 underline"
-                >
-                  undo
-                </button>
+              {/* Inline optional comment */}
+              {!voteCommentSaved ? (
+                <div onClick={(e) => e.stopPropagation()}>
+                  <textarea
+                    value={voteComment}
+                    onChange={(e) => setVoteComment(e.target.value)}
+                    placeholder="Why this location? (optional)"
+                    className="w-full min-h-[50px] rounded-lg border border-gray-200 bg-white p-2 text-xs focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none resize-none"
+                  />
+                  {voteComment.trim() && (
+                    <button
+                      onClick={handleSaveComment}
+                      className="mt-1 px-3 py-1 text-xs font-semibold text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors"
+                    >
+                      Save
+                    </button>
+                  )}
+                </div>
+              ) : (
+                <p className="text-xs text-green-600 py-1">Saved!</p>
               )}
             </div>
           ) : hasVotedNotHere ? (
-            <div className="flex items-center gap-1.5 text-sm text-gray-500 font-medium py-2">
-              Concern noted
-              {onRemoveVote && (
-                <button
-                  onClick={(e) => { e.stopPropagation(); onRemoveVote(); }}
-                  className="ml-2 text-xs text-gray-400 hover:text-gray-600 underline"
-                >
-                  undo
-                </button>
+            <div className="w-full">
+              <div className="flex items-center gap-1.5 text-sm text-gray-500 font-medium py-2">
+                Concern noted
+                {onRemoveVote && (
+                  <button
+                    onClick={(e) => { e.stopPropagation(); onRemoveVote(); }}
+                    className="ml-2 text-xs text-gray-400 hover:text-gray-600 underline"
+                  >
+                    undo
+                  </button>
+                )}
+              </div>
+              {/* Inline optional comment */}
+              {!voteCommentSaved ? (
+                <div onClick={(e) => e.stopPropagation()}>
+                  <textarea
+                    value={voteComment}
+                    onChange={(e) => setVoteComment(e.target.value)}
+                    placeholder="Tell us why (optional)"
+                    className="w-full min-h-[50px] rounded-lg border border-gray-200 bg-white p-2 text-xs focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none resize-none"
+                  />
+                  {voteComment.trim() && (
+                    <button
+                      onClick={handleSaveComment}
+                      className="mt-1 px-3 py-1 text-xs font-semibold text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors"
+                    >
+                      Save
+                    </button>
+                  )}
+                </div>
+              ) : (
+                <p className="text-xs text-green-600 py-1">Saved!</p>
               )}
             </div>
           ) : (
@@ -199,16 +254,6 @@ export function AltLocationCard({
           />
         </DialogContent>
       </Dialog>
-
-      <NotHereReasonModal
-        open={notHereModalOpen}
-        onOpenChange={setNotHereModalOpen}
-        locationName={location.name}
-        onSubmit={(reason) => {
-          onVoteNotHere(reason || undefined);
-          setNotHereModalOpen(false);
-        }}
-      />
     </>
   );
 }

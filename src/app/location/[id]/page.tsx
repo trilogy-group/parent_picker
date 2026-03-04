@@ -1,7 +1,7 @@
 "use client";
 
 import { use, useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import LocationDetailView from "@/components/LocationDetailView";
 import { useVotesStore } from "@/lib/votes";
 import { useShallow } from "zustand/react/shallow";
@@ -12,11 +12,14 @@ import { getDistanceMiles } from "@/lib/locations";
 export default function LocationPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const tabParam = searchParams.get("tab");
+  const initialTab = tabParam === "other" ? "other" as const : tabParam === "concerns" ? "concerns" as const : undefined;
   const { user, session } = useAuth();
   const isAuthenticated = !!user;
   const {
     locations, votedLocationIds, votedNotHereIds,
-    voteIn, voteNotHere, removeVote, loadLocationVoters, locationVoters, userLocation,
+    voteIn, voteNotHere, removeVote, updateVoteComment, loadLocationVoters, locationVoters, userLocation,
   } = useVotesStore(useShallow((s) => ({
     locations: s.locations,
     votedLocationIds: s.votedLocationIds,
@@ -24,6 +27,7 @@ export default function LocationPage({ params }: { params: Promise<{ id: string 
     voteIn: s.voteIn,
     voteNotHere: s.voteNotHere,
     removeVote: s.removeVote,
+    updateVoteComment: s.updateVoteComment,
     loadLocationVoters: s.loadLocationVoters,
     locationVoters: s.locationVoters,
     userLocation: s.userLocation,
@@ -79,7 +83,9 @@ export default function LocationPage({ params }: { params: Promise<{ id: string 
         onVoteNotHere={(comment) => voteNotHere(id, comment)}
         onRemoveVote={() => removeVote(id)}
         onContributionSubmitted={() => loadLocationVoters([id], true)}
+        onUpdateVoteComment={(comment) => updateVoteComment(id, comment)}
         distanceMi={userLocation && location ? getDistanceMiles(userLocation.lat, userLocation.lng, location.lat, location.lng) : null}
+        initialTab={initialTab}
       />
     </div>
   );

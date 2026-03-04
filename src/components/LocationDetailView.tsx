@@ -4,13 +4,21 @@ import { useState, useEffect } from "react";
 import { Location, VoterInfo } from "@/types";
 import { statusBadge, sizeTierLabel } from "@/lib/status";
 import { extractStreet } from "@/lib/address";
-import NotHereReasonModal from "./NotHereReasonModal";
 import { HelpModal } from "./HelpModal";
 import { SignInPrompt } from "./SignInPrompt";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
-import { ArrowLeft, ExternalLink, ChevronLeft, ChevronRight, FileText, Plus, Minus } from "lucide-react";
+import { ArrowLeft, ExternalLink, ChevronLeft, ChevronRight, FileText, Plus, Minus, X } from "lucide-react";
+import { useAuth } from "./AuthProvider";
 
 const LAUNCH_THRESHOLD = 30;
+
+interface Contribution {
+  id: string;
+  userId: string;
+  displayName: string;
+  comment: string;
+  createdAt: string;
+}
 
 interface LocationDetailViewProps {
   location: Location;
@@ -24,7 +32,9 @@ interface LocationDetailViewProps {
   onVoteNotHere: (comment?: string) => void;
   onRemoveVote?: () => void;
   onContributionSubmitted?: () => void;
+  onUpdateVoteComment?: (comment: string) => void;
   distanceMi?: number | null;
+  initialTab?: "in" | "concerns" | "other";
 }
 
 export default function LocationDetailView({
@@ -39,11 +49,12 @@ export default function LocationDetailView({
   onVoteNotHere,
   onRemoveVote,
   onContributionSubmitted,
+  onUpdateVoteComment,
   distanceMi,
+  initialTab,
 }: LocationDetailViewProps) {
-  const [notHereModalOpen, setNotHereModalOpen] = useState(false);
   const [showSignIn, setShowSignIn] = useState(false);
-  const [activeTab, setActiveTab] = useState<"in" | "concerns">("in");
+  const [activeTab, setActiveTab] = useState<"in" | "concerns" | "other">(initialTab || "in");
   const [heroMode, setHeroMode] = useState<"photos" | "street" | "map">("map");
   const [streetViewAvailable, setStreetViewAvailable] = useState<boolean | null>(null);
   const [contribution, setContribution] = useState("");
@@ -53,8 +64,25 @@ export default function LocationDetailView({
   const [brochureUrl, setBrochureUrl] = useState<string | null>(null);
   const [photoIndex, setPhotoIndex] = useState(0);
   const [mapZoom, setMapZoom] = useState(15);
+  // Inline vote comment
+  const [voteComment, setVoteComment] = useState("");
+  const [voteCommentSaving, setVoteCommentSaving] = useState(false);
+  const [voteCommentSaved, setVoteCommentSaved] = useState(false);
+  // Contributions
+  const [contributions, setContributions] = useState<Contribution[]>([]);
 
+  const { isAdmin } = useAuth();
   const mapsKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_KEY;
+
+  // Fetch contributions for this location
+  useEffect(() => {
+    fetch(`/api/contributions?locationId=${location.id}`)
+      .then(res => res.json())
+      .then(data => {
+        if (data.contributions) setContributions(data.contributions);
+      })
+      .catch(() => {});
+  }, [location.id]);
 
   // Fetch photos and brochure for proposed locations
   useEffect(() => {
@@ -106,11 +134,21 @@ export default function LocationDetailView({
 
   const handleVoteNotHere = () => {
     if (!isAuthenticated) { setShowSignIn(true); return; }
-    setNotHereModalOpen(true);
+    onVoteNotHere();
+  };
+
+  const handleSaveVoteComment = async () => {
+    if (!voteComment.trim() || !onUpdateVoteComment) return;
+    setVoteCommentSaving(true);
+    onUpdateVoteComment(voteComment.trim());
+    setVoteCommentSaving(false);
+    setVoteCommentSaved(true);
+    setTimeout(() => setVoteCommentSaved(false), 2000);
   };
 
   const handleContributionSubmit = async () => {
     if (!contribution.trim()) return;
+    if (!isAuthenticated) { setShowSignIn(true); return; }
     setContributionSubmitting(true);
     try {
       const headers: Record<string, string> = {
@@ -128,15 +166,37 @@ export default function LocationDetailView({
         }),
       });
       if (!res.ok) throw new Error("Submission failed");
+      const result = await res.json();
       setContribution("");
       onContributionSubmitted?.();
-      // Brief "Saved!" flash, then reset for more input
+      // Append to local contributions list
+      setContributions(prev => [...prev, {
+        id: result.id,
+        userId: session ? "self" : "",
+        displayName: "You",
+        comment: contribution.trim(),
+        createdAt: result.created_at || new Date().toISOString(),
+      }]);
       setContributionSubmitted(true);
       setTimeout(() => setContributionSubmitted(false), 2000);
     } catch (err) {
       console.error("Failed to submit contribution:", err);
     } finally {
       setContributionSubmitting(false);
+    }
+  };
+
+  const handleDeleteContribution = async (id: string) => {
+    const headers: Record<string, string> = {};
+    if (session?.access_token) {
+      headers["Authorization"] = `Bearer ${session.access_token}`;
+    }
+    const res = await fetch(`/api/contributions?id=${id}`, {
+      method: "DELETE",
+      headers,
+    });
+    if (res.ok) {
+      setContributions(prev => prev.filter(c => c.id !== id));
     }
   };
 
@@ -149,8 +209,18 @@ export default function LocationDetailView({
 
   function getDisplayName(voter: VoterInfo): string {
     if (voter.displayName) return voter.displayName;
-    // Show email prefix (before @) as fallback
     return voter.email.split("@")[0];
+  }
+
+  function timeAgo(dateStr: string): string {
+    const seconds = Math.floor((Date.now() - new Date(dateStr).getTime()) / 1000);
+    if (seconds < 60) return "just now";
+    const minutes = Math.floor(seconds / 60);
+    if (minutes < 60) return `${minutes}m ago`;
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) return `${hours}h ago`;
+    const days = Math.floor(hours / 24);
+    return `${days}d ago`;
   }
 
   const AVATAR_COLORS = [
@@ -167,6 +237,33 @@ export default function LocationDetailView({
   function avatarColor(index: number): string {
     return AVATAR_COLORS[index % AVATAR_COLORS.length];
   }
+
+  // Inline vote comment textarea (shown after voting)
+  const renderVoteComment = (placeholder: string) => (
+    <div className="mt-3">
+      {voteCommentSaved ? (
+        <p className="text-sm text-green-600">Saved!</p>
+      ) : (
+        <>
+          <textarea
+            value={voteComment}
+            onChange={(e) => setVoteComment(e.target.value)}
+            placeholder={placeholder}
+            className="w-full min-h-[60px] rounded-lg border border-blue-100 bg-white p-2.5 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none resize-none"
+          />
+          {voteComment.trim() && (
+            <button
+              onClick={handleSaveVoteComment}
+              disabled={voteCommentSaving}
+              className="mt-1.5 px-3 py-1.5 text-xs font-semibold text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
+            >
+              {voteCommentSaving ? "Saving..." : "Save"}
+            </button>
+          )}
+        </>
+      )}
+    </div>
+  );
 
   return (
     <>
@@ -252,8 +349,6 @@ export default function LocationDetailView({
             {/* Toggle button — always exactly 2 options: photos/street + map */}
             {mapsKey && (() => {
               const hasPhotos = photos.length > 0;
-              // If photos exist: toggle between Photos and Map
-              // If no photos: toggle between Street View and Map (when street view available)
               const otherMode = hasPhotos ? "photos" : (streetViewAvailable ? "street" : null);
               if (!otherMode) return null;
               const showToggle = heroMode === "map" ? otherMode : "map";
@@ -379,6 +474,7 @@ export default function LocationDetailView({
                       : " \u2014 ready to launch!"}
                   </p>
                 </div>
+                {renderVoteComment("Why this location? (optional)")}
               </div>
             ) : hasVotedNotHere ? (
               /* Already voted not here */
@@ -394,6 +490,7 @@ export default function LocationDetailView({
                     </button>
                   )}
                 </div>
+                {renderVoteComment("Tell us why (optional)")}
               </div>
             ) : (
               /* Not voted */
@@ -429,7 +526,7 @@ export default function LocationDetailView({
             )}
           </div>
 
-          {/* 5. Help us fill in the gaps */}
+          {/* 5. Contribute — always visible */}
           <div className="mt-6 bg-blue-50 rounded-xl p-5">
             <p className="text-[10px] font-semibold tracking-widest text-blue-600 mb-2">CONTRIBUTE</p>
             <p className="text-[15px] leading-snug text-gray-900">Help us fill in the gaps.</p>
@@ -446,7 +543,7 @@ export default function LocationDetailView({
             />
             <button
               onClick={handleContributionSubmit}
-              disabled={!contribution.trim() || contributionSubmitting || !isAuthenticated}
+              disabled={!contribution.trim() || contributionSubmitting}
               className="mt-2 px-4 py-2 text-sm font-semibold text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               {contributionSubmitting ? "Saving..." : "Submit"}
@@ -469,7 +566,7 @@ export default function LocationDetailView({
             </div>
           )}
 
-          {/* 7. Who's in / Concerns tabs */}
+          {/* 7. Who's in / Concerns / Other tabs */}
           <div className="mt-6">
             <div className="flex border-b border-gray-200">
               <button
@@ -491,6 +588,16 @@ export default function LocationDetailView({
                 }`}
               >
                 Concerns ({concernVoters.length})
+              </button>
+              <button
+                onClick={() => setActiveTab("other")}
+                className={`flex-1 pb-2 text-sm font-medium transition-colors ${
+                  activeTab === "other"
+                    ? "text-blue-600 border-b-2 border-blue-600"
+                    : "text-gray-500 hover:text-gray-700"
+                }`}
+              >
+                Other ({contributions.length})
               </button>
             </div>
 
@@ -519,44 +626,68 @@ export default function LocationDetailView({
                     </div>
                   ))
                 )
-              ) : concernVoters.length === 0 ? (
-                <p className="text-sm text-gray-400 py-4 text-center">
-                  No one yet.
-                </p>
+              ) : activeTab === "concerns" ? (
+                concernVoters.length === 0 ? (
+                  <p className="text-sm text-gray-400 py-4 text-center">
+                    No one yet.
+                  </p>
+                ) : (
+                  concernVoters.map((voter, i) => (
+                    <div key={voter.userId} className="flex items-start gap-3">
+                      <div
+                        className={`w-8 h-8 shrink-0 rounded-full flex items-center justify-center text-white text-sm font-medium ${avatarColor(i)}`}
+                      >
+                        {getInitial(voter)}
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-700">
+                          {getDisplayName(voter)}
+                        </p>
+                        {voter.comment && (
+                          <p className="text-xs text-gray-500 mt-0.5">{voter.comment}</p>
+                        )}
+                      </div>
+                    </div>
+                  ))
+                )
               ) : (
-                concernVoters.map((voter, i) => (
-                  <div key={voter.userId} className="flex items-start gap-3">
-                    <div
-                      className={`w-8 h-8 shrink-0 rounded-full flex items-center justify-center text-white text-sm font-medium ${avatarColor(i)}`}
-                    >
-                      {getInitial(voter)}
+                /* Other tab — contributions */
+                contributions.length === 0 ? (
+                  <p className="text-sm text-gray-400 py-4 text-center">
+                    No contributions yet.
+                  </p>
+                ) : (
+                  contributions.map((c, i) => (
+                    <div key={c.id} className="flex items-start gap-3">
+                      <div
+                        className={`w-8 h-8 shrink-0 rounded-full flex items-center justify-center text-white text-sm font-medium ${avatarColor(i)}`}
+                      >
+                        {c.displayName.charAt(0).toUpperCase()}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <p className="text-sm text-gray-700 font-medium">{c.displayName}</p>
+                          <span className="text-xs text-gray-400">{timeAgo(c.createdAt)}</span>
+                          {(c.displayName === "You" || isAdmin) && (
+                            <button
+                              onClick={() => handleDeleteContribution(c.id)}
+                              className="ml-auto text-gray-400 hover:text-red-500 transition-colors"
+                            >
+                              <X className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                        </div>
+                        <p className="text-xs text-gray-500 mt-0.5">{c.comment}</p>
+                      </div>
                     </div>
-                    <div>
-                      <p className="text-sm text-gray-700">
-                        {getDisplayName(voter)}
-                      </p>
-                      {voter.comment && (
-                        <p className="text-xs text-gray-500 mt-0.5">{voter.comment}</p>
-                      )}
-                    </div>
-                  </div>
-                ))
+                  ))
+                )
               )}
             </div>
           </div>
 
         </div>
       </div>
-
-      <NotHereReasonModal
-        open={notHereModalOpen}
-        onOpenChange={setNotHereModalOpen}
-        locationName={location.name}
-        onSubmit={(reason) => {
-          onVoteNotHere(reason || undefined);
-          setNotHereModalOpen(false);
-        }}
-      />
 
       <Dialog open={showSignIn} onOpenChange={setShowSignIn}>
         <DialogContent className="sm:max-w-md">

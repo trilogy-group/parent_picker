@@ -52,13 +52,12 @@ interface VotesState {
   showRedLocations: boolean;       // Non-admin toggle: "I want to help!"
   showUnscored: boolean;           // Admin toggle: show locations without scores
   releasedFilter: ReleasedFilter;  // Admin: all/released/unreleased
-  cardVersion: "v1" | "v2";       // Admin toggle: card layout version (parents always v1)
-  showAltUI: boolean;              // Admin toggle: new UI vs old UI
   userLocation: { lat: number; lng: number } | null;  // Browser geolocation or saved profile
   userLocationSource: "geo" | "profile" | null;       // Where userLocation came from
   showTopOnly: boolean;                                // Top 10 vs Show all toggle (shared with MapView)
   altSizeFilter: "micro" | "all";                      // New UI size filter: micro-only or all sizes
   viableSubPriority: 'zoning' | 'neighborhood' | 'building' | 'price' | null;  // Admin: subscore sort priority
+  deepLinkTab: "in" | "concerns" | "other" | null;  // Tab from URL deep link
 
   setLocations: (locations: Location[]) => void;
   toggleScoreFilter: (category: ScoreFilterCategory, value: string) => void;
@@ -87,11 +86,11 @@ interface VotesState {
   setShowRedLocations: (show: boolean) => void;
   setShowUnscored: (show: boolean) => void;
   setReleasedFilter: (filter: ReleasedFilter) => void;
-  setCardVersion: (version: "v1" | "v2") => void;
-  setShowAltUI: (show: boolean) => void;
   setUserLocation: (coords: { lat: number; lng: number } | null, source?: "geo" | "profile") => void;
   setShowTopOnly: (show: boolean) => void;
   setAltSizeFilter: (value: "micro" | "all") => void;
+  updateVoteComment: (locationId: string, comment: string) => void;
+  setDeepLinkTab: (tab: "in" | "concerns" | "other" | null) => void;
   setViableSubPriority: (priority: 'zoning' | 'neighborhood' | 'building' | 'price' | null) => void;
   loadCitySummaries: () => Promise<void>;
   fetchNearby: (bounds: MapBounds) => Promise<void>;
@@ -132,13 +131,12 @@ export const useVotesStore = create<VotesState>((set, get) => ({
   showRedLocations: false,
   showUnscored: false,
   releasedFilter: "all",
-  cardVersion: "v1",
-  showAltUI: typeof window !== "undefined" && localStorage.getItem("showAltUI") === "true",
   userLocation: null,
   userLocationSource: null,
   showTopOnly: true,
   altSizeFilter: "micro" as const,
   viableSubPriority: null,
+  deepLinkTab: null,
 
   toggleScoreFilter: (category, value) => {
     const filters = get().scoreFilters;
@@ -198,13 +196,6 @@ export const useVotesStore = create<VotesState>((set, get) => ({
 
   setReleasedFilter: (releasedFilter) => set({ releasedFilter, lastFetchBounds: null }),
 
-  setCardVersion: (cardVersion) => set({ cardVersion }),
-
-  setShowAltUI: (showAltUI) => {
-    if (typeof window !== "undefined") localStorage.setItem("showAltUI", String(showAltUI));
-    set({ showAltUI });
-  },
-
   setUserLocation: (userLocation, source) => set({ userLocation, userLocationSource: source || null }),
 
   setShowTopOnly: (showTopOnly) => set({ showTopOnly }),
@@ -212,6 +203,22 @@ export const useVotesStore = create<VotesState>((set, get) => ({
   setAltSizeFilter: (value) => set({ altSizeFilter: value }),
 
   setViableSubPriority: (priority) => set({ viableSubPriority: priority }),
+
+  setDeepLinkTab: (tab) => set({ deepLinkTab: tab }),
+
+  updateVoteComment: (locationId, comment) => {
+    const state = get();
+    if (!state.userId || !isSupabaseConfigured || !supabase) return;
+    supabase
+      .from("pp_votes")
+      .update({ comment })
+      .eq("location_id", locationId)
+      .eq("user_id", state.userId)
+      .then(({ error }) => {
+        if (error) console.error("Error updating vote comment:", error);
+        else get().loadLocationVoters([locationId], true);
+      });
+  },
 
   loadCitySummaries: async () => {
     const { isAdmin, viewAsParent, releasedFilter, showUnscored } = get();
@@ -602,8 +609,8 @@ export const useVotesStore = create<VotesState>((set, get) => ({
     }
 
     // Step 2: Apply alt UI size filter (micro-only vs all)
-    const { showAltUI, altSizeFilter } = get();
-    if (showAltUI && altSizeFilter === "micro") {
+    const { altSizeFilter } = get();
+    if (altSizeFilter === "micro") {
       filtered = filtered.filter((loc) => {
         const size = loc.scores?.sizeClassification;
         return size === "Micro" || size === "Micro2";
