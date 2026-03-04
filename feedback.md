@@ -29,9 +29,9 @@ For each feedback item:
 - **Action Taken**: Added the 3 bullet points to the mobile collapsed view (styled for white background: `text-gray-500` with amber bullets).
 - **Status**: Resolved
 
-### FB-3: City cards appear/disappear after admin toggle (2026-03-04)
+### FB-3: Admin city cards missing on first load (2026-03-04)
 
-- **Feedback**: On initial load, only 2 metro cards show (Orange County, Greenwich). After toggling admin mode and back to parent, extra small cities appear (Los Angeles 3, Riverside 1).
-- **Root Cause**: Likely a timing issue. `loadCitySummaries` fires on initial load before `isAdmin` resolves from auth, fetching with non-admin filters. Admin toggle triggers a refetch that picks up additional cities. When toggling back, the refetched data includes cities that weren't in the original load. Small cities (LA, Riverside) may have locations that don't consolidate into existing metros.
-- **Action Taken**: Noted for fix. Need to ensure initial city summaries fetch waits for auth state to settle, or re-consolidate after admin state changes.
-- **Status**: Open
+- **Feedback**: On initial admin load, only 2 metro cards show (Orange County, Greenwich). After toggling to parent view and back to admin, the correct 4 metros appear (+ Los Angeles, Riverside).
+- **Root Cause**: Fetch race condition. On mount, `loadCitySummaries()` fires with `isAdmin=false` (auth hasn't resolved). When auth resolves, a second fetch fires with `isAdmin=true`. If the first (parent) fetch completes AFTER the second (admin) fetch, it overwrites the correct admin results with stale parent data. Also had a duplicate mount effect (`loadCitySummaries` in both mount and filter effects) adding an extra racing fetch.
+- **Action Taken**: (1) Added sequence counter (`citySummarySeq`) to `loadCitySummaries` — stale responses are discarded if a newer fetch was started. (2) Removed duplicate mount effect — city summaries now fetched only from the single filter-change effect. (3) Fixed uppercase "GREENWICH" city data in DB.
+- **Status**: Resolved

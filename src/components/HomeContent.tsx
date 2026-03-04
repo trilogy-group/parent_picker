@@ -81,10 +81,9 @@ export function HomeContent() {
 
   useEffect(() => {
     setReferencePoint(AUSTIN_CENTER);
-    loadCitySummaries();
-  }, [loadCitySummaries, setReferencePoint]);
+  }, [setReferencePoint]);
 
-  // Refetch city summaries when filters change
+  // Fetch city summaries on mount and when filters/admin state change
   useEffect(() => {
     loadCitySummaries();
   }, [releasedFilter, isAdmin, showUnscored, viewAsParent, loadCitySummaries]);

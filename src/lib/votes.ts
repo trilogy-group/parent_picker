@@ -100,6 +100,8 @@ interface VotesState {
   filteredLocations: () => Location[];
 }
 
+let citySummarySeq = 0;
+
 export const useVotesStore = create<VotesState>((set, get) => ({
   locations: [],
   citySummaries: [],
@@ -221,6 +223,7 @@ export const useVotesStore = create<VotesState>((set, get) => ({
   },
 
   loadCitySummaries: async () => {
+    const seq = ++citySummarySeq;
     const { isAdmin, viewAsParent, releasedFilter, showUnscored } = get();
     const effectiveAdmin = isAdmin && !viewAsParent;
     // Non-admins (or view-as-parent): always released only. Admins: based on filter.
@@ -230,6 +233,8 @@ export const useVotesStore = create<VotesState>((set, get) => ({
     // Parents always exclude unscored; admins based on toggle
     const excludeUnscored = !effectiveAdmin || !showUnscored;
     const rawSummaries = await getCitySummaries(releasedOnly, excludeRed, excludeUnscored);
+    // Discard stale response if a newer fetch was started
+    if (seq !== citySummarySeq) return;
     // Consolidate to metro-level bubbles
     const summaries = consolidateToMetros(rawSummaries);
     set({ citySummaries: summaries, isLoading: false });
