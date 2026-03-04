@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useVotesStore } from "@/lib/votes";
 import { useShallow } from "zustand/react/shallow";
@@ -10,8 +10,8 @@ import LocationDetailView from "./LocationDetailView";
 import { InviteModal } from "./InviteModal";
 import { ProfilePopover } from "./ProfilePopover";
 import { getDistanceMiles } from "@/lib/locations";
-import { sortMostSupport, sortMostViable } from "@/lib/sort";
-import { Eye, Check } from "lucide-react";
+import { sortMostSupport, sortMostViable, sortMostViableWithPriority } from "@/lib/sort";
+import { Eye, Check, ChevronDown, Search, X } from "lucide-react";
 import { extractStreet } from "@/lib/address";
 import { AvatarRow } from "./AvatarRow";
 
@@ -27,6 +27,7 @@ export function AltPanel() {
     viewAsParent, setViewAsParent,
     showTopOnly, setShowTopOnly,
     altSizeFilter, setAltSizeFilter,
+    viableSubPriority, setViableSubPriority,
   } = useVotesStore(useShallow((s) => ({
     locations: s.locations,
     filteredLocations: s.filteredLocations,
@@ -52,13 +53,32 @@ export function AltPanel() {
     setShowTopOnly: s.setShowTopOnly,
     altSizeFilter: s.altSizeFilter,
     setAltSizeFilter: s.setAltSizeFilter,
+    viableSubPriority: s.viableSubPriority,
+    setViableSubPriority: s.setViableSubPriority,
   })));
 
   const { user, session, isAdmin } = useAuth();
   const isAuthenticated = !!user;
   const router = useRouter();
+  const effectiveAdmin = isAdmin && !viewAsParent;
 
+  // Subscore popover state
+  const [showSubPopover, setShowSubPopover] = useState(false);
+  const subPopoverRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!showSubPopover) return;
+    const handleClick = (e: MouseEvent) => {
+      if (subPopoverRef.current && !subPopoverRef.current.contains(e.target as Node)) {
+        setShowSubPopover(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, [showSubPopover]);
 
+  // Admin search state
+  const [adminSearch, setAdminSearch] = useState("");
+  const [searchExpanded, setSearchExpanded] = useState(false);
 
   // Find selected location for detail view
   const selectedLocation = selectedLocationId
@@ -114,17 +134,34 @@ export function AltPanel() {
       loc.lat <= mapBounds.north && loc.lat >= mapBounds.south &&
       loc.lng <= mapBounds.east && loc.lng >= mapBounds.west
     );
-    const sortFn = sortMode === 'most_support' ? sortMostSupport : sortMostViable;
+    let sortFn: (a: typeof inView[0], b: typeof inView[0]) => number;
+    if (sortMode === 'most_support') {
+      sortFn = sortMostSupport;
+    } else if (viableSubPriority) {
+      sortFn = (a, b) => sortMostViableWithPriority(a, b, viableSubPriority);
+    } else {
+      sortFn = sortMostViable;
+    }
     return [...inView].sort(sortFn);
-  }, [filteredLocations, mapBounds, sortMode, locations, altSizeFilter]);
+  }, [filteredLocations, mapBounds, sortMode, viableSubPriority, locations, altSizeFilter]);
+
+  // Apply admin search filter
+  const searchFilteredLocations = useMemo(() => {
+    if (!adminSearch.trim() || !effectiveAdmin) return sortedLocations;
+    const q = adminSearch.toLowerCase().trim();
+    return sortedLocations.filter(loc => {
+      const text = `${loc.address} ${loc.city} ${loc.name || ""}`.toLowerCase();
+      return text.includes(q);
+    });
+  }, [sortedLocations, adminSearch, effectiveAdmin]);
 
   const proposedLocations = useMemo(() => {
-    return sortedLocations.filter(loc => loc.proposed);
-  }, [sortedLocations]);
+    return searchFilteredLocations.filter(loc => loc.proposed);
+  }, [searchFilteredLocations]);
 
   const regularLocations = useMemo(() => {
-    return sortedLocations.filter(loc => !loc.proposed);
-  }, [sortedLocations]);
+    return searchFilteredLocations.filter(loc => !loc.proposed);
+  }, [searchFilteredLocations]);
 
   const TOP_N = 10;
 
@@ -358,26 +395,94 @@ export function AltPanel() {
               </button>
             </div>
           </div>
-          <div className="px-5 pb-3 flex items-center gap-2">
+          <div className="px-5 pb-3 flex items-center gap-2 flex-wrap">
             <span className="text-xs text-gray-500">Sort</span>
-            {(['most_support', 'most_viable'] as const).map((mode) => (
+            <button
+              onClick={() => { setSortMode('most_support'); setViableSubPriority(null); }}
+              className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
+                sortMode === 'most_support'
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              }`}
+            >
+              Most support
+            </button>
+            {/* Most viable pill with subscore popover (admin only) */}
+            <div className="relative" ref={subPopoverRef}>
               <button
-                key={mode}
-                onClick={() => setSortMode(mode)}
-                className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
-                  sortMode === mode
+                onClick={() => {
+                  if (sortMode !== 'most_viable') {
+                    setSortMode('most_viable');
+                  } else if (effectiveAdmin) {
+                    setShowSubPopover(!showSubPopover);
+                  }
+                }}
+                className={`px-3 py-1 rounded-full text-xs font-medium transition-colors flex items-center gap-1 ${
+                  sortMode === 'most_viable'
                     ? 'bg-blue-600 text-white'
                     : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                 }`}
               >
-                {mode === 'most_support' ? 'Most support' : 'Most viable'}
+                Most viable{viableSubPriority && sortMode === 'most_viable' ? ` · ${viableSubPriority.charAt(0).toUpperCase() + viableSubPriority.slice(1)}` : ''}
+                {effectiveAdmin && sortMode === 'most_viable' && (
+                  <ChevronDown className="w-3 h-3" />
+                )}
               </button>
-            ))}
+              {showSubPopover && effectiveAdmin && (
+                <div className="absolute top-full left-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-20 py-1 min-w-[140px]">
+                  {([
+                    { value: null, label: 'Default (overall)' },
+                    { value: 'zoning' as const, label: 'Zoning' },
+                    { value: 'neighborhood' as const, label: 'Neighborhood' },
+                    { value: 'building' as const, label: 'Building' },
+                    { value: 'price' as const, label: 'Price' },
+                  ]).map((opt) => (
+                    <button
+                      key={opt.label}
+                      onClick={() => { setViableSubPriority(opt.value); setShowSubPopover(false); }}
+                      className={`w-full text-left px-3 py-1.5 text-xs hover:bg-gray-50 ${
+                        viableSubPriority === opt.value ? 'text-blue-600 font-semibold' : 'text-gray-700'
+                      }`}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+            {/* Admin search */}
+            {effectiveAdmin && (
+              searchExpanded ? (
+                <div className="flex items-center gap-1 ml-auto">
+                  <input
+                    type="text"
+                    value={adminSearch}
+                    onChange={(e) => setAdminSearch(e.target.value)}
+                    placeholder="Search address..."
+                    autoFocus
+                    className="w-36 px-2 py-1 text-xs border border-gray-300 rounded-full focus:outline-none focus:border-blue-400"
+                  />
+                  <button
+                    onClick={() => { setSearchExpanded(false); setAdminSearch(""); }}
+                    className="p-1 text-gray-400 hover:text-gray-600"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              ) : (
+                <button
+                  onClick={() => setSearchExpanded(true)}
+                  className="ml-auto p-1 text-gray-400 hover:text-gray-600"
+                >
+                  <Search className="w-3.5 h-3.5" />
+                </button>
+              )
+            )}
             <button
               onClick={() => { setShowTopOnly(!showTopOnly); setExtraPages(0); }}
-              className="ml-auto text-xs text-blue-600 font-medium hover:underline"
+              className={`${effectiveAdmin ? '' : 'ml-auto'} text-xs text-blue-600 font-medium hover:underline`}
             >
-              {showTopOnly ? `Show all (${sortedLocations.length})` : 'Top 10'}
+              {showTopOnly ? `Show all (${searchFilteredLocations.length})` : 'Top 10'}
             </button>
           </div>
 

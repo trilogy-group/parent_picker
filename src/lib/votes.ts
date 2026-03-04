@@ -58,6 +58,7 @@ interface VotesState {
   userLocationSource: "geo" | "profile" | null;       // Where userLocation came from
   showTopOnly: boolean;                                // Top 10 vs Show all toggle (shared with MapView)
   altSizeFilter: "micro" | "all";                      // New UI size filter: micro-only or all sizes
+  viableSubPriority: 'zoning' | 'neighborhood' | 'building' | 'price' | null;  // Admin: subscore sort priority
 
   setLocations: (locations: Location[]) => void;
   toggleScoreFilter: (category: ScoreFilterCategory, value: string) => void;
@@ -91,6 +92,7 @@ interface VotesState {
   setUserLocation: (coords: { lat: number; lng: number } | null, source?: "geo" | "profile") => void;
   setShowTopOnly: (show: boolean) => void;
   setAltSizeFilter: (value: "micro" | "all") => void;
+  setViableSubPriority: (priority: 'zoning' | 'neighborhood' | 'building' | 'price' | null) => void;
   loadCitySummaries: () => Promise<void>;
   fetchNearby: (bounds: MapBounds) => Promise<void>;
   fetchNearbyForce: (bounds: MapBounds) => Promise<void>;
@@ -136,6 +138,7 @@ export const useVotesStore = create<VotesState>((set, get) => ({
   userLocationSource: null,
   showTopOnly: true,
   altSizeFilter: "micro" as const,
+  viableSubPriority: null,
 
   toggleScoreFilter: (category, value) => {
     const filters = get().scoreFilters;
@@ -207,6 +210,8 @@ export const useVotesStore = create<VotesState>((set, get) => ({
   setShowTopOnly: (showTopOnly) => set({ showTopOnly }),
 
   setAltSizeFilter: (value) => set({ altSizeFilter: value }),
+
+  setViableSubPriority: (priority) => set({ viableSubPriority: priority }),
 
   loadCitySummaries: async () => {
     const { isAdmin, viewAsParent, releasedFilter, showUnscored } = get();
