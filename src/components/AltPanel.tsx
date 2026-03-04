@@ -78,7 +78,6 @@ export function AltPanel() {
 
   // Admin search state
   const [adminSearch, setAdminSearch] = useState("");
-  const [searchExpanded, setSearchExpanded] = useState(false);
 
   // Find selected location for detail view
   const selectedLocation = selectedLocationId
@@ -450,41 +449,36 @@ export function AltPanel() {
                 </div>
               )}
             </div>
-            {/* Admin search */}
-            {effectiveAdmin && (
-              searchExpanded ? (
-                <div className="flex items-center gap-1 ml-auto">
-                  <input
-                    type="text"
-                    value={adminSearch}
-                    onChange={(e) => setAdminSearch(e.target.value)}
-                    placeholder="Search address..."
-                    autoFocus
-                    className="w-36 px-2 py-1 text-xs border border-gray-300 rounded-full focus:outline-none focus:border-blue-400"
-                  />
-                  <button
-                    onClick={() => { setSearchExpanded(false); setAdminSearch(""); }}
-                    className="p-1 text-gray-400 hover:text-gray-600"
-                  >
-                    <X className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-              ) : (
-                <button
-                  onClick={() => setSearchExpanded(true)}
-                  className="ml-auto p-1 text-gray-400 hover:text-gray-600"
-                >
-                  <Search className="w-3.5 h-3.5" />
-                </button>
-              )
-            )}
             <button
               onClick={() => { setShowTopOnly(!showTopOnly); setExtraPages(0); }}
-              className={`${effectiveAdmin ? '' : 'ml-auto'} text-xs text-blue-600 font-medium hover:underline`}
+              className="ml-auto text-xs text-blue-600 font-medium hover:underline"
             >
               {showTopOnly ? `Show all (${searchFilteredLocations.length})` : 'Top 10'}
             </button>
           </div>
+          {/* Admin search row */}
+          {effectiveAdmin && (
+            <div className="px-5 pb-3 flex items-center gap-2">
+              <div className="flex items-center flex-1 gap-1 relative">
+                <Search className="w-3.5 h-3.5 text-gray-400 absolute left-2.5 pointer-events-none" />
+                <input
+                  type="text"
+                  value={adminSearch}
+                  onChange={(e) => setAdminSearch(e.target.value)}
+                  placeholder="Search address..."
+                  className="w-full pl-8 pr-7 py-1.5 text-xs border border-gray-300 rounded-full focus:outline-none focus:border-blue-400"
+                />
+                {adminSearch && (
+                  <button
+                    onClick={() => setAdminSearch("")}
+                    className="absolute right-2.5 text-gray-400 hover:text-gray-600"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
 
           {/* Location cards */}
           <div className="px-5 pb-5 space-y-3">
