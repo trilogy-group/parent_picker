@@ -146,13 +146,13 @@ export function AltPanel() {
 
   // Apply admin search filter
   const searchFilteredLocations = useMemo(() => {
-    if (!adminSearch.trim() || !effectiveAdmin) return sortedLocations;
+    if (!adminSearch.trim()) return sortedLocations;
     const q = adminSearch.toLowerCase().trim();
     return sortedLocations.filter(loc => {
       const text = `${loc.address} ${loc.city} ${loc.name || ""}`.toLowerCase();
       return text.includes(q);
     });
-  }, [sortedLocations, adminSearch, effectiveAdmin]);
+  }, [sortedLocations, adminSearch]);
 
   const proposedLocations = useMemo(() => {
     return searchFilteredLocations.filter(loc => loc.proposed);
@@ -452,26 +452,24 @@ export function AltPanel() {
           </div>
           {/* Search + Show all row (search admin-only, show all always visible) */}
           <div className="px-5 pb-3 flex items-center gap-2">
-            {effectiveAdmin && (
-              <div className="flex items-center flex-1 gap-1 relative">
-                <Search className="w-3.5 h-3.5 text-gray-400 absolute left-2.5 pointer-events-none" />
-                <input
-                  type="text"
-                  value={adminSearch}
-                  onChange={(e) => setAdminSearch(e.target.value)}
-                  placeholder="Search address..."
-                  className="w-full pl-8 pr-7 py-1.5 text-xs border border-gray-300 rounded-full focus:outline-none focus:border-blue-400"
-                />
-                {adminSearch && (
-                  <button
-                    onClick={() => setAdminSearch("")}
-                    className="absolute right-2.5 text-gray-400 hover:text-gray-600"
-                  >
-                    <X className="w-3.5 h-3.5" />
-                  </button>
-                )}
-              </div>
-            )}
+            <div className="flex items-center flex-1 gap-1 relative">
+              <Search className="w-3.5 h-3.5 text-gray-400 absolute left-2.5 pointer-events-none" />
+              <input
+                type="text"
+                value={adminSearch}
+                onChange={(e) => setAdminSearch(e.target.value)}
+                placeholder="Search address..."
+                className="w-full pl-8 pr-7 py-1.5 text-xs border border-gray-300 rounded-full focus:outline-none focus:border-blue-400"
+              />
+              {adminSearch && (
+                <button
+                  onClick={() => setAdminSearch("")}
+                  className="absolute right-2.5 text-gray-400 hover:text-gray-600"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
             <button
               onClick={() => { setShowTopOnly(!showTopOnly); setExtraPages(0); }}
               className="ml-auto text-xs text-blue-600 font-medium hover:underline shrink-0"
