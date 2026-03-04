@@ -449,16 +449,10 @@ export function AltPanel() {
                 </div>
               )}
             </div>
-            <button
-              onClick={() => { setShowTopOnly(!showTopOnly); setExtraPages(0); }}
-              className="ml-auto text-xs text-blue-600 font-medium hover:underline"
-            >
-              {showTopOnly ? `Show all (${searchFilteredLocations.length})` : 'Top 10'}
-            </button>
           </div>
-          {/* Admin search row */}
-          {effectiveAdmin && (
-            <div className="px-5 pb-3 flex items-center gap-2">
+          {/* Search + Show all row (search admin-only, show all always visible) */}
+          <div className="px-5 pb-3 flex items-center gap-2">
+            {effectiveAdmin && (
               <div className="flex items-center flex-1 gap-1 relative">
                 <Search className="w-3.5 h-3.5 text-gray-400 absolute left-2.5 pointer-events-none" />
                 <input
@@ -477,8 +471,14 @@ export function AltPanel() {
                   </button>
                 )}
               </div>
-            </div>
-          )}
+            )}
+            <button
+              onClick={() => { setShowTopOnly(!showTopOnly); setExtraPages(0); }}
+              className="ml-auto text-xs text-blue-600 font-medium hover:underline shrink-0"
+            >
+              {showTopOnly ? `Show all (${searchFilteredLocations.length})` : 'Top 10'}
+            </button>
+          </div>
 
           {/* Location cards */}
           <div className="px-5 pb-5 space-y-3">
