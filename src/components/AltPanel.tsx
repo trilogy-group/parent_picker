@@ -460,7 +460,7 @@ export function AltPanel() {
                 onClick={() => {
                   if (sortMode !== 'most_viable') {
                     setSortMode('most_viable');
-                  } else if (effectiveAdmin) {
+                  } else {
                     setShowSubPopover(!showSubPopover);
                   }
                 }}
