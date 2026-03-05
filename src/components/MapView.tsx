@@ -53,6 +53,7 @@ export function MapView() {
     mapBounds,
     viableSubPriority,
     storeUserLocation,
+    userLocationSource,
     driveTimeMinutes,
     userIsochrone,
     setUserIsochrone,
@@ -84,6 +85,7 @@ export function MapView() {
     altSizeFilter: s.altSizeFilter,
     viableSubPriority: s.viableSubPriority,
     storeUserLocation: s.userLocation,
+    userLocationSource: s.userLocationSource,
     driveTimeMinutes: s.driveTimeMinutes,
     userIsochrone: s.userIsochrone,
     setUserIsochrone: s.setUserIsochrone,
@@ -95,7 +97,7 @@ export function MapView() {
   // Start false — the geolocation useEffect will set true on client once resolved/unavailable
   const [geoResolved, setGeoResolved] = useState(false);
   const [mapReady, setMapReady] = useState(false);
-  const initialViewSetRef = useRef(false);
+  const initialViewSetRef = useRef<boolean | "profile">(false);
   const flyingRef = useRef(false);
   const selectedLocationRef = useRef<{ lat: number; lng: number } | null>(null);
 
@@ -235,14 +237,20 @@ export function MapView() {
 
   // Set initial map view based on user location and nearby listings
   // Skip if a deep link is present — let DeepLinkHandler control the view
+  // Prefer storeUserLocation (profile) over local geolocation
+  const initialViewLocation = storeUserLocation ?? userLocation;
+
   useEffect(() => {
-    if (initialViewSetRef.current || !geoResolved || !mapReady || citySummaries.length === 0) return;
+    if (!geoResolved || !mapReady || citySummaries.length === 0) return;
+    // Allow re-fire when profile location arrives after geo-based initial view
+    if (initialViewSetRef.current && userLocationSource !== "profile") return;
+    if (initialViewSetRef.current === "profile") return;
     const hasDeepLink = typeof window !== "undefined" && new URLSearchParams(window.location.search).has("location");
     if (hasDeepLink || flyToTarget) { initialViewSetRef.current = true; return; }
 
     const { center, zoom } = getInitialMapView(
-      userLocation?.lat ?? null,
-      userLocation?.lng ?? null,
+      initialViewLocation?.lat ?? null,
+      initialViewLocation?.lng ?? null,
       citySummaries
     );
 
@@ -277,8 +285,8 @@ export function MapView() {
       }
     }, 100);
 
-    initialViewSetRef.current = true;
-  }, [userLocation, citySummaries, geoResolved, mapReady, locations, setReferencePoint, setMapBounds, setMapCenter, setZoomLevel, fetchNearbyForce]);
+    initialViewSetRef.current = userLocationSource === "profile" ? "profile" : true;
+  }, [initialViewLocation, userLocationSource, citySummaries, geoResolved, mapReady, locations, setReferencePoint, setMapBounds, setMapCenter, setZoomLevel, fetchNearbyForce]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const flyToCoords = useCallback((coords: { lat: number; lng: number }, zoom?: number) => {
     flyingRef.current = true;
