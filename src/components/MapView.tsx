@@ -125,12 +125,9 @@ export function MapView() {
   // User isochrone (list view — eagerly fetch when in metro view with user location)
   // Note: driveTimeMinutes change clears userIsochrone via setDriveTimeMinutes
   useEffect(() => {
-    console.log("[isochrone] effect:", { hasUserLoc: !!storeUserLocation, showCities, hasIsochrone: !!userIsochrone, driveTimeMinutes });
     if (!storeUserLocation || showCities || userIsochrone) return;
-    console.log("[isochrone] fetching for", storeUserLocation, driveTimeMinutes);
     let cancelled = false;
     fetchIsochrone(storeUserLocation.lng, storeUserLocation.lat, driveTimeMinutes).then((data) => {
-      console.log("[isochrone] fetch result:", data ? `${data.features?.length} features` : "null");
       if (!cancelled) setUserIsochrone(data);
     });
     return () => { cancelled = true; };
