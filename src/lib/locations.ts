@@ -182,8 +182,8 @@ export function getInitialMapView(
     return { center: US_CENTER, zoom: US_ZOOM };
   }
 
-  // Center on user at zoom 9; fetchNearbyForce will load nearby dots
-  return { center: { lat: userLat, lng: userLng }, zoom: 9 };
+  // Center on user at zoom 11; fetchNearbyForce will load nearby dots
+  return { center: { lat: userLat, lng: userLng }, zoom: 11 };
 }
 
 export async function getLocations(): Promise<Location[]> {
