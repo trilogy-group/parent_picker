@@ -31,12 +31,12 @@ export async function GET(request: NextRequest) {
 
   const { data, error } = await supabase
     .from("pp_profiles")
-    .select("display_name, home_address, home_lat, home_lng")
+    .select("display_name, home_address, home_lat, home_lng, drive_time_minutes")
     .eq("id", user.id)
     .single();
 
   if (error) {
-    return NextResponse.json({ display_name: null, home_address: null, home_lat: null, home_lng: null });
+    return NextResponse.json({ display_name: null, home_address: null, home_lat: null, home_lng: null, drive_time_minutes: 30 });
   }
 
   return NextResponse.json(data);
@@ -54,7 +54,7 @@ export async function PUT(request: NextRequest) {
   }
 
   const body = await request.json();
-  const { display_name, home_address } = body as { display_name?: string; home_address?: string };
+  const { display_name, home_address, drive_time_minutes } = body as { display_name?: string; home_address?: string; drive_time_minutes?: number };
 
   let home_lat: number | null = null;
   let home_lng: number | null = null;
@@ -81,8 +81,9 @@ export async function PUT(request: NextRequest) {
       home_address: home_address?.trim() || null,
       home_lat,
       home_lng,
+      drive_time_minutes: drive_time_minutes && [10, 20, 30].includes(drive_time_minutes) ? drive_time_minutes : 30,
     }, { onConflict: "id" })
-    .select("display_name, home_address, home_lat, home_lng")
+    .select("display_name, home_address, home_lat, home_lng, drive_time_minutes")
     .single();
 
   if (error) {

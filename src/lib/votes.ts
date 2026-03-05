@@ -58,6 +58,9 @@ interface VotesState {
   altSizeFilter: "micro" | "all";                      // New UI size filter: micro-only or all sizes
   viableSubPriority: 'zoning' | 'neighborhood' | 'playArea' | 'building' | 'price' | null;  // Admin: subscore sort priority
   deepLinkTab: "in" | "concerns" | "other" | null;  // Tab from URL deep link
+  driveTimeMinutes: number;                          // User preference: 10/20/30
+  showDriveFilter: boolean;                          // "Close to me" filter toggle
+  userIsochrone: GeoJSON.FeatureCollection | null;   // Isochrone polygon from user's location
 
   setLocations: (locations: Location[]) => void;
   toggleScoreFilter: (category: ScoreFilterCategory, value: string) => void;
@@ -92,6 +95,9 @@ interface VotesState {
   updateVoteComment: (locationId: string, comment: string) => void;
   setDeepLinkTab: (tab: "in" | "concerns" | "other" | null) => void;
   setViableSubPriority: (priority: 'zoning' | 'neighborhood' | 'playArea' | 'building' | 'price' | null) => void;
+  setDriveTimeMinutes: (minutes: number) => void;
+  setShowDriveFilter: (show: boolean) => void;
+  setUserIsochrone: (data: GeoJSON.FeatureCollection | null) => void;
   loadCitySummaries: () => Promise<void>;
   fetchNearby: (bounds: MapBounds) => Promise<void>;
   fetchNearbyForce: (bounds: MapBounds) => Promise<void>;
@@ -139,6 +145,9 @@ export const useVotesStore = create<VotesState>((set, get) => ({
   altSizeFilter: "micro" as const,
   viableSubPriority: null,
   deepLinkTab: null,
+  driveTimeMinutes: 30,
+  showDriveFilter: false,
+  userIsochrone: null,
 
   toggleScoreFilter: (category, value) => {
     const filters = get().scoreFilters;
@@ -207,6 +216,12 @@ export const useVotesStore = create<VotesState>((set, get) => ({
   setViableSubPriority: (priority) => set({ viableSubPriority: priority }),
 
   setDeepLinkTab: (tab) => set({ deepLinkTab: tab }),
+
+  setDriveTimeMinutes: (minutes) => set({ driveTimeMinutes: minutes, userIsochrone: null }),
+
+  setShowDriveFilter: (show) => set({ showDriveFilter: show }),
+
+  setUserIsochrone: (data) => set({ userIsochrone: data }),
 
   updateVoteComment: (locationId, comment) => {
     const state = get();

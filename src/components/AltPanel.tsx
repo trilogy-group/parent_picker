@@ -11,9 +11,10 @@ import { InviteModal } from "./InviteModal";
 import { ProfilePopover } from "./ProfilePopover";
 import { getDistanceMiles } from "@/lib/locations";
 import { sortMostSupport, sortMostViable, sortMostViableWithPriority, makeSortNearest } from "@/lib/sort";
-import { Eye, Check, ChevronDown, Search, X, ChevronLeft } from "lucide-react";
+import { Eye, Check, ChevronDown, Search, X, ChevronLeft, MapPin } from "lucide-react";
 import { extractStreet } from "@/lib/address";
 import { AvatarRow } from "./AvatarRow";
+import { pointInIsochrone } from "@/lib/geo";
 
 const PAGE_SIZE = 25;
 
@@ -29,6 +30,7 @@ export function AltPanel() {
     altSizeFilter, setAltSizeFilter,
     viableSubPriority, setViableSubPriority,
     deepLinkTab, setDeepLinkTab,
+    showDriveFilter, setShowDriveFilter, userIsochrone,
   } = useVotesStore(useShallow((s) => ({
     locations: s.locations,
     filteredLocations: s.filteredLocations,
@@ -60,6 +62,9 @@ export function AltPanel() {
     setViableSubPriority: s.setViableSubPriority,
     deepLinkTab: s.deepLinkTab,
     setDeepLinkTab: s.setDeepLinkTab,
+    showDriveFilter: s.showDriveFilter,
+    setShowDriveFilter: s.setShowDriveFilter,
+    userIsochrone: s.userIsochrone,
   })));
 
   const { user, session, isAdmin } = useAuth();
@@ -148,8 +153,13 @@ export function AltPanel() {
     } else {
       sortFn = sortMostViable;
     }
-    return [...pool].sort(sortFn);
-  }, [filteredLocations, mapBounds, sortMode, viableSubPriority, userLocation, locations, altSizeFilter, viewAsParent]);
+    let sorted = [...pool].sort(sortFn);
+    // Apply "Close to me" drive-time filter
+    if (showDriveFilter && userIsochrone) {
+      sorted = sorted.filter(loc => pointInIsochrone(loc.lat, loc.lng, userIsochrone));
+    }
+    return sorted;
+  }, [filteredLocations, mapBounds, sortMode, viableSubPriority, userLocation, locations, altSizeFilter, viewAsParent, showDriveFilter, userIsochrone]);
 
   // Apply admin search filter
   const searchFilteredLocations = useMemo(() => {
@@ -174,7 +184,7 @@ export function AltPanel() {
   // Pagination — track extra pages loaded beyond first page (only used in "show all" mode)
   const [extraPages, setExtraPages] = useState(0);
   // Reset extra pages when sort or bounds change
-  const resetKey = `${sortMode}-${altSizeFilter}-${mapBounds?.north}-${mapBounds?.south}-${mapBounds?.east}-${mapBounds?.west}`;
+  const resetKey = `${sortMode}-${altSizeFilter}-${showDriveFilter}-${mapBounds?.north}-${mapBounds?.south}-${mapBounds?.east}-${mapBounds?.west}`;
   const [prevResetKey, setPrevResetKey] = useState(resetKey);
   if (resetKey !== prevResetKey) {
     setPrevResetKey(resetKey);
@@ -413,6 +423,21 @@ export function AltPanel() {
                 All sizes
               </button>
             </div>
+            {userLocation && userIsochrone && (
+              <div className="flex items-center gap-2 mb-2">
+                <button
+                  onClick={() => setShowDriveFilter(!showDriveFilter)}
+                  className={`flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium transition-colors ${
+                    showDriveFilter
+                      ? 'bg-green-600 text-white'
+                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  }`}
+                >
+                  <MapPin className="h-3 w-3" />
+                  Close to me
+                </button>
+              </div>
+            )}
           </div>
           <div className="px-5 pb-3 flex items-center gap-2 flex-wrap">
             <span className="text-xs text-gray-500">Sort</span>

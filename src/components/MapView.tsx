@@ -53,6 +53,9 @@ export function MapView() {
     mapBounds,
     viableSubPriority,
     storeUserLocation,
+    driveTimeMinutes,
+    userIsochrone,
+    setUserIsochrone,
   } = useVotesStore(useShallow((s) => ({
     filteredLocations: s.filteredLocations,
     selectedLocationId: s.selectedLocationId,
@@ -81,6 +84,9 @@ export function MapView() {
     altSizeFilter: s.altSizeFilter,
     viableSubPriority: s.viableSubPriority,
     storeUserLocation: s.userLocation,
+    driveTimeMinutes: s.driveTimeMinutes,
+    userIsochrone: s.userIsochrone,
+    setUserIsochrone: s.setUserIsochrone,
   })));
 
   const { user, isOfflineMode } = useAuth();
@@ -99,21 +105,36 @@ export function MapView() {
 
   const showCities = zoomLevel < 9;
 
-  // Isochrone drive-time polygon
-  const [isochroneData, setIsochroneData] = useState<GeoJSON.FeatureCollection | null>(null);
+  // Isochrone drive-time polygons
+  const [locationIsochrone, setLocationIsochrone] = useState<GeoJSON.FeatureCollection | null>(null);
   const emptyGeojson = useMemo<GeoJSON.FeatureCollection>(() => ({ type: "FeatureCollection", features: [] }), []);
 
+  // Location isochrone (detail view)
   useEffect(() => {
     if (!selectedLocation) {
-      setIsochroneData(null);
+      setLocationIsochrone(null);
       return;
     }
     let cancelled = false;
-    fetchIsochrone(selectedLocation.lng, selectedLocation.lat, 30).then((data) => {
-      if (!cancelled) setIsochroneData(data);
+    fetchIsochrone(selectedLocation.lng, selectedLocation.lat, driveTimeMinutes).then((data) => {
+      if (!cancelled) setLocationIsochrone(data);
     });
     return () => { cancelled = true; };
-  }, [selectedLocation?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [selectedLocation?.id, driveTimeMinutes]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // User isochrone (list view — eagerly fetch when in metro view with user location)
+  // Note: driveTimeMinutes change clears userIsochrone via setDriveTimeMinutes
+  useEffect(() => {
+    if (!storeUserLocation || showCities || userIsochrone) return;
+    let cancelled = false;
+    fetchIsochrone(storeUserLocation.lng, storeUserLocation.lat, driveTimeMinutes).then((data) => {
+      if (!cancelled) setUserIsochrone(data);
+    });
+    return () => { cancelled = true; };
+  }, [storeUserLocation?.lat, storeUserLocation?.lng, driveTimeMinutes, showCities, userIsochrone, setUserIsochrone]);
+
+  // Pick which isochrone to display: location (detail) takes priority, else user (list)
+  const activeIsochrone = selectedLocation ? locationIsochrone : userIsochrone;
 
   // GeoJSON for city bubbles
   const cityGeojson = useMemo(() => ({
@@ -543,24 +564,24 @@ export function MapView() {
         </Source>
       )}
 
-      {/* Isochrone drive-time polygon */}
+      {/* Isochrone drive-time polygon — blue for location detail, green for user catchment */}
       {!showCities && (
-        <Source id="isochrone" type="geojson" data={isochroneData ?? emptyGeojson}>
+        <Source id="isochrone" type="geojson" data={activeIsochrone ?? emptyGeojson}>
           <Layer
             id="isochrone-fill"
             type="fill"
             paint={{
-              "fill-color": "#2563eb",
-              "fill-opacity": 0.12,
+              "fill-color": selectedLocation ? "#2563eb" : "#16a34a",
+              "fill-opacity": selectedLocation ? 0.12 : 0.08,
             }}
           />
           <Layer
             id="isochrone-outline"
             type="line"
             paint={{
-              "line-color": "#2563eb",
-              "line-width": 2,
-              "line-opacity": 0.6,
+              "line-color": selectedLocation ? "#2563eb" : "#16a34a",
+              "line-width": selectedLocation ? 2 : 1.5,
+              "line-opacity": selectedLocation ? 0.6 : 0.4,
             }}
           />
         </Source>

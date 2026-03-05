@@ -39,7 +39,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const [session, setSession] = useState<Session | null>(null);
   // Start as not loading if Supabase isn't configured (offline mode)
   const [isLoading, setIsLoading] = useState(isSupabaseConfigured);
-  const { setUserId, loadUserVotes, clearUserVotes, setUserLocation } = useVotesStore();
+  const { setUserId, loadUserVotes, clearUserVotes, setUserLocation, setDriveTimeMinutes } = useVotesStore();
 
   // If Supabase is not configured, run in offline/demo mode
   const isOfflineMode = !isSupabaseConfigured;
@@ -55,6 +55,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
         const profile = await res.json();
         if (profile.home_lat && profile.home_lng) {
           setUserLocation({ lat: profile.home_lat, lng: profile.home_lng }, "profile");
+        }
+        if (profile.drive_time_minutes) {
+          setDriveTimeMinutes(profile.drive_time_minutes);
         }
       }
     } catch {}
