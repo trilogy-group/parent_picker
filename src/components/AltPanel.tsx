@@ -498,6 +498,7 @@ export function AltPanel() {
                 </div>
               )}
             </div>
+            {/* Nearest sort hidden — redundant with drive-time filter. Keep code for potential re-enable.
             {userLocation && (
               <button
                 onClick={() => { setSortMode('nearest'); setViableSubPriority(null); }}
@@ -510,6 +511,7 @@ export function AltPanel() {
                 Nearest
               </button>
             )}
+            */}
           </div>
           {/* Search + Show all row */}
           <div className="px-5 pb-3 flex items-center gap-2">
