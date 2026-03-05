@@ -11,7 +11,7 @@ import { InviteModal } from "./InviteModal";
 import { ProfilePopover } from "./ProfilePopover";
 import { getDistanceMiles } from "@/lib/locations";
 import { sortMostSupport, sortMostViable, sortMostViableWithPriority, makeSortNearest } from "@/lib/sort";
-import { Eye, Check, ChevronDown, Search, X } from "lucide-react";
+import { Eye, Check, ChevronDown, Search, X, ChevronLeft } from "lucide-react";
 import { extractStreet } from "@/lib/address";
 import { AvatarRow } from "./AvatarRow";
 
@@ -23,7 +23,7 @@ export function AltPanel() {
     voteIn, voteNotHere, removeVote, updateVoteComment, votedLocationIds, votedNotHereIds,
     mapBounds, sortMode, setSortMode,
     locationVoters, loadLocationVoters, zoomLevel,
-    citySummaries, setFlyToTarget, userLocation,
+    citySummaries, setFlyToTarget, userLocation, setZoomLevel,
     viewAsParent, setViewAsParent,
     showTopOnly, setShowTopOnly,
     altSizeFilter, setAltSizeFilter,
@@ -48,6 +48,7 @@ export function AltPanel() {
     zoomLevel: s.zoomLevel,
     citySummaries: s.citySummaries,
     setFlyToTarget: s.setFlyToTarget,
+    setZoomLevel: s.setZoomLevel,
     userLocation: s.userLocation,
     viewAsParent: s.viewAsParent,
     setViewAsParent: s.setViewAsParent,
@@ -261,6 +262,19 @@ export function AltPanel() {
           <p className="text-[13px] leading-snug text-gray-500 mt-0.5">Know a space that&apos;s not here? We&apos;ll evaluate it within 24 hours.</p>
         </a>
       </div>
+
+      {/* Mobile back button to return to city cards */}
+      {!showCityCards && (
+        <div className="px-5 pb-2 lg:hidden">
+          <button
+            onClick={() => setZoomLevel(4)}
+            className="flex items-center gap-1 text-sm text-blue-600 hover:text-blue-800 font-medium"
+          >
+            <ChevronLeft className="h-4 w-4" />
+            All Cities
+          </button>
+        </div>
+      )}
 
       {showCityCards ? (
         /* Zoomed-out: city summary cards */
