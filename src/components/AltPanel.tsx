@@ -422,12 +422,10 @@ export function AltPanel() {
               >
                 All sizes
               </button>
-            </div>
-            {userLocation && userIsochrone && (
-              <div className="flex items-center gap-2 mb-2">
+              {userLocation && userIsochrone && (
                 <button
                   onClick={() => setShowDriveFilter(!showDriveFilter)}
-                  className={`flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium transition-colors ${
+                  className={`flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium transition-colors ml-auto ${
                     showDriveFilter
                       ? 'bg-green-600 text-white'
                       : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
@@ -436,8 +434,8 @@ export function AltPanel() {
                   <MapPin className="h-3 w-3" />
                   Close to me
                 </button>
-              </div>
-            )}
+              )}
+            </div>
           </div>
           <div className="px-5 pb-3 flex items-center gap-2 flex-wrap">
             <span className="text-xs text-gray-500">Sort</span>
