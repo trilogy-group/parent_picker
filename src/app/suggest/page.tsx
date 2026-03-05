@@ -41,6 +41,7 @@ function SuggestPageInner() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [submittedAddress, setSubmittedAddress] = useState("");
+  const [wasDuplicate, setWasDuplicate] = useState(false);
 
   // Validation
   const [errors, setErrors] = useState<FormErrors>({});
@@ -109,6 +110,7 @@ function SuggestPageInner() {
       addLocation(newLocation);
       setSelectedLocation(newLocation.id);
       setSubmittedAddress(fullAddress);
+      setWasDuplicate(!!newLocation.duplicateOf);
       setSubmitted(true);
     } catch {
       setSubmitError("Something went wrong. Please try again.");
@@ -122,25 +124,33 @@ function SuggestPageInner() {
       <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
         <div className="max-w-md w-full bg-white rounded-xl shadow-lg p-8 text-center">
           <CheckCircle2 className="w-16 h-16 text-green-500 mx-auto mb-4" />
-          <h2 className="text-2xl font-bold mb-2">Location Submitted!</h2>
+          <h2 className="text-2xl font-bold mb-2">
+            {wasDuplicate ? "Great news!" : "Location Submitted!"}
+          </h2>
           <p className="text-muted-foreground mb-6">
-            Thank you for suggesting <strong>{submittedAddress}</strong>.
+            {wasDuplicate ? (
+              <>We&apos;re already evaluating <strong>{submittedAddress}</strong> — we&apos;ve added your vote!</>
+            ) : (
+              <>Thank you for suggesting <strong>{submittedAddress}</strong>.</>
+            )}
           </p>
-          <div className="bg-blue-50 rounded-lg p-4 text-left text-sm space-y-2 mb-6">
-            <p className="font-medium text-blue-900">What happens next:</p>
-            <ol className="text-blue-800 space-y-1.5 ml-4 list-decimal">
-              <li>We evaluate this location for school use — typically in minutes</li>
-              <li>We check zoning, neighborhood, pricing, and building suitability</li>
-              <li>We email you the results with a detailed report</li>
-            </ol>
-          </div>
+          {!wasDuplicate && (
+            <div className="bg-blue-50 rounded-lg p-4 text-left text-sm space-y-2 mb-6">
+              <p className="font-medium text-blue-900">What happens next:</p>
+              <ol className="text-blue-800 space-y-1.5 ml-4 list-decimal">
+                <li>We evaluate this location for school use — typically in minutes</li>
+                <li>We check zoning, neighborhood, pricing, and building suitability</li>
+                <li>We email you the results with a detailed report</li>
+              </ol>
+            </div>
+          )}
           <div className="flex gap-3 justify-center">
             {!standalone && (
               <Link href={backHref}>
                 <Button>Back to Map</Button>
               </Link>
             )}
-            <Button variant="outline" onClick={() => { setSubmitted(false); setAddress(""); setCity(""); setState(""); setCoordinates(null); setErrors({}); setHasAttemptedSubmit(false); setSubmitError(null); }}>
+            <Button variant="outline" onClick={() => { setSubmitted(false); setWasDuplicate(false); setAddress(""); setCity(""); setState(""); setCoordinates(null); setErrors({}); setHasAttemptedSubmit(false); setSubmitError(null); }}>
               Suggest Another
             </Button>
           </div>

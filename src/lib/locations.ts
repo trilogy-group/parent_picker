@@ -469,6 +469,50 @@ export async function suggestLocation(
   // If user is authenticated and Supabase is configured, persist to database
   if (userId && isSupabaseConfigured && supabase) {
     try {
+      // Dedup: check if a location already exists within ~50m of geocoded coordinates
+      // ~0.0005 degrees ≈ 55m at mid-latitudes
+      if (coords) {
+        const TOLERANCE = 0.0005;
+        const { data: nearbyRows } = await supabase
+          .from("pp_locations")
+          .select("id, name, address, city, state, lat, lng, votes:pp_votes(count)")
+          .gte("lat", lat - TOLERANCE)
+          .lte("lat", lat + TOLERANCE)
+          .gte("lng", lng - TOLERANCE)
+          .lte("lng", lng + TOLERANCE)
+          .limit(1);
+
+        const nearby = nearbyRows?.[0];
+        if (nearby) {
+          // Found a match — vote for existing location instead of creating a dup
+          await supabase
+            .from("pp_votes")
+            .insert({ location_id: nearby.id, user_id: userId });
+
+          // Save suggestion notes as a contribution so context isn't lost
+          if (notes) {
+            await supabase
+              .from("pp_contributions")
+              .insert({ location_id: nearby.id, user_id: userId, comment: notes });
+          }
+
+          const voteCount = Array.isArray(nearby.votes) ? (nearby.votes[0]?.count ?? 0) : 0;
+          return {
+            id: nearby.id,
+            name: nearby.name,
+            address: nearby.address,
+            city: nearby.city,
+            state: nearby.state,
+            lat: Number(nearby.lat),
+            lng: Number(nearby.lng),
+            votes: voteCount + 1,
+            notHereVotes: 0,
+            suggested: true,
+            duplicateOf: true,
+          };
+        }
+      }
+
       const { data, error } = await supabase
         .from("pp_locations")
         .insert({
