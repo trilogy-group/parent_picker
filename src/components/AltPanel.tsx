@@ -120,7 +120,7 @@ export function AltPanel() {
     entries.sort((a, b) => b[1] - a[1]);
     const topCity = entries[0][0];
     return METRO_DISPLAY[topCity] || topCity;
-  }, [zoomLevel, filteredLocations, locations, altSizeFilter]);
+  }, [zoomLevel, filteredLocations, locations, altSizeFilter, viewAsParent]);
 
   // City summaries sorted by location count (for zoomed-out view)
   const sortedCities = useMemo(() => {
@@ -148,7 +148,7 @@ export function AltPanel() {
       sortFn = sortMostViable;
     }
     return [...pool].sort(sortFn);
-  }, [filteredLocations, mapBounds, sortMode, viableSubPriority, userLocation, locations, altSizeFilter]);
+  }, [filteredLocations, mapBounds, sortMode, viableSubPriority, userLocation, locations, altSizeFilter, viewAsParent]);
 
   // Apply admin search filter
   const searchFilteredLocations = useMemo(() => {
