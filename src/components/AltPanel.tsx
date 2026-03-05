@@ -221,7 +221,18 @@ export function AltPanel() {
       <div className="px-5 pt-5 pb-4">
         <div className="flex items-start justify-between">
           <p className="text-lg font-bold text-blue-600 tracking-wide">
-            ALPHA SCHOOL{metroName ? <> &middot; {metroName.toUpperCase()}</> : null}
+            ALPHA SCHOOL
+            {metroName && !showCityCards ? (
+              <button
+                onClick={() => setZoomLevel(4)}
+                className="lg:pointer-events-none inline-flex items-center gap-0.5"
+              >
+                <ChevronLeft className="h-4 w-4 lg:hidden" />
+                <span> &middot; {metroName.toUpperCase()}</span>
+              </button>
+            ) : metroName ? (
+              <> &middot; {metroName.toUpperCase()}</>
+            ) : null}
           </p>
           {isAdmin && (
             <button
@@ -262,19 +273,6 @@ export function AltPanel() {
           <p className="text-[13px] leading-snug text-gray-500 mt-0.5">Know a space that&apos;s not here? We&apos;ll evaluate it within 24 hours.</p>
         </a>
       </div>
-
-      {/* Mobile back button to return to city cards */}
-      {!showCityCards && (
-        <div className="px-5 pb-2 lg:hidden">
-          <button
-            onClick={() => setZoomLevel(4)}
-            className="flex items-center gap-1 text-sm text-blue-600 hover:text-blue-800 font-medium"
-          >
-            <ChevronLeft className="h-4 w-4" />
-            All Cities
-          </button>
-        </div>
-      )}
 
       {showCityCards ? (
         /* Zoomed-out: city summary cards */
