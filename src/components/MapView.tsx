@@ -575,7 +575,7 @@ export function MapView() {
             type="fill"
             paint={{
               "fill-color": selectedLocation ? "#2563eb" : "#16a34a",
-              "fill-opacity": selectedLocation ? 0.12 : 0.08,
+              "fill-opacity": selectedLocation ? 0.12 : 0.15,
             }}
           />
           <Layer
@@ -583,8 +583,8 @@ export function MapView() {
             type="line"
             paint={{
               "line-color": selectedLocation ? "#2563eb" : "#16a34a",
-              "line-width": selectedLocation ? 2 : 1.5,
-              "line-opacity": selectedLocation ? 0.6 : 0.4,
+              "line-width": selectedLocation ? 2 : 2,
+              "line-opacity": selectedLocation ? 0.6 : 0.7,
             }}
           />
         </Source>
