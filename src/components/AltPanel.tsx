@@ -471,11 +471,11 @@ export function AltPanel() {
                 }`}
               >
                 Viable{viableSubPriority && sortMode === 'most_viable' ? ` · ${viableSubPriority.charAt(0).toUpperCase() + viableSubPriority.slice(1)}` : ''}
-                {effectiveAdmin && sortMode === 'most_viable' && (
+                {sortMode === 'most_viable' && (
                   <ChevronDown className="w-3 h-3" />
                 )}
               </button>
-              {showSubPopover && effectiveAdmin && (
+              {showSubPopover && (
                 <div className="absolute top-full left-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-20 py-1 min-w-[140px]">
                   {([
                     { value: null, label: 'Default (overall)' },
