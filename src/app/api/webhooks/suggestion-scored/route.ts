@@ -44,6 +44,19 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ skipped: true, reason: "no email for user" });
   }
 
+  // Idempotency: skip if we already successfully notified for this location
+  const { data: existing } = await supabase
+    .from("pp_admin_actions")
+    .select("id")
+    .eq("location_id", locationId)
+    .eq("action", "scored_notified")
+    .is("email_failed", false)
+    .limit(1);
+
+  if (existing && existing.length > 0) {
+    return NextResponse.json({ skipped: true, reason: "already notified" });
+  }
+
   // Fetch details URL for email link
   const { data: scoreRow } = await supabase
     .from("pp_location_scores")
