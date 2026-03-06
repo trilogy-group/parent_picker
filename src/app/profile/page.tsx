@@ -21,8 +21,6 @@ export default function ProfilePage() {
 
   const [name, setName] = useState("");
   const [address, setAddress] = useState("");
-  const [driveTime, setDriveTime] = useState(30);
-  const setDriveTimeMinutes = useVotesStore((s) => s.setDriveTimeMinutes);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -43,7 +41,6 @@ export default function ProfilePage() {
       .then((data) => {
         if (data.display_name) setName(data.display_name);
         if (data.home_address) setAddress(data.home_address);
-        if (data.drive_time_minutes) setDriveTime(data.drive_time_minutes);
       })
       .catch(() => {})
       .finally(() => setLoadingProfile(false));
@@ -88,7 +85,7 @@ export default function ProfilePage() {
           "Content-Type": "application/json",
           Authorization: `Bearer ${session.access_token}`,
         },
-        body: JSON.stringify({ display_name: name, home_address: address, drive_time_minutes: driveTime }),
+        body: JSON.stringify({ display_name: name, home_address: address }),
       });
 
       if (!res.ok) {
@@ -100,9 +97,6 @@ export default function ProfilePage() {
       const data = await res.json();
       if (data.home_lat && data.home_lng) {
         setUserLocation({ lat: data.home_lat, lng: data.home_lng }, "profile");
-      }
-      if (data.drive_time_minutes) {
-        setDriveTimeMinutes(data.drive_time_minutes);
       }
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
@@ -198,23 +192,6 @@ export default function ProfilePage() {
               )}
             </div>
             <p className="text-[11px] text-gray-400 mt-1.5">Used for distance to locations</p>
-          </div>
-
-          <div>
-            <label htmlFor="profile-drive-time" className="text-xs font-medium text-gray-600 block mb-1.5">
-              Drive time radius
-            </label>
-            <select
-              id="profile-drive-time"
-              value={driveTime}
-              onChange={(e) => setDriveTime(Number(e.target.value))}
-              className="w-full h-9 rounded-md border border-gray-200 bg-white px-3 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option value={10}>10 minutes</option>
-              <option value={20}>20 minutes</option>
-              <option value={30}>30 minutes</option>
-            </select>
-            <p className="text-[11px] text-gray-400 mt-1.5">Show locations within this drive time</p>
           </div>
 
           {error && <p className="text-sm text-red-600">{error}</p>}

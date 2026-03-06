@@ -32,6 +32,7 @@ export function AltPanel() {
     viableSubPriority, setViableSubPriority,
     deepLinkTab, setDeepLinkTab,
     showDriveFilter, setShowDriveFilter, userIsochrone,
+    driveTimeMinutes, setDriveTimeMinutes,
   } = useVotesStore(useShallow((s) => ({
     locations: s.locations,
     filteredLocations: s.filteredLocations,
@@ -67,6 +68,8 @@ export function AltPanel() {
     showDriveFilter: s.showDriveFilter,
     setShowDriveFilter: s.setShowDriveFilter,
     userIsochrone: s.userIsochrone,
+    driveTimeMinutes: s.driveTimeMinutes,
+    setDriveTimeMinutes: s.setDriveTimeMinutes,
   })));
 
   const { user, session, isAdmin } = useAuth();
@@ -87,6 +90,34 @@ export function AltPanel() {
     document.addEventListener("mousedown", handleClick);
     return () => document.removeEventListener("mousedown", handleClick);
   }, [showSubPopover]);
+
+  // Size filter popover state
+  const [showSizePopover, setShowSizePopover] = useState(false);
+  const sizePopoverRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!showSizePopover) return;
+    const handleClick = (e: MouseEvent) => {
+      if (sizePopoverRef.current && !sizePopoverRef.current.contains(e.target as Node)) {
+        setShowSizePopover(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, [showSizePopover]);
+
+  // Drive time popover state
+  const [showDrivePopover, setShowDrivePopover] = useState(false);
+  const drivePopoverRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!showDrivePopover) return;
+    const handleClick = (e: MouseEvent) => {
+      if (drivePopoverRef.current && !drivePopoverRef.current.contains(e.target as Node)) {
+        setShowDrivePopover(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, [showDrivePopover]);
 
   // Admin search state
   const [adminSearch, setAdminSearch] = useState("");
@@ -382,45 +413,106 @@ export function AltPanel() {
               <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-red-500 inline-block" /> Needs Work</span>
             </div>
             <div className="flex items-center gap-2 mb-2">
-              <span className="text-xs text-gray-500">Size</span>
-              <span className="relative">
+              <span className="text-xs text-gray-500">Filter</span>
+              <div className="relative" ref={sizePopoverRef}>
                 <button
-                  onClick={() => setAltSizeFilter("micro")}
-                  className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
-                    altSizeFilter === "micro"
+                  onClick={() => {
+                    if (altSizeFilter === "all") {
+                      setAltSizeFilter("micro");
+                    } else {
+                      setShowSizePopover(!showSizePopover);
+                    }
+                  }}
+                  className={`flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium transition-colors ${
+                    altSizeFilter !== "all"
                       ? 'bg-blue-600 text-white'
                       : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                   }`}
                 >
-                  Micro
-                  <span className={`ml-1 text-[10px] ${altSizeFilter === "micro" ? 'text-blue-200' : 'text-gray-400'}`}>(25-50)</span>
+                  {{ micro: "Micro (25-50)", growth: "Growth (250)", full: "Flagship (1000)", all: "Size" }[altSizeFilter]}
+                  {altSizeFilter !== "all" && (
+                    <ChevronDown className="w-3 h-3" />
+                  )}
                 </button>
-                <span className="absolute -top-2 -right-1 text-[8px] font-bold text-white bg-amber-500 px-1.5 py-0.5 rounded-full uppercase tracking-wider shadow-sm">
-                  Focus
-                </span>
-              </span>
-              <button
-                onClick={() => setAltSizeFilter("all")}
-                className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
-                  altSizeFilter === "all"
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                }`}
-              >
-                All sizes
-              </button>
-              {userLocation && userIsochrone && (
-                <button
-                  onClick={() => setShowDriveFilter(!showDriveFilter)}
-                  className={`flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium transition-colors ml-auto ${
-                    showDriveFilter
-                      ? 'bg-green-600 text-white'
-                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                  }`}
-                >
-                  <MapPin className="h-3 w-3" />
-                  Close to me
-                </button>
+                {showSizePopover && altSizeFilter !== "all" && (
+                  <div className="absolute top-full left-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-20 py-1 min-w-[160px]">
+                    {([
+                      { value: "micro" as const, label: "Micro (25-50)", badge: "Focus" },
+                      { value: "growth" as const, label: "Growth (250)" },
+                      { value: "full" as const, label: "Flagship (1000)" },
+                    ]).map((opt) => (
+                      <button
+                        key={opt.value}
+                        onClick={() => { setAltSizeFilter(opt.value); setShowSizePopover(false); }}
+                        className={`w-full text-left px-3 py-1.5 text-xs hover:bg-gray-50 flex items-center gap-2 ${
+                          altSizeFilter === opt.value ? 'text-blue-600 font-semibold' : 'text-gray-700'
+                        }`}
+                      >
+                        {opt.label}
+                        {opt.badge && (
+                          <span className="text-[8px] font-bold text-white bg-amber-500 px-1.5 py-0.5 rounded-full uppercase tracking-wider">
+                            {opt.badge}
+                          </span>
+                        )}
+                      </button>
+                    ))}
+                    <div className="border-t border-gray-100 mt-1 pt-1">
+                      <button
+                        onClick={() => { setAltSizeFilter("all"); setShowSizePopover(false); }}
+                        className="w-full text-left px-3 py-1.5 text-xs text-gray-400 hover:bg-gray-50"
+                      >
+                        All sizes
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+              {userLocation && (
+                <div className="relative ml-auto" ref={drivePopoverRef}>
+                  <button
+                    onClick={() => {
+                      if (!showDriveFilter) {
+                        setShowDriveFilter(true);
+                      } else {
+                        setShowDrivePopover(!showDrivePopover);
+                      }
+                    }}
+                    className={`flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium transition-colors ${
+                      showDriveFilter
+                        ? 'bg-green-600 text-white'
+                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                    }`}
+                  >
+                    <MapPin className="h-3 w-3" />
+                    {showDriveFilter ? `${driveTimeMinutes} min` : 'Close to me'}
+                    {showDriveFilter && (
+                      <ChevronDown className="w-3 h-3" />
+                    )}
+                  </button>
+                  {showDrivePopover && showDriveFilter && (
+                    <div className="absolute top-full right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-20 py-1 min-w-[120px]">
+                      {[10, 20, 30].map((mins) => (
+                        <button
+                          key={mins}
+                          onClick={() => { setDriveTimeMinutes(mins); setShowDrivePopover(false); }}
+                          className={`w-full text-left px-3 py-1.5 text-xs hover:bg-gray-50 ${
+                            driveTimeMinutes === mins ? 'text-green-600 font-semibold' : 'text-gray-700'
+                          }`}
+                        >
+                          {mins} minutes
+                        </button>
+                      ))}
+                      <div className="border-t border-gray-100 mt-1 pt-1">
+                        <button
+                          onClick={() => { setShowDriveFilter(false); setShowDrivePopover(false); }}
+                          className="w-full text-left px-3 py-1.5 text-xs text-gray-400 hover:bg-gray-50"
+                        >
+                          Turn off
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
               )}
             </div>
           </div>

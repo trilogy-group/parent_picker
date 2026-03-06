@@ -55,7 +55,7 @@ interface VotesState {
   userLocation: { lat: number; lng: number } | null;  // Browser geolocation or saved profile
   userLocationSource: "geo" | "profile" | null;       // Where userLocation came from
   showTopOnly: boolean;                                // Top 10 vs Show all toggle (shared with MapView)
-  altSizeFilter: "micro" | "all";                      // New UI size filter: micro-only or all sizes
+  altSizeFilter: "micro" | "growth" | "full" | "all";                      // New UI size filter: micro-only or all sizes
   viableSubPriority: 'zoning' | 'neighborhood' | 'playArea' | 'building' | 'price' | null;  // Admin: subscore sort priority
   deepLinkTab: "in" | "concerns" | "other" | null;  // Tab from URL deep link
   driveTimeMinutes: number;                          // User preference: 10/20/30
@@ -91,7 +91,7 @@ interface VotesState {
   setReleasedFilter: (filter: ReleasedFilter) => void;
   setUserLocation: (coords: { lat: number; lng: number } | null, source?: "geo" | "profile") => void;
   setShowTopOnly: (show: boolean) => void;
-  setAltSizeFilter: (value: "micro" | "all") => void;
+  setAltSizeFilter: (value: "micro" | "growth" | "full" | "all") => void;
   updateVoteComment: (locationId: string, comment: string) => void;
   setDeepLinkTab: (tab: "in" | "concerns" | "other" | null) => void;
   setViableSubPriority: (priority: 'zoning' | 'neighborhood' | 'playArea' | 'building' | 'price' | null) => void;
@@ -628,13 +628,17 @@ export const useVotesStore = create<VotesState>((set, get) => ({
       filtered = filtered.filter((loc) => loc.released !== true);
     }
 
-    // Step 2: Apply alt UI size filter (micro-only vs all)
+    // Step 2: Apply alt UI size filter
     const { altSizeFilter } = get();
     if (altSizeFilter === "micro") {
       filtered = filtered.filter((loc) => {
         const size = loc.scores?.sizeClassification;
         return size === "Micro" || size === "Micro2";
       });
+    } else if (altSizeFilter === "growth") {
+      filtered = filtered.filter((loc) => loc.scores?.sizeClassification === "Growth");
+    } else if (altSizeFilter === "full") {
+      filtered = filtered.filter((loc) => loc.scores?.sizeClassification === "Full Size");
     }
 
     // Step 3: Apply score/size filters based on admin status
