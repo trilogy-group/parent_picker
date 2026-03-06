@@ -461,14 +461,14 @@ export function AltPanel() {
                         onClick={() => { setAltSizeFilter("all"); setShowSizePopover(false); }}
                         className="w-full text-left px-3 py-1.5 text-xs text-gray-400 hover:bg-gray-50"
                       >
-                        All sizes
+                        All
                       </button>
                     </div>
                   </div>
                 )}
               </div>
               {userLocation && (
-                <div className="relative ml-auto" ref={drivePopoverRef}>
+                <div className="relative" ref={drivePopoverRef}>
                   <button
                     onClick={() => {
                       if (!showDriveFilter) {
@@ -490,7 +490,7 @@ export function AltPanel() {
                     )}
                   </button>
                   {showDrivePopover && showDriveFilter && (
-                    <div className="absolute top-full right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-20 py-1 min-w-[120px]">
+                    <div className="absolute top-full left-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-20 py-1 min-w-[120px]">
                       {[10, 20, 30].map((mins) => (
                         <button
                           key={mins}
@@ -507,7 +507,7 @@ export function AltPanel() {
                           onClick={() => { setShowDriveFilter(false); setShowDrivePopover(false); }}
                           className="w-full text-left px-3 py-1.5 text-xs text-gray-400 hover:bg-gray-50"
                         >
-                          Turn off
+                          All
                         </button>
                       </div>
                     </div>
