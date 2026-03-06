@@ -10,6 +10,7 @@ import LocationDetailView from "./LocationDetailView";
 import { InviteModal } from "./InviteModal";
 import { ProfilePopover } from "./ProfilePopover";
 import { getDistanceMiles } from "@/lib/locations";
+import { findNearestMetro } from "@/lib/metros";
 import { sortMostSupport, sortMostViable, sortMostViableWithPriority, makeSortNearest } from "@/lib/sort";
 import { Eye, Check, ChevronDown, Search, X, ChevronLeft, MapPin } from "lucide-react";
 import { extractStreet } from "@/lib/address";
@@ -24,7 +25,7 @@ export function AltPanel() {
     voteIn, voteNotHere, removeVote, updateVoteComment, votedLocationIds, votedNotHereIds,
     mapBounds, sortMode, setSortMode,
     locationVoters, loadLocationVoters, zoomLevel,
-    citySummaries, setFlyToTarget, userLocation, setZoomLevel,
+    citySummaries, setFlyToTarget, userLocation, setZoomLevel, mapCenter,
     viewAsParent, setViewAsParent,
     showTopOnly, setShowTopOnly,
     altSizeFilter, setAltSizeFilter,
@@ -51,6 +52,7 @@ export function AltPanel() {
     citySummaries: s.citySummaries,
     setFlyToTarget: s.setFlyToTarget,
     setZoomLevel: s.setZoomLevel,
+    mapCenter: s.mapCenter,
     userLocation: s.userLocation,
     viewAsParent: s.viewAsParent,
     setViewAsParent: s.setViewAsParent,
@@ -101,32 +103,17 @@ export function AltPanel() {
     }
   }, [selectedLocationId, loadLocationVoters]);
 
-  // Determine metro name when zoomed in
+  // Determine metro name from map center (not from location counts, which skew toward high-volume metros)
   const METRO_DISPLAY: Record<string, string> = {
-    "Irvine": "Orange County",
-    "Santa Ana": "Orange County",
-    "Anaheim": "Orange County",
-    "Costa Mesa": "Orange County",
-    "Newport Beach": "Orange County",
-    "Stamford": "Greenwich",
     "Phoenix": "Scottsdale",
   };
 
   const metroName = useMemo(() => {
-    if (zoomLevel < 9) return null;
-    const filtered = filteredLocations();
-    if (filtered.length === 0) return null;
-    const cityCount: Record<string, number> = {};
-    for (const loc of filtered) {
-      const key = loc.city;
-      cityCount[key] = (cityCount[key] || 0) + 1;
-    }
-    const entries = Object.entries(cityCount);
-    if (entries.length === 0) return null;
-    entries.sort((a, b) => b[1] - a[1]);
-    const topCity = entries[0][0];
-    return METRO_DISPLAY[topCity] || topCity;
-  }, [zoomLevel, filteredLocations, locations, altSizeFilter, viewAsParent]);
+    if (zoomLevel < 9 || !mapCenter) return null;
+    const metro = findNearestMetro(mapCenter.lat, mapCenter.lng);
+    if (!metro) return null;
+    return METRO_DISPLAY[metro.name] || metro.name;
+  }, [zoomLevel, mapCenter]);
 
   // City summaries sorted by location count (for zoomed-out view)
   const sortedCities = useMemo(() => {

@@ -30,6 +30,7 @@ export const US_METROS: Metro[] = [
 
   // California
   { name: "Los Angeles", state: "CA", lat: 34.0522, lng: -118.2437 },
+  { name: "South Bay", state: "CA", lat: 33.8400, lng: -118.3400 },
   { name: "San Diego", state: "CA", lat: 32.7157, lng: -117.1611 },
   { name: "San Francisco", state: "CA", lat: 37.7749, lng: -122.4194 },
   { name: "San Jose", state: "CA", lat: 37.3382, lng: -121.8863 },
@@ -119,7 +120,7 @@ export const US_METROS: Metro[] = [
 
 const MAX_METRO_DISTANCE_MILES = 50;
 
-function findNearestMetro(lat: number, lng: number): Metro | null {
+export function findNearestMetro(lat: number, lng: number): Metro | null {
   let nearest: Metro | null = null;
   let minDist = Infinity;
 
