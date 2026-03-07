@@ -11,6 +11,7 @@ import { useAuth } from "./AuthProvider";
 import { getInitialMapView, US_CENTER, US_ZOOM } from "@/lib/locations";
 import { sortMostSupport, sortMostViable, sortMostViableWithPriority, makeSortNearest } from "@/lib/sort";
 import { fetchIsochrone } from "@/lib/isochrone";
+import { pointInIsochrone } from "@/lib/geo";
 import "mapbox-gl/dist/mapbox-gl.css";
 import type { MapMouseEvent } from "react-map-gl/mapbox";
 
@@ -55,6 +56,7 @@ export function MapView() {
     storeUserLocation,
     userLocationSource,
     driveTimeMinutes,
+    showDriveFilter,
     userIsochrone,
     setUserIsochrone,
   } = useVotesStore(useShallow((s) => ({
@@ -87,6 +89,7 @@ export function MapView() {
     storeUserLocation: s.userLocation,
     userLocationSource: s.userLocationSource,
     driveTimeMinutes: s.driveTimeMinutes,
+    showDriveFilter: s.showDriveFilter,
     userIsochrone: s.userIsochrone,
     setUserIsochrone: s.setUserIsochrone,
   })));
@@ -101,7 +104,10 @@ export function MapView() {
   const flyingRef = useRef(false);
   const selectedLocationRef = useRef<{ lat: number; lng: number } | null>(null);
 
-  const displayLocations = filteredLocations();
+  const allFiltered = filteredLocations();
+  const displayLocations = showDriveFilter && userIsochrone
+    ? allFiltered.filter(loc => loc.id === selectedLocationId || pointInIsochrone(loc.lat, loc.lng, userIsochrone))
+    : allFiltered;
   const selectedLocation = displayLocations.find((l) => l.id === selectedLocationId);
   selectedLocationRef.current = selectedLocation ? { lat: selectedLocation.lat, lng: selectedLocation.lng } : null;
 
