@@ -518,79 +518,47 @@ export function AltPanel() {
           </div>
           <div className="px-5 pb-3 flex items-center gap-2 flex-wrap">
             <span className="text-xs text-gray-500">Sort</span>
-            {([
-              { mode: 'most_support' as const, label: 'Supported' },
-            ]).map(({ mode, label }) => (
-              <button
-                key={mode}
-                onClick={() => { setSortMode(mode); setViableSubPriority(null); }}
-                className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
-                  sortMode === mode
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                }`}
-              >
-                {label}
-              </button>
-            ))}
-            {/* Most viable pill with subscore popover (admin only) */}
             <div className="relative" ref={subPopoverRef}>
               <button
-                onClick={() => {
-                  if (sortMode !== 'most_viable') {
-                    setSortMode('most_viable');
-                  } else {
-                    setShowSubPopover(!showSubPopover);
-                  }
-                }}
-                className={`px-3 py-1 rounded-full text-xs font-medium transition-colors flex items-center gap-1 ${
-                  sortMode === 'most_viable'
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                }`}
+                onClick={() => setShowSubPopover(!showSubPopover)}
+                className="px-3 py-1 rounded-full text-xs font-medium transition-colors flex items-center gap-1 bg-blue-600 text-white"
               >
-                Viable{viableSubPriority && sortMode === 'most_viable' ? ` · ${viableSubPriority.charAt(0).toUpperCase() + viableSubPriority.slice(1)}` : ''}
-                {sortMode === 'most_viable' && (
-                  <ChevronDown className="w-3 h-3" />
-                )}
+                {sortMode === 'most_support' ? 'Popularity'
+                  : viableSubPriority === 'zoning' ? 'Zoning approved'
+                  : viableSubPriority === 'playArea' ? 'Outdoor play space'
+                  : viableSubPriority === 'neighborhood' ? 'Demographics'
+                  : 'Overall'}
+                <ChevronDown className="w-3 h-3" />
               </button>
               {showSubPopover && (
-                <div className="absolute top-full left-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-20 py-1 min-w-[140px]">
+                <div className="absolute top-full left-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-20 py-1 min-w-[160px]">
                   {([
-                    { value: null, label: 'Default (overall)' },
-                    { value: 'zoning' as const, label: 'Zoning' },
-                    { value: 'neighborhood' as const, label: 'Neighborhood' },
-                    { value: 'playArea' as const, label: 'Play Area' },
-                    { value: 'building' as const, label: 'Building' },
-                    { value: 'price' as const, label: 'Price' },
-                  ]).map((opt) => (
-                    <button
-                      key={opt.label}
-                      onClick={() => { setViableSubPriority(opt.value); setShowSubPopover(false); }}
-                      className={`w-full text-left px-3 py-1.5 text-xs hover:bg-gray-50 ${
-                        viableSubPriority === opt.value ? 'text-blue-600 font-semibold' : 'text-gray-700'
-                      }`}
-                    >
-                      {opt.label}
-                    </button>
-                  ))}
+                    { label: 'Overall', mode: 'most_viable' as const, sub: null },
+                    { label: 'Popularity', mode: 'most_support' as const, sub: null },
+                    { label: 'Zoning approved', mode: 'most_viable' as const, sub: 'zoning' as const },
+                    { label: 'Outdoor play space', mode: 'most_viable' as const, sub: 'playArea' as const },
+                    { label: 'Demographics', mode: 'most_viable' as const, sub: 'neighborhood' as const },
+                  ]).map((opt) => {
+                    const isActive = sortMode === opt.mode && viableSubPriority === opt.sub;
+                    return (
+                      <button
+                        key={opt.label}
+                        onClick={() => {
+                          setSortMode(opt.mode);
+                          setViableSubPriority(opt.sub);
+                          setShowSubPopover(false);
+                        }}
+                        className={`w-full text-left px-3 py-1.5 text-xs hover:bg-gray-50 ${
+                          isActive ? 'text-blue-600 font-semibold' : 'text-gray-700'
+                        }`}
+                      >
+                        {opt.label}
+                      </button>
+                    );
+                  })}
                 </div>
               )}
             </div>
-            {/* Nearest sort hidden — redundant with drive-time filter. Keep code for potential re-enable.
-            {userLocation && (
-              <button
-                onClick={() => { setSortMode('nearest'); setViableSubPriority(null); }}
-                className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
-                  sortMode === 'nearest'
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                }`}
-              >
-                Nearest
-              </button>
-            )}
-            */}
           </div>
           {/* Search + Show all row */}
           <div className="px-5 pb-3 flex items-center gap-2">
