@@ -7,7 +7,6 @@ import { useShallow } from "zustand/react/shallow";
 import { useAuth } from "./AuthProvider";
 import { AltLocationCard } from "./AltLocationCard";
 import LocationDetailView from "./LocationDetailView";
-import { InviteModal } from "./InviteModal";
 import { ProfilePopover } from "./ProfilePopover";
 import { getDistanceMiles } from "@/lib/locations";
 import { findNearestMetro } from "@/lib/metros";
@@ -292,9 +291,6 @@ export function AltPanel() {
 
       {/* Action boxes */}
       <div className="px-5 mb-4 space-y-3">
-        {/* Invite someone */}
-        <InviteModal />
-
         {/* Suggest a location */}
         <a
           href="/suggest"
