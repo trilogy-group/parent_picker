@@ -33,6 +33,7 @@ export function AltPanel() {
     deepLinkTab, setDeepLinkTab,
     showDriveFilter, setShowDriveFilter, userIsochrone,
     driveTimeMinutes, setDriveTimeMinutes,
+    showNoBlockers, setShowNoBlockers,
   } = useVotesStore(useShallow((s) => ({
     locations: s.locations,
     filteredLocations: s.filteredLocations,
@@ -70,6 +71,8 @@ export function AltPanel() {
     userIsochrone: s.userIsochrone,
     driveTimeMinutes: s.driveTimeMinutes,
     setDriveTimeMinutes: s.setDriveTimeMinutes,
+    showNoBlockers: s.showNoBlockers,
+    setShowNoBlockers: s.setShowNoBlockers,
   })));
 
   const { user, session, isAdmin } = useAuth();
@@ -177,7 +180,7 @@ export function AltPanel() {
       sorted = sorted.filter(loc => pointInIsochrone(loc.lat, loc.lng, userIsochrone));
     }
     return sorted;
-  }, [filteredLocations, mapBounds, sortMode, viableSubPriority, userLocation, locations, altSizeFilter, viewAsParent, showDriveFilter, userIsochrone]);
+  }, [filteredLocations, mapBounds, sortMode, viableSubPriority, userLocation, locations, altSizeFilter, viewAsParent, showDriveFilter, userIsochrone, showNoBlockers]);
 
   // Apply admin search filter
   const searchFilteredLocations = useMemo(() => {
@@ -202,7 +205,7 @@ export function AltPanel() {
   // Pagination — track extra pages loaded beyond first page (only used in "show all" mode)
   const [extraPages, setExtraPages] = useState(0);
   // Reset extra pages when sort or bounds change
-  const resetKey = `${sortMode}-${altSizeFilter}-${showDriveFilter}-${mapBounds?.north}-${mapBounds?.south}-${mapBounds?.east}-${mapBounds?.west}`;
+  const resetKey = `${sortMode}-${altSizeFilter}-${showDriveFilter}-${showNoBlockers}-${mapBounds?.north}-${mapBounds?.south}-${mapBounds?.east}-${mapBounds?.west}`;
   const [prevResetKey, setPrevResetKey] = useState(resetKey);
   if (resetKey !== prevResetKey) {
     setPrevResetKey(resetKey);
@@ -479,7 +482,7 @@ export function AltPanel() {
                     }}
                     className={`flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium transition-colors ${
                       showDriveFilter
-                        ? 'bg-green-600 text-white'
+                        ? 'bg-violet-600 text-white'
                         : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                     }`}
                   >
@@ -496,7 +499,7 @@ export function AltPanel() {
                           key={mins}
                           onClick={() => { setDriveTimeMinutes(mins); setShowDrivePopover(false); }}
                           className={`w-full text-left px-3 py-1.5 text-xs hover:bg-gray-50 ${
-                            driveTimeMinutes === mins ? 'text-green-600 font-semibold' : 'text-gray-700'
+                            driveTimeMinutes === mins ? 'text-violet-600 font-semibold' : 'text-gray-700'
                           }`}
                         >
                           {mins} minutes
@@ -514,6 +517,16 @@ export function AltPanel() {
                   )}
                 </div>
               )}
+              <button
+                onClick={() => setShowNoBlockers(!showNoBlockers)}
+                className={`flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium transition-colors ${
+                  showNoBlockers
+                    ? 'bg-green-600 text-white'
+                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                }`}
+              >
+                No Blockers
+              </button>
             </div>
           </div>
           <div className="px-5 pb-3 flex items-center gap-2 flex-wrap">

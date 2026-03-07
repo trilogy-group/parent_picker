@@ -60,6 +60,7 @@ interface VotesState {
   deepLinkTab: "in" | "concerns" | "other" | null;  // Tab from URL deep link
   driveTimeMinutes: number;                          // User preference: 10/20/30
   showDriveFilter: boolean;                          // "Close to me" filter toggle
+  showNoBlockers: boolean;                           // "No Blockers" filter — GREEN only
   userIsochrone: GeoJSON.FeatureCollection | null;   // Isochrone polygon from user's location
 
   setLocations: (locations: Location[]) => void;
@@ -97,6 +98,7 @@ interface VotesState {
   setViableSubPriority: (priority: 'zoning' | 'neighborhood' | 'playArea' | 'building' | 'price' | null) => void;
   setDriveTimeMinutes: (minutes: number) => void;
   setShowDriveFilter: (show: boolean) => void;
+  setShowNoBlockers: (show: boolean) => void;
   setUserIsochrone: (data: GeoJSON.FeatureCollection | null) => void;
   loadCitySummaries: () => Promise<void>;
   fetchNearby: (bounds: MapBounds) => Promise<void>;
@@ -147,6 +149,7 @@ export const useVotesStore = create<VotesState>((set, get) => ({
   deepLinkTab: null,
   driveTimeMinutes: 30,
   showDriveFilter: false,
+  showNoBlockers: false,
   userIsochrone: null,
 
   toggleScoreFilter: (category, value) => {
@@ -220,6 +223,7 @@ export const useVotesStore = create<VotesState>((set, get) => ({
   setDriveTimeMinutes: (minutes) => set({ driveTimeMinutes: minutes, userIsochrone: null }),
 
   setShowDriveFilter: (show) => set({ showDriveFilter: show }),
+  setShowNoBlockers: (show) => set({ showNoBlockers: show }),
 
   setUserIsochrone: (data) => set({ userIsochrone: data }),
 
@@ -641,7 +645,13 @@ export const useVotesStore = create<VotesState>((set, get) => ({
       filtered = filtered.filter((loc) => loc.scores?.sizeClassification === "Full Size");
     }
 
-    // Step 3: Apply score/size filters based on admin status
+    // Step 3: Apply "No Blockers" filter (GREEN only)
+    const { showNoBlockers } = get();
+    if (showNoBlockers) {
+      filtered = filtered.filter((loc) => loc.scores?.overallColor === "GREEN");
+    }
+
+    // Step 4: Apply score/size filters based on admin status
     if (!effectiveAdmin) {
       // Non-admin: always hide unscored, show all scored (including RED)
       return ensureSelected(filtered.filter((loc) => loc.scores?.overallColor != null));

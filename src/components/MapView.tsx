@@ -585,7 +585,7 @@ export function MapView() {
             id="isochrone-fill"
             type="fill"
             paint={{
-              "fill-color": selectedLocation ? "#2563eb" : "#16a34a",
+              "fill-color": selectedLocation ? "#2563eb" : "#7c3aed",
               "fill-opacity": selectedLocation ? 0.12 : 0.15,
             }}
           />
