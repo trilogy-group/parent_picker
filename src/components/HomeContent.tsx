@@ -52,6 +52,8 @@ function DeepLinkHandler() {
           votes: 0,
           notHereVotes: 0,
           suggested: data.source === "parent_suggested",
+          zip: data.zip || null,
+          rebl3SiteId: data.property_source_key || null,
           scores: scores?.overall_color != null ? {
             overallColor: scores.overall_color || null,
             overallDetailsUrl: scores.overall_details_url || null,

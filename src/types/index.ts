@@ -19,6 +19,7 @@ export interface Location {
   address: string;
   city: string;
   state: string;
+  zip?: string | null;
   lat: number;
   lng: number;
   votes: number;
@@ -30,6 +31,7 @@ export interface Location {
   scores?: LocationScores;
   photos?: string[];
   brochureUrl?: string | null;
+  rebl3SiteId?: string | null;
 }
 
 export type VoteType = 'in' | 'not_here';

@@ -13,7 +13,7 @@ export async function GET(
 
   const { data, error } = await supabase
     .from("pp_locations")
-    .select("id, name, address, city, state, lat, lng, source, pp_location_scores(*)")
+    .select("id, name, address, city, state, lat, lng, source, property_source_key, pp_location_scores(*)")
     .eq("id", id)
     .single();
 

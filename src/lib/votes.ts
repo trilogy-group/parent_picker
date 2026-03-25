@@ -5,6 +5,7 @@ import { Location, CitySummary, VoterInfo, VoteType } from "@/types";
 import { supabase, isSupabaseConfigured } from "./supabase";
 import { getCitySummaries, getNearbyLocations, getLocationsInBounds, getDistanceMiles } from "./locations";
 import { consolidateToMetros } from "./metros";
+import { postRebl3FeedbackAllDimensions } from "./rebl3";
 
 interface MapBounds {
   north: number;
@@ -45,6 +46,7 @@ interface VotesState {
   scoreFilters: ScoreFilters;
   isLoading: boolean;
   userId: string | null;
+  userEmail: string | null;
 
   // Admin vs non-admin filter state
   isAdmin: boolean;
@@ -84,6 +86,7 @@ interface VotesState {
   setReferencePoint: (coords: { lat: number; lng: number } | null) => void;
   setLoading: (loading: boolean) => void;
   setUserId: (id: string | null) => void;
+  setUserEmail: (email: string | null) => void;
   setZoomLevel: (zoom: number) => void;
   setIsAdmin: (isAdmin: boolean) => void;
   setViewAsParent: (viewAsParent: boolean) => void;
@@ -136,6 +139,7 @@ export const useVotesStore = create<VotesState>((set, get) => ({
   },
   isLoading: true,
   userId: null,
+  userEmail: null,
   isAdmin: false,
   viewAsParent: false,
   showRedLocations: false,
@@ -197,6 +201,7 @@ export const useVotesStore = create<VotesState>((set, get) => ({
   setLoading: (isLoading) => set({ isLoading }),
 
   setUserId: (userId) => set({ userId }),
+  setUserEmail: (userEmail) => set({ userEmail }),
 
   setZoomLevel: (zoom) => set({ zoomLevel: zoom }),
 
@@ -421,6 +426,12 @@ export const useVotesStore = create<VotesState>((set, get) => ({
       votedNotHereIds: newNotHereIds,
     });
 
+    // Fire-and-forget REBL3 feedback
+    const loc = state.locations.find(l => l.id === locationId);
+    if (loc?.rebl3SiteId && state.userEmail) {
+      postRebl3FeedbackAllDimensions(loc.rebl3SiteId, "agree", state.userEmail);
+    }
+
     if (state.userId && isSupabaseConfigured && supabase) {
       supabase
         .from("pp_votes")
@@ -475,6 +486,12 @@ export const useVotesStore = create<VotesState>((set, get) => ({
       votedLocationIds: newInIds,
       votedNotHereIds: newNotHereIds,
     });
+
+    // Fire-and-forget REBL3 feedback
+    const loc = state.locations.find(l => l.id === locationId);
+    if (loc?.rebl3SiteId && state.userEmail) {
+      postRebl3FeedbackAllDimensions(loc.rebl3SiteId, "disagree", state.userEmail, comment);
+    }
 
     if (state.userId && isSupabaseConfigured && supabase) {
       supabase

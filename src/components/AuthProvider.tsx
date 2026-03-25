@@ -39,7 +39,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const [session, setSession] = useState<Session | null>(null);
   // Start as not loading if Supabase isn't configured (offline mode)
   const [isLoading, setIsLoading] = useState(isSupabaseConfigured);
-  const { setUserId, loadUserVotes, clearUserVotes, setUserLocation, setDriveTimeMinutes } = useVotesStore();
+  const { setUserId, setUserEmail, loadUserVotes, clearUserVotes, setUserLocation, setDriveTimeMinutes } = useVotesStore();
 
   // If Supabase is not configured, run in offline/demo mode
   const isOfflineMode = !isSupabaseConfigured;
@@ -75,6 +75,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       setUser(session?.user ?? null);
       if (session?.user) {
         setUserId(session.user.id);
+        setUserEmail(session.user.email || null);
         loadUserVotes(session.user.id);
         if (session.access_token) loadProfile(session.access_token);
       }
@@ -89,10 +90,12 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
         if (event === "SIGNED_IN" && session?.user) {
           setUserId(session.user.id);
+          setUserEmail(session.user.email || null);
           loadUserVotes(session.user.id);
           if (session.access_token) loadProfile(session.access_token);
         } else if (event === "SIGNED_OUT") {
           setUserId(null);
+          setUserEmail(null);
           clearUserVotes();
         }
       }

@@ -232,6 +232,7 @@ function mapRows(rows: Record<string, unknown>[]): Location[] {
     address: row.address as string,
     city: row.city as string,
     state: row.state as string,
+    zip: (row.zip as string) || null,
     lat: Number(row.lat),
     lng: Number(row.lng),
     votes: row.votes as number,
@@ -239,6 +240,7 @@ function mapRows(rows: Record<string, unknown>[]): Location[] {
     suggested: row.source === "parent_suggested",
     scores: mapRowToScores(row),
     proposed: row.proposed === true,
+    rebl3SiteId: (row.property_source_key as string) || null,
   }));
 }
 
@@ -326,6 +328,7 @@ export async function getNearbyLocations(centerLat: number, centerLng: number, l
       address: row.address as string,
       city: row.city as string,
       state: row.state as string,
+      zip: (row.zip as string) || null,
       lat: Number(row.lat),
       lng: Number(row.lng),
       votes: Number(row.vote_count),
@@ -333,6 +336,7 @@ export async function getNearbyLocations(centerLat: number, centerLng: number, l
       suggested: (row.source as string) === "parent_suggested",
       released: row.released as boolean | undefined,
       scores: mapRowToScores(row),
+      rebl3SiteId: (row.property_source_key as string) || null,
     }));
   } catch (error) {
     console.error("Failed to fetch nearby locations:", error);
@@ -355,6 +359,7 @@ function mapBoundsRows(rows: Record<string, unknown>[]): Location[] {
     address: row.address as string,
     city: row.city as string,
     state: row.state as string,
+    zip: (row.zip as string) || null,
     lat: Number(row.lat),
     lng: Number(row.lng),
     votes: Number(row.vote_count),
@@ -363,6 +368,7 @@ function mapBoundsRows(rows: Record<string, unknown>[]): Location[] {
     released: row.released as boolean | undefined,
     scores: mapRowToScores(row),
     proposed: row.proposed === true,
+    rebl3SiteId: (row.property_source_key as string) || null,
   }));
 }
 

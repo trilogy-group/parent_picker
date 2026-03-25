@@ -4,13 +4,98 @@ import { useState, useEffect } from "react";
 import { Location, VoterInfo } from "@/types";
 import { statusBadge, sizeTierLabel } from "@/lib/status";
 import { extractStreet } from "@/lib/address";
+import { fetchRebl3Site, Rebl3ExternalSite, Rebl3Dimension, postRebl3Feedback, Rebl3DimensionKey } from "@/lib/rebl3";
 import { HelpModal } from "./HelpModal";
 import { SignInPrompt } from "./SignInPrompt";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { ArrowLeft, ExternalLink, ChevronLeft, ChevronRight, FileText, Plus, Minus, X } from "lucide-react";
 import { useAuth } from "./AuthProvider";
+import { useVotesStore } from "@/lib/votes";
 
 const LAUNCH_THRESHOLD = 30;
+
+const JUDGMENT_STYLES: Record<string, { bg: string; text: string; dot: string }> = {
+  GREAT:  { bg: "bg-green-50",  text: "text-green-700", dot: "bg-green-500" },
+  VIABLE: { bg: "bg-amber-50",  text: "text-amber-600", dot: "bg-amber-500" },
+  CUT:    { bg: "bg-red-50",    text: "text-red-600",   dot: "bg-red-500" },
+  "N/A":  { bg: "bg-gray-50",   text: "text-gray-500",  dot: "bg-gray-400" },
+};
+
+function DimensionCard({ dimension, siteId, userEmail, isAuthenticated, onSignInNeeded }: {
+  dimension: Rebl3Dimension;
+  siteId: string | null | undefined;
+  userEmail: string | null;
+  isAuthenticated: boolean;
+  onSignInNeeded: () => void;
+}) {
+  const style = JUDGMENT_STYLES[dimension.judgment] || JUDGMENT_STYLES["N/A"];
+  const [voted, setVoted] = useState<"agree" | "disagree" | "help" | null>(null);
+  const dimKey = dimension.key as Rebl3DimensionKey;
+
+  const handleAction = (type: "agree" | "disagree" | "help") => {
+    if (!isAuthenticated) { onSignInNeeded(); return; }
+    if (!siteId || !userEmail) return;
+    setVoted(type);
+    postRebl3Feedback(siteId, dimKey, type, userEmail);
+  };
+
+  return (
+    <div className={`rounded-xl p-4 ${style.bg}`}>
+      <div className="flex items-center gap-2">
+        <span className={`w-2.5 h-2.5 rounded-full ${style.dot}`} />
+        <span className="text-sm font-semibold text-gray-900">{dimension.name}</span>
+      </div>
+      <p className="text-[13px] leading-snug text-gray-600 mt-1">{dimension.prose}</p>
+      <div className="flex gap-2 mt-2.5">
+        {voted ? (
+          <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${
+            voted === "agree" ? "bg-green-100 text-green-700" :
+            voted === "disagree" ? "bg-red-100 text-red-600" :
+            "bg-blue-100 text-blue-600"
+          }`}>
+            {voted === "agree" ? "Agreed" : voted === "disagree" ? "Disagreed" : "Helping"} — thanks!
+          </span>
+        ) : (
+          <>
+            <button
+              onClick={() => handleAction("agree")}
+              className="px-3 py-1 rounded-full text-xs font-medium border border-gray-300 bg-white text-gray-600 hover:border-green-400 hover:bg-green-50 hover:text-green-700 transition-colors"
+            >
+              I agree
+            </button>
+            <button
+              onClick={() => handleAction("disagree")}
+              className="px-3 py-1 rounded-full text-xs font-medium border border-gray-300 bg-white text-gray-600 hover:border-red-400 hover:bg-red-50 hover:text-red-600 transition-colors"
+            >
+              I disagree
+            </button>
+            <button
+              onClick={() => handleAction("help")}
+              className="px-3 py-1 rounded-full text-xs font-medium border border-gray-300 bg-white text-gray-600 hover:border-blue-400 hover:bg-blue-50 hover:text-blue-600 transition-colors"
+            >
+              I can help
+            </button>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function colorDotClass(color: string): string {
+  const map: Record<string, string> = { GREEN: "bg-green-500", YELLOW: "bg-yellow-400", AMBER: "bg-amber-500", RED: "bg-red-500" };
+  return map[color] || "bg-gray-300";
+}
+
+function colorTextClass(color: string): string {
+  const map: Record<string, string> = { GREEN: "text-green-700", YELLOW: "text-amber-600", AMBER: "text-amber-600", RED: "text-red-600" };
+  return map[color] || "text-gray-500";
+}
+
+function colorLabel(color: string): string {
+  const map: Record<string, string> = { GREEN: "Green", YELLOW: "Yellow", AMBER: "Yellow", RED: "Red" };
+  return map[color] || "N/A";
+}
 
 interface Contribution {
   id: string;
@@ -70,8 +155,12 @@ export default function LocationDetailView({
   const [voteCommentSaved, setVoteCommentSaved] = useState(false);
   // Contributions
   const [contributions, setContributions] = useState<Contribution[]>([]);
+  // REBL3 dimension data
+  const [rebl3Data, setRebl3Data] = useState<Rebl3ExternalSite | null>(null);
+  const [rebl3Loading, setRebl3Loading] = useState(false);
 
   const { isAdmin } = useAuth();
+  const userEmail = useVotesStore(s => s.userEmail);
   const mapsKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_KEY;
 
   // Fetch contributions for this location
@@ -119,6 +208,17 @@ export default function LocationDetailView({
         setHeroMode("map");
       });
   }, [location.id, location.lat, location.lng, mapsKey]);
+
+  // Fetch REBL3 dimension data
+  useEffect(() => {
+    const siteId = location.rebl3SiteId;
+    if (!siteId) return;
+    setRebl3Loading(true);
+    setRebl3Data(null);
+    fetchRebl3Site(siteId)
+      .then(data => setRebl3Data(data))
+      .finally(() => setRebl3Loading(false));
+  }, [location.rebl3SiteId]);
 
   const badge = statusBadge(location.scores?.overallColor);
   const sizeLabel = sizeTierLabel(location.scores?.sizeClassification);
@@ -377,7 +477,7 @@ export default function LocationDetailView({
               {extractStreet(location.address, location.city)}
             </h2>
             <p className="text-sm text-gray-500 mt-0.5">
-              {location.address}, {location.city}, {location.state}
+              {location.city}, {location.state}{location.zip ? ` ${location.zip}` : ""}
             </p>
             {(badge || sizeLabel) && (
               <div className="flex items-center gap-2 mt-2">
@@ -398,20 +498,6 @@ export default function LocationDetailView({
                 <span className="text-xs text-gray-400">{distanceMi.toFixed(1)} mi from you</span>
               </div>
             )}
-            {/* Red subscore breakdown */}
-            {location.scores?.overallColor === "RED" && (() => {
-              const issues: string[] = [];
-              if (location.scores?.zoning?.color === "RED") issues.push("Zoning");
-              if (location.scores?.price?.color === "RED") issues.push("Price");
-              if (location.scores?.neighborhood?.color === "RED") issues.push("Neighborhood");
-              if (location.scores?.playArea?.color === "RED") issues.push("Play Area");
-              if (location.scores?.building?.color === "RED") issues.push("Building");
-              return issues.length > 0 ? (
-                <p className="text-xs text-red-500 mt-1.5">
-                  Issues: {issues.join(", ")}
-                </p>
-              ) : null;
-            })()}
           </div>
 
           {/* Brochure link for proposed locations */}
@@ -428,20 +514,42 @@ export default function LocationDetailView({
             </a>
           )}
 
-          {/* Details link box */}
-          {location.scores?.overallDetailsUrl && (
-            <a
-              href={location.scores.overallDetailsUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="block mt-4 bg-blue-50 rounded-xl p-4 hover:bg-blue-100/60 transition-colors"
-            >
-              <p className="text-sm font-semibold text-blue-600 inline-flex items-center gap-1.5">
-                View full location details <ExternalLink className="w-3.5 h-3.5" />
-              </p>
-              <p className="text-[13px] leading-snug text-gray-500 mt-0.5">Zoning info, neighborhood data, and more.</p>
-            </a>
-          )}
+          {/* Dimension breakdown */}
+          {rebl3Loading ? (
+            <div className="mt-4 space-y-3">
+              {[1,2,3,4].map(i => (
+                <div key={i} className="h-16 bg-gray-100 rounded-xl animate-pulse" />
+              ))}
+            </div>
+          ) : rebl3Data ? (
+            <div className="mt-4 space-y-3">
+              {rebl3Data.dimensions.map(dim => (
+                <DimensionCard
+                  key={dim.key}
+                  dimension={dim}
+                  siteId={location.rebl3SiteId}
+                  userEmail={userEmail}
+                  isAuthenticated={isAuthenticated}
+                  onSignInNeeded={() => setShowSignIn(true)}
+                />
+              ))}
+            </div>
+          ) : location.scores?.overallColor ? (
+            <div className="mt-4 space-y-2">
+              {([
+                { label: "Neighborhood", color: location.scores.neighborhood?.color },
+                { label: "Zoning", color: location.scores.zoning?.color },
+                { label: "Building", color: location.scores.building?.color },
+                { label: "Price", color: location.scores.price?.color },
+              ] as const).filter(d => d.color).map(d => (
+                <div key={d.label} className="flex items-center gap-2">
+                  <span className={`w-2.5 h-2.5 rounded-full ${colorDotClass(d.color!)}`} />
+                  <span className="text-sm text-gray-700">{d.label}</span>
+                  <span className={`text-xs ${colorTextClass(d.color!)}`}>{colorLabel(d.color!)}</span>
+                </div>
+              ))}
+            </div>
+          ) : null}
 
           {/* 4. Vote section */}
           <div className="mt-5">
