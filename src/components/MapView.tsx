@@ -272,25 +272,34 @@ export function MapView() {
       duration: 1500,
     });
 
-    // If zooming to city level, fetch nearby locations
+    // If zooming to city level, fetch nearby locations and set bounds/center
+    // immediately (same pattern as flyToTarget handler). The old 100ms setTimeout
+    // read map.getBounds() mid-animation which returned near-US-wide garbage,
+    // and on mobile handleMoveEnd never fires to correct it.
     if (zoom >= 9) {
-      fetchNearbyForce(approxBounds(center, zoom));
+      const bounds = approxBounds(center, zoom);
+      fetchNearbyForce(bounds);
+      setMapBounds(bounds);
+      setMapCenter(center);
+      setZoomLevel(zoom);
+    } else {
+      // US-wide view: set bounds/center after a short delay so the map has
+      // initialized its viewport (no flyTo race here since we stay at US zoom)
+      setTimeout(() => {
+        const map = mapRef.current?.getMap();
+        if (map) {
+          const b = map.getBounds();
+          setMapBounds({
+            north: b.getNorth(),
+            south: b.getSouth(),
+            east: b.getEast(),
+            west: b.getWest(),
+          });
+          setMapCenter(center);
+          setZoomLevel(map.getZoom());
+        }
+      }, 100);
     }
-
-    setTimeout(() => {
-      const map = mapRef.current?.getMap();
-      if (map) {
-        const bounds = map.getBounds();
-        setMapBounds({
-          north: bounds.getNorth(),
-          south: bounds.getSouth(),
-          east: bounds.getEast(),
-          west: bounds.getWest(),
-        });
-        setMapCenter(center);
-        setZoomLevel(map.getZoom());
-      }
-    }, 100);
 
     initialViewSetRef.current = userLocationSource === "profile" ? "profile" : true;
   }, [initialViewLocation, userLocationSource, citySummaries, geoResolved, mapReady, locations, setReferencePoint, setMapBounds, setMapCenter, setZoomLevel, fetchNearbyForce]); // eslint-disable-line react-hooks/exhaustive-deps
