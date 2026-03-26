@@ -107,6 +107,8 @@ export function MapView() {
 
   // Shift+drag box selection state
   const [boxSelectBounds, setBoxSelectBounds] = useState<{ north: number; south: number; east: number; west: number } | null>(null);
+  const boxSelectBoundsRef = useRef(boxSelectBounds);
+  boxSelectBoundsRef.current = boxSelectBounds;
   const boxStartRef = useRef<{ x: number; y: number } | null>(null);
   const boxCurrentRef = useRef<{ x: number; y: number } | null>(null);
   const [boxRect, setBoxRect] = useState<{ left: number; top: number; width: number; height: number } | null>(null);
@@ -453,21 +455,19 @@ export function MapView() {
     };
   }, [mapReady, setMapBounds, setMapCenter]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Clear box selection on any pan/zoom
-  const prevBoundsRef = useRef(mapBounds);
+  // Clear box selection on user-initiated pan/zoom (detected via movestart)
   useEffect(() => {
-    if (!boxSelectBounds || !mapBounds || !prevBoundsRef.current) {
-      prevBoundsRef.current = mapBounds;
-      return;
-    }
-    // If bounds changed and it's NOT from our box selection, clear it
-    const b = boxSelectBounds;
-    if (mapBounds.north !== b.north || mapBounds.south !== b.south ||
-        mapBounds.east !== b.east || mapBounds.west !== b.west) {
-      setBoxSelectBounds(null);
-    }
-    prevBoundsRef.current = mapBounds;
-  }, [mapBounds, boxSelectBounds]);
+    const map = mapRef.current?.getMap();
+    if (!map) return;
+    const onMoveStart = () => {
+      if (boxSelectBoundsRef.current && !boxStartRef.current) {
+        // User started panning/zooming (not drawing a new box) — clear selection
+        setBoxSelectBounds(null);
+      }
+    };
+    map.on("movestart", onMoveStart);
+    return () => { map.off("movestart", onMoveStart); };
+  }, [mapReady]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // onZoom: update zoomLevel live so panel switches layers immediately
   const handleZoom = useCallback(() => {
@@ -499,6 +499,20 @@ export function MapView() {
       if (!bounds.contains([loc.lng, loc.lat])) {
         setSelectedLocation(null);
       }
+    }
+
+    // If box selection is active, don't overwrite bounds — just update zoom/center and fetch
+    if (boxSelectBoundsRef.current) {
+      setZoomLevel(zoom);
+      if (zoom >= 9) {
+        fetchNearby({
+          north: bounds.getNorth(),
+          south: bounds.getSouth(),
+          east: bounds.getEast(),
+          west: bounds.getWest(),
+        });
+      }
+      return;
     }
 
     setMapCenter({ lat: center.lat, lng: center.lng });
