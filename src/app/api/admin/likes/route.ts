@@ -2,6 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { verifyAdmin } from "@/lib/admin";
 import { getSupabaseAdmin } from "@/lib/supabase-admin";
 
+function jc(val: number | null): string | null {
+  if (val === 1) return "GREEN"; if (val === 2) return "YELLOW"; if (val === 3) return "RED"; return null;
+}
+
 function mapScores(s: Record<string, unknown> | null) {
   if (!s || s.overall_color == null) return undefined;
   return {
@@ -85,12 +89,23 @@ export async function GET(request: NextRequest) {
   // Enrich with scores and voter emails
   const enriched = await Promise.all(
     (locations || []).map(async (loc) => {
-      // Get scores
-      const { data: scoreData } = await supabase
-        .from("pp_location_scores")
-        .select("*")
-        .eq("location_id", loc.id)
-        .maybeSingle();
+      // Get scores from rebl3_sites
+      let scoreData: Record<string, unknown> | null = null;
+      if (loc.rebl3_site_id) {
+        const { data: r } = await supabase
+          .from("rebl3_sites")
+          .select("overall, dim_cost, dim_zoning, dim_neighborhood, dim_building, sub_play, school_size_category, site_id")
+          .eq("site_id", loc.rebl3_site_id)
+          .maybeSingle();
+        if (r) {
+          scoreData = {
+            overall_color: jc(r.overall), overall_details_url: `https://rebl3.vercel.app/site/${r.site_id}`,
+            price_color: jc(r.dim_cost), zoning_color: jc(r.dim_zoning),
+            neighborhood_color: jc(r.dim_neighborhood), building_color: jc(r.dim_building),
+            size_classification: r.school_size_category,
+          };
+        }
+      }
 
       // Get voter emails and comments
       const voters = voteMap.get(loc.id) || [];

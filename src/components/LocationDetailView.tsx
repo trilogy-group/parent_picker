@@ -61,13 +61,13 @@ function DimensionCard({ dimension, siteId, userEmail, isAuthenticated, onSignIn
               onClick={() => handleAction("agree")}
               className="px-3 py-1 rounded-full text-xs font-medium border border-gray-300 bg-white text-gray-600 hover:border-green-400 hover:bg-green-50 hover:text-green-700 transition-colors"
             >
-              I agree
+              I agree with AI
             </button>
             <button
               onClick={() => handleAction("disagree")}
               className="px-3 py-1 rounded-full text-xs font-medium border border-gray-300 bg-white text-gray-600 hover:border-red-400 hover:bg-red-50 hover:text-red-600 transition-colors"
             >
-              I disagree
+              I disagree with AI
             </button>
             <button
               onClick={() => handleAction("help")}
@@ -221,7 +221,7 @@ export default function LocationDetailView({
   }, [location.rebl3SiteId]);
 
   const badge = statusBadge(location.scores?.overallColor);
-  const sizeLabel = sizeTierLabel(location.scores?.sizeClassification);
+  const sizeLabel = sizeTierLabel(location.scores?.sizeClassification, location.scores?.capacity);
   const remaining = Math.max(0, LAUNCH_THRESHOLD - location.votes);
 
   const inVoters = voters.filter((v) => v.voteType === "in");

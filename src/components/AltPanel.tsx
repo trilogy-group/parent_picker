@@ -428,7 +428,7 @@ export function AltPanel() {
                       : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                   }`}
                 >
-                  {{ micro: "Micro (25-50)", growth: "Growth (250)", full: "Flagship (1000)", all: "Size" }[altSizeFilter]}
+                  {{ micro: "25-100 students", micro2: "100-200 students", growth: "200-500 students", full: "500+ students", all: "Size" }[altSizeFilter]}
                   {altSizeFilter !== "all" && (
                     <ChevronDown className="w-3 h-3" />
                   )}
@@ -436,9 +436,10 @@ export function AltPanel() {
                 {showSizePopover && altSizeFilter !== "all" && (
                   <div className="absolute top-full left-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-20 py-1 min-w-[160px]">
                     {([
-                      { value: "micro" as const, label: "Micro (25-50)", badge: "Focus" },
-                      { value: "growth" as const, label: "Growth (250)" },
-                      { value: "full" as const, label: "Flagship (1000)" },
+                      { value: "micro" as const, label: "25-100 students", badge: "Focus" },
+                      { value: "micro2" as const, label: "100-200 students" },
+                      { value: "growth" as const, label: "200-500 students" },
+                      { value: "full" as const, label: "500+ students" },
                     ]).map((opt) => (
                       <button
                         key={opt.value}

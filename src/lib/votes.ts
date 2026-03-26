@@ -57,7 +57,7 @@ interface VotesState {
   userLocation: { lat: number; lng: number } | null;  // Browser geolocation or saved profile
   userLocationSource: "geo" | "profile" | null;       // Where userLocation came from
   showTopOnly: boolean;                                // Top 10 vs Show all toggle (shared with MapView)
-  altSizeFilter: "micro" | "growth" | "full" | "all";                      // New UI size filter: micro-only or all sizes
+  altSizeFilter: "micro" | "micro2" | "growth" | "full" | "all";           // Size filter
   viableSubPriority: 'zoning' | 'neighborhood' | 'playArea' | 'building' | 'price' | null;  // Admin: subscore sort priority
   deepLinkTab: "in" | "concerns" | "other" | null;  // Tab from URL deep link
   driveTimeMinutes: number;                          // User preference: 10/20/30
@@ -95,7 +95,7 @@ interface VotesState {
   setReleasedFilter: (filter: ReleasedFilter) => void;
   setUserLocation: (coords: { lat: number; lng: number } | null, source?: "geo" | "profile") => void;
   setShowTopOnly: (show: boolean) => void;
-  setAltSizeFilter: (value: "micro" | "growth" | "full" | "all") => void;
+  setAltSizeFilter: (value: "micro" | "micro2" | "growth" | "full" | "all") => void;
   updateVoteComment: (locationId: string, comment: string) => void;
   setDeepLinkTab: (tab: "in" | "concerns" | "other" | null) => void;
   setViableSubPriority: (priority: 'zoning' | 'neighborhood' | 'playArea' | 'building' | 'price' | null) => void;
@@ -649,17 +649,23 @@ export const useVotesStore = create<VotesState>((set, get) => ({
       filtered = filtered.filter((loc) => loc.released !== true);
     }
 
-    // Step 2: Apply alt UI size filter
+    // Step 2: Apply alt UI size filter (capacity first, fall back to sizeClassification)
     const { altSizeFilter } = get();
-    if (altSizeFilter === "micro") {
+    const SIZE_RANGES: Record<string, [number, number]> = {
+      micro: [25, 100], micro2: [100, 200], growth: [200, 500], full: [500, Infinity],
+    };
+    const CATEGORY_MAP: Record<string, string[]> = {
+      micro: ["micro"], micro2: ["micro2"], growth: ["growth"], full: ["full size", "flagship"],
+    };
+    if (altSizeFilter !== "all") {
+      const [min, max] = SIZE_RANGES[altSizeFilter] || [0, Infinity];
+      const cats = CATEGORY_MAP[altSizeFilter] || [];
       filtered = filtered.filter((loc) => {
-        const size = loc.scores?.sizeClassification;
-        return size === "Micro" || size === "Micro2";
+        const cap = loc.scores?.capacity;
+        if (cap != null) return cap >= min && cap < max;
+        const size = loc.scores?.sizeClassification?.toLowerCase();
+        return size ? cats.includes(size) : false;
       });
-    } else if (altSizeFilter === "growth") {
-      filtered = filtered.filter((loc) => loc.scores?.sizeClassification === "Growth");
-    } else if (altSizeFilter === "full") {
-      filtered = filtered.filter((loc) => loc.scores?.sizeClassification === "Full Size");
     }
 
     // Step 3: Apply "No Blockers" filter (GREEN only)

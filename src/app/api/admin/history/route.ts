@@ -24,7 +24,7 @@ export async function GET(request: NextRequest) {
       recipient_emails,
       email_failed,
       created_at,
-      pp_locations (address, city, state, pp_location_scores (overall_details_url))
+      pp_locations (address, city, state, rebl3_site_id)
     `)
     .order("created_at", { ascending: false })
     .limit(100);
@@ -38,9 +38,6 @@ export async function GET(request: NextRequest) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const actions = (data || []).map((row: any) => {
     const loc = row.pp_locations;
-    // pp_location_scores is nested inside pp_locations (array or object)
-    const scores = loc?.pp_location_scores;
-    const scoreRow = Array.isArray(scores) ? scores[0] : scores;
     return {
       id: row.id,
       location_id: row.location_id,
@@ -52,7 +49,9 @@ export async function GET(request: NextRequest) {
       address: loc?.address || null,
       city: loc?.city || null,
       state: loc?.state || null,
-      overall_details_url: scoreRow?.overall_details_url || null,
+      overall_details_url: loc?.rebl3_site_id
+        ? `https://rebl3.vercel.app/site/${loc.rebl3_site_id}`
+        : null,
     };
   });
 

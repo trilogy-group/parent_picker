@@ -11,6 +11,7 @@ export interface LocationScores {
   playArea: SubScore;
   building: SubScore;
   sizeClassification: string | null;
+  capacity: number | null;
 }
 
 export interface Location {
@@ -99,7 +100,7 @@ export interface AdminAction {
   address?: string;
   city?: string;
   state?: string;
-  // Joined from pp_location_scores (live)
+  // Computed from rebl3_site_id
   overall_details_url?: string | null;
 }
 

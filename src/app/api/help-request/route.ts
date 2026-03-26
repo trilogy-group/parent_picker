@@ -71,15 +71,15 @@ export async function POST(request: NextRequest) {
   let subject: string;
 
   if (locationId) {
-    // Look up details URL fresh from pp_location_scores
+    // Get details URL from rebl3_site_id
     let detailsUrl: string | null = null;
-    const { data: scoreRow } = await supabase
-      .from("pp_location_scores")
-      .select("overall_details_url")
-      .eq("location_id", locationId)
+    const { data: locForUrl } = await supabase
+      .from("pp_locations")
+      .select("rebl3_site_id")
+      .eq("id", locationId)
       .maybeSingle();
-    if (scoreRow) {
-      detailsUrl = scoreRow.overall_details_url;
+    if (locForUrl?.rebl3_site_id) {
+      detailsUrl = `https://rebl3.vercel.app/site/${locForUrl.rebl3_site_id}`;
     }
 
     // Get location info for the email

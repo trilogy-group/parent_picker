@@ -25,6 +25,7 @@ function mockScores(index: number): LocationScores {
     playArea: { color: null },
     building: { color: COLORS[Math.floor(rand() * 4)] },
     sizeClassification: ["Micro", "Micro2", "Growth", "Full Size"][Math.floor(rand() * 4)],
+    capacity: Math.floor(rand() * 500) + 25,
   };
 }
 
@@ -40,6 +41,7 @@ function mapRowToScores(row: Record<string, unknown>): LocationScores | undefine
     playArea: { color: (row.play_area_color as string) || null },
     building: { color: (row.building_color as string) || null },
     sizeClassification: (row.size_classification as string) || null,
+    capacity: row.capacity != null ? Number(row.capacity) : null,
   };
 }
 
@@ -449,6 +451,28 @@ async function geocodeAddress(
   }
 }
 
+async function submitToRebl3(address: string, city: string, state: string): Promise<string | null> {
+  try {
+    const res = await fetch("https://rebl3.vercel.app/api/submit", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        address: `${address}, ${city}, ${state}`,
+        source: "pp",
+        force: true,
+        city,
+        state,
+        street: address,
+      }),
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    return data.site_id || null;
+  } catch {
+    return null;
+  }
+}
+
 export async function suggestLocation(
   address: string,
   city: string,
@@ -519,6 +543,9 @@ export async function suggestLocation(
         }
       }
 
+      // Submit to REBL3 for scoring
+      const rebl3SiteId = await submitToRebl3(address, city, state);
+
       const { data, error } = await supabase
         .from("pp_locations")
         .insert({
@@ -532,6 +559,7 @@ export async function suggestLocation(
           source: "parent_suggested",
           notes: notes || null,
           suggested_by: userId,
+          rebl3_site_id: rebl3SiteId,
         })
         .select()
         .single();

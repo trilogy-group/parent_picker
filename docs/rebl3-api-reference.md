@@ -377,7 +377,7 @@ PP needs the `site_id` (already stored in `pp_location_scores.overall_details_ur
 PP submits parent-suggested addresses via REBL3 API instead of relying on external scoring.
 
 ```
-Parent suggests address → PP calls POST /api/submit {address, source: "pp"}
+Parent suggests address → PP calls POST /api/submit {address, source: "pp", force: true}
                         → PP stores site_id in pp_locations.rebl3_site_id
                         → PP sets status = "pending_scoring"
                         → Supabase trigger on rebl3_sites INSERT/UPDATE

@@ -53,12 +53,15 @@ export async function POST(
       .single();
     location = loc;
 
-    const { data: scoreRow } = await supabase
-      .from("pp_location_scores")
-      .select("overall_details_url")
-      .eq("location_id", action.location_id)
+    // Get details URL from rebl3_site_id
+    const { data: locForUrl } = await supabase
+      .from("pp_locations")
+      .select("rebl3_site_id")
+      .eq("id", action.location_id)
       .maybeSingle();
-    detailsUrl = scoreRow?.overall_details_url || null;
+    detailsUrl = locForUrl?.rebl3_site_id
+      ? `https://rebl3.vercel.app/site/${locForUrl.rebl3_site_id}`
+      : null;
   }
 
   // Regenerate the appropriate email

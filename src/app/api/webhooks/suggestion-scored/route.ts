@@ -57,14 +57,15 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ skipped: true, reason: "already notified" });
   }
 
-  // Fetch details URL for email link
-  const { data: scoreRow } = await supabase
-    .from("pp_location_scores")
-    .select("overall_details_url")
-    .eq("location_id", locationId)
+  // Get details URL from rebl3_site_id
+  const { data: locForUrl } = await supabase
+    .from("pp_locations")
+    .select("rebl3_site_id")
+    .eq("id", locationId)
     .maybeSingle();
-
-  const detailsUrl = (scoreRow?.overall_details_url as string) || null;
+  const detailsUrl = locForUrl?.rebl3_site_id
+    ? `https://rebl3.vercel.app/site/${locForUrl.rebl3_site_id}`
+    : null;
 
   // Generate and send email
   const html = generateScoredNotificationHtml({

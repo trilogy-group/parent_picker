@@ -63,6 +63,7 @@ function DeepLinkHandler() {
             playArea: { color: scores.play_area_color || null },
             building: { color: scores.building_color || null },
             sizeClassification: scores.size_classification || null,
+            capacity: scores.capacity != null ? Number(scores.capacity) : null,
           } : undefined,
         });
         setFlyToTarget({ lat: Number(data.lat), lng: Number(data.lng), zoom: 15 });
