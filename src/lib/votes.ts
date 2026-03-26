@@ -58,7 +58,7 @@ interface VotesState {
   userLocationSource: "geo" | "profile" | null;       // Where userLocation came from
   showTopOnly: boolean;                                // Top 10 vs Show all toggle (shared with MapView)
   altSizeFilter: "micro" | "micro2" | "growth" | "full" | "all";           // Size filter
-  viableSubPriority: 'zoning' | 'neighborhood' | 'playArea' | 'building' | 'price' | null;  // Admin: subscore sort priority
+  viableSubPriority: 'zoning' | 'neighborhood' | 'building' | 'price' | null;  // Admin: subscore sort priority
   deepLinkTab: "in" | "concerns" | "other" | null;  // Tab from URL deep link
   driveTimeMinutes: number;                          // User preference: 10/20/30
   showDriveFilter: boolean;                          // "Close to me" filter toggle
@@ -98,7 +98,7 @@ interface VotesState {
   setAltSizeFilter: (value: "micro" | "micro2" | "growth" | "full" | "all") => void;
   updateVoteComment: (locationId: string, comment: string) => void;
   setDeepLinkTab: (tab: "in" | "concerns" | "other" | null) => void;
-  setViableSubPriority: (priority: 'zoning' | 'neighborhood' | 'playArea' | 'building' | 'price' | null) => void;
+  setViableSubPriority: (priority: 'zoning' | 'neighborhood' | 'building' | 'price' | null) => void;
   setDriveTimeMinutes: (minutes: number) => void;
   setShowDriveFilter: (show: boolean) => void;
   setShowNoBlockers: (show: boolean) => void;

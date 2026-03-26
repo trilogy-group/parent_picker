@@ -60,7 +60,6 @@ function DeepLinkHandler() {
             price: { color: scores.price_color || null },
             zoning: { color: scores.zoning_color || null },
             neighborhood: { color: scores.neighborhood_color || null },
-            playArea: { color: scores.play_area_color || null },
             building: { color: scores.building_color || null },
             sizeClassification: scores.size_classification || null,
             capacity: scores.capacity != null ? Number(scores.capacity) : null,

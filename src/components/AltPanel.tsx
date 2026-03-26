@@ -535,7 +535,6 @@ export function AltPanel() {
               >
                 {sortMode === 'most_support' ? 'Popularity'
                   : viableSubPriority === 'zoning' ? 'Zoning approved'
-                  : viableSubPriority === 'playArea' ? 'Outdoor play space'
                   : viableSubPriority === 'neighborhood' ? 'Demographics'
                   : 'Overall'}
                 <ChevronDown className="w-3 h-3" />
@@ -546,7 +545,6 @@ export function AltPanel() {
                     { label: 'Overall', mode: 'most_viable' as const, sub: null },
                     { label: 'Popularity', mode: 'most_support' as const, sub: null },
                     { label: 'Zoning approved', mode: 'most_viable' as const, sub: 'zoning' as const },
-                    { label: 'Outdoor play space', mode: 'most_viable' as const, sub: 'playArea' as const },
                     { label: 'Demographics', mode: 'most_viable' as const, sub: 'neighborhood' as const },
                   ]).map((opt) => {
                     const isActive = sortMode === opt.mode && viableSubPriority === opt.sub;

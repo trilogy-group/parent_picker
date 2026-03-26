@@ -4,15 +4,14 @@ import { getDistanceMiles } from "./locations";
 const COLOR_RANK: Record<string, number> = { GREEN: 0, YELLOW: 1, AMBER: 2, RED: 3 };
 
 // Count green subscores — used to sort within overall GREEN and YELLOW
-// price(1) + building(2) + playArea(4) + neighborhood(8) + zoning(16)
+// price(1) + building(2) + neighborhood(4) + zoning(8)
 export function greenSubRank(loc: Location): number {
   const s = loc.scores;
   if (!s) return 0;
   return (s.price?.color === "GREEN" ? 1 : 0)
        + (s.building?.color === "GREEN" ? 2 : 0)
-       + (s.playArea?.color === "GREEN" ? 4 : 0)
-       + (s.neighborhood?.color === "GREEN" ? 8 : 0)
-       + (s.zoning?.color === "GREEN" ? 16 : 0);
+       + (s.neighborhood?.color === "GREEN" ? 4 : 0)
+       + (s.zoning?.color === "GREEN" ? 8 : 0);
 }
 
 export function sortMostViable(a: Location, b: Location): number {
@@ -27,7 +26,7 @@ export function sortMostViable(a: Location, b: Location): number {
   return b.votes - a.votes;
 }
 
-type SubPriority = 'zoning' | 'neighborhood' | 'playArea' | 'building' | 'price';
+type SubPriority = 'zoning' | 'neighborhood' | 'building' | 'price';
 
 function getSubColor(loc: Location, sub: SubPriority): string | null {
   const s = loc.scores;
