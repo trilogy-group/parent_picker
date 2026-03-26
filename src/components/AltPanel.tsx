@@ -158,13 +158,6 @@ export function AltPanel() {
   // Sort and filter locations in viewport
   const sortedLocations = useMemo(() => {
     const filtered = filteredLocations();
-    // Debug: check for duplicates in the store
-    const idCounts = new Map<string, number>();
-    filtered.forEach(l => idCounts.set(l.id, (idCounts.get(l.id) || 0) + 1));
-    const dupes = [...idCounts.entries()].filter(([, c]) => c > 1);
-    if (dupes.length > 0) {
-      console.warn('[AltPanel] Duplicate IDs in filteredLocations:', dupes.map(([id, c]) => `${id}(${c}x)`));
-    }
     if (!mapBounds) return filtered;
     const pool = filtered.filter(loc =>
       loc.lat <= mapBounds.north && loc.lat >= mapBounds.south &&

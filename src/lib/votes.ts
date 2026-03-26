@@ -196,13 +196,7 @@ export const useVotesStore = create<VotesState>((set, get) => ({
     return count;
   },
 
-  setLocations: (locations) => {
-    const idCounts = new Map<string, number>();
-    locations.forEach(l => idCounts.set(l.id, (idCounts.get(l.id) || 0) + 1));
-    const dupes = [...idCounts.entries()].filter(([, c]) => c > 1);
-    if (dupes.length > 0) console.warn('[setLocations] Duplicate IDs:', dupes);
-    set({ locations, isLoading: false });
-  },
+  setLocations: (locations) => set({ locations, isLoading: false }),
 
   setLoading: (isLoading) => set({ isLoading }),
 
@@ -288,7 +282,6 @@ export const useVotesStore = create<VotesState>((set, get) => ({
       const kept = prev.find((l) => l.id === selectedLocationId);
       if (kept) fetched.push(kept);
     }
-    console.log('[fetchNearby] setting', fetched.length, 'locations');
     set({ locations: fetched, lastFetchBounds: bounds });
   },
 
@@ -302,7 +295,6 @@ export const useVotesStore = create<VotesState>((set, get) => ({
       const kept = prev.find((l) => l.id === selectedLocationId);
       if (kept) fetched.push(kept);
     }
-    console.log('[fetchNearbyForce] setting', fetched.length, 'locations');
     set({ locations: fetched, lastFetchBounds: bounds });
   },
 
@@ -334,12 +326,10 @@ export const useVotesStore = create<VotesState>((set, get) => ({
 
   clearUserVotes: () => set({ votedLocationIds: new Set<string>(), votedNotHereIds: new Set<string>() }),
 
-  addLocation: (location) => {
-    console.log('[addLocation]', location.id, location.address);
+  addLocation: (location) =>
     set((state) => ({
       locations: [...state.locations, location],
-    }));
-  },
+    })),
 
   vote: (locationId, comment?) => {
     const state = get();
