@@ -158,6 +158,13 @@ export function AltPanel() {
   // Sort and filter locations in viewport
   const sortedLocations = useMemo(() => {
     const filtered = filteredLocations();
+    // Debug: check for duplicates in the store
+    const idCounts = new Map<string, number>();
+    filtered.forEach(l => idCounts.set(l.id, (idCounts.get(l.id) || 0) + 1));
+    const dupes = [...idCounts.entries()].filter(([, c]) => c > 1);
+    if (dupes.length > 0) {
+      console.warn('[AltPanel] Duplicate IDs in filteredLocations:', dupes.map(([id, c]) => `${id}(${c}x)`));
+    }
     if (!mapBounds) return filtered;
     const pool = filtered.filter(loc =>
       loc.lat <= mapBounds.north && loc.lat >= mapBounds.south &&
@@ -178,7 +185,13 @@ export function AltPanel() {
     if (showDriveFilter && userIsochrone) {
       sorted = sorted.filter(loc => pointInIsochrone(loc.lat, loc.lng, userIsochrone));
     }
-    return sorted;
+    // Deduplicate by ID (safety net against render-time race conditions)
+    const seen = new Set<string>();
+    return sorted.filter(loc => {
+      if (seen.has(loc.id)) return false;
+      seen.add(loc.id);
+      return true;
+    });
   }, [filteredLocations, mapBounds, sortMode, viableSubPriority, userLocation, locations, altSizeFilter, viewAsParent, showDriveFilter, userIsochrone, showNoBlockers]);
 
   // Apply admin search filter
