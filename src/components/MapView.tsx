@@ -105,6 +105,12 @@ export function MapView() {
   const flyingRef = useRef(false);
   const selectedLocationRef = useRef<{ lat: number; lng: number } | null>(null);
 
+  // Shift+drag box selection state
+  const [boxSelectBounds, setBoxSelectBounds] = useState<{ north: number; south: number; east: number; west: number } | null>(null);
+  const boxStartRef = useRef<{ x: number; y: number } | null>(null);
+  const boxCurrentRef = useRef<{ x: number; y: number } | null>(null);
+  const [boxRect, setBoxRect] = useState<{ left: number; top: number; width: number; height: number } | null>(null);
+
   const allFiltered = filteredLocations();
   const displayLocations = showDriveFilter && userIsochrone
     ? allFiltered.filter(loc => loc.id === selectedLocationId || pointInIsochrone(loc.lat, loc.lng, userIsochrone))
@@ -375,6 +381,93 @@ export function MapView() {
       }
     }
   }, [setSelectedLocation, fetchNearbyForce, flyToCoords]);
+
+  // Shift+drag box selection: disable default boxzoom and wire up custom handlers
+  useEffect(() => {
+    const map = mapRef.current?.getMap();
+    if (!map) return;
+    // Disable mapbox's built-in shift+drag box zoom
+    map.boxZoom.disable();
+
+    const container = map.getContainer();
+
+    const onMouseDown = (e: MouseEvent) => {
+      if (!e.shiftKey || e.button !== 0) return;
+      e.preventDefault();
+      e.stopPropagation();
+      const rect = container.getBoundingClientRect();
+      boxStartRef.current = { x: e.clientX - rect.left, y: e.clientY - rect.top };
+      boxCurrentRef.current = boxStartRef.current;
+      setBoxRect(null);
+      // Clear any previous box selection
+      setBoxSelectBounds(null);
+
+      const onMouseMove = (me: MouseEvent) => {
+        if (!boxStartRef.current) return;
+        const r = container.getBoundingClientRect();
+        boxCurrentRef.current = { x: me.clientX - r.left, y: me.clientY - r.top };
+        const start = boxStartRef.current;
+        const cur = boxCurrentRef.current;
+        setBoxRect({
+          left: Math.min(start.x, cur.x),
+          top: Math.min(start.y, cur.y),
+          width: Math.abs(cur.x - start.x),
+          height: Math.abs(cur.y - start.y),
+        });
+      };
+
+      const onMouseUp = (me: MouseEvent) => {
+        document.removeEventListener("mousemove", onMouseMove);
+        document.removeEventListener("mouseup", onMouseUp);
+        const start = boxStartRef.current;
+        if (!start) return;
+        const r = container.getBoundingClientRect();
+        const end = { x: me.clientX - r.left, y: me.clientY - r.top };
+        boxStartRef.current = null;
+        setBoxRect(null);
+
+        // Ignore tiny drags (< 10px)
+        if (Math.abs(end.x - start.x) < 10 || Math.abs(end.y - start.y) < 10) return;
+
+        // Convert pixel corners to lat/lng
+        const sw = map.unproject([Math.min(start.x, end.x), Math.max(start.y, end.y)]);
+        const ne = map.unproject([Math.max(start.x, end.x), Math.min(start.y, end.y)]);
+        const bounds = {
+          north: ne.lat,
+          south: sw.lat,
+          east: ne.lng,
+          west: sw.lng,
+        };
+        setBoxSelectBounds(bounds);
+        setMapBounds(bounds);
+        setMapCenter({ lat: (bounds.north + bounds.south) / 2, lng: (bounds.east + bounds.west) / 2 });
+      };
+
+      document.addEventListener("mousemove", onMouseMove);
+      document.addEventListener("mouseup", onMouseUp);
+    };
+
+    container.addEventListener("mousedown", onMouseDown);
+    return () => {
+      container.removeEventListener("mousedown", onMouseDown);
+    };
+  }, [mapReady, setMapBounds, setMapCenter]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Clear box selection on any pan/zoom
+  const prevBoundsRef = useRef(mapBounds);
+  useEffect(() => {
+    if (!boxSelectBounds || !mapBounds || !prevBoundsRef.current) {
+      prevBoundsRef.current = mapBounds;
+      return;
+    }
+    // If bounds changed and it's NOT from our box selection, clear it
+    const b = boxSelectBounds;
+    if (mapBounds.north !== b.north || mapBounds.south !== b.south ||
+        mapBounds.east !== b.east || mapBounds.west !== b.west) {
+      setBoxSelectBounds(null);
+    }
+    prevBoundsRef.current = mapBounds;
+  }, [mapBounds, boxSelectBounds]);
 
   // onZoom: update zoomLevel live so panel switches layers immediately
   const handleZoom = useCallback(() => {
@@ -648,6 +741,39 @@ export function MapView() {
         </Popup>
       )}
 
+      {/* Box selection rectangle on map */}
+      {boxSelectBounds && (
+        <Source
+          id="box-select"
+          type="geojson"
+          data={{
+            type: "Feature",
+            geometry: {
+              type: "Polygon",
+              coordinates: [[
+                [boxSelectBounds.west, boxSelectBounds.north],
+                [boxSelectBounds.east, boxSelectBounds.north],
+                [boxSelectBounds.east, boxSelectBounds.south],
+                [boxSelectBounds.west, boxSelectBounds.south],
+                [boxSelectBounds.west, boxSelectBounds.north],
+              ]],
+            },
+            properties: {},
+          }}
+        >
+          <Layer
+            id="box-select-fill"
+            type="fill"
+            paint={{ "fill-color": "#3b82f6", "fill-opacity": 0.08 }}
+          />
+          <Layer
+            id="box-select-outline"
+            type="line"
+            paint={{ "line-color": "#3b82f6", "line-width": 2, "line-dasharray": [3, 2] }}
+          />
+        </Source>
+      )}
+
       {/* Preview marker for suggested locations */}
       {previewLocation && (
         <>
@@ -677,6 +803,22 @@ export function MapView() {
             </div>
           </Popup>
         </>
+      )}
+      {/* Drag preview rectangle overlay */}
+      {boxRect && (
+        <div
+          style={{
+            position: "absolute",
+            left: boxRect.left,
+            top: boxRect.top,
+            width: boxRect.width,
+            height: boxRect.height,
+            border: "2px dashed #3b82f6",
+            backgroundColor: "rgba(59, 130, 246, 0.1)",
+            pointerEvents: "none",
+            zIndex: 10,
+          }}
+        />
       )}
     </Map>
   );
