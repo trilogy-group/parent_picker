@@ -397,6 +397,8 @@ export function MapView() {
       if (!e.shiftKey || e.button !== 0) return;
       e.preventDefault();
       e.stopPropagation();
+      // Disable map drag so shift+drag doesn't pan
+      map.dragPan.disable();
       const rect = container.getBoundingClientRect();
       boxStartRef.current = { x: e.clientX - rect.left, y: e.clientY - rect.top };
       boxCurrentRef.current = boxStartRef.current;
@@ -406,6 +408,7 @@ export function MapView() {
 
       const onMouseMove = (me: MouseEvent) => {
         if (!boxStartRef.current) return;
+        me.preventDefault();
         const r = container.getBoundingClientRect();
         boxCurrentRef.current = { x: me.clientX - r.left, y: me.clientY - r.top };
         const start = boxStartRef.current;
@@ -421,6 +424,8 @@ export function MapView() {
       const onMouseUp = (me: MouseEvent) => {
         document.removeEventListener("mousemove", onMouseMove);
         document.removeEventListener("mouseup", onMouseUp);
+        // Re-enable map drag
+        map.dragPan.enable();
         const start = boxStartRef.current;
         if (!start) return;
         const r = container.getBoundingClientRect();
