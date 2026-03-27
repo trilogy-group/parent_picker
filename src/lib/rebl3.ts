@@ -8,7 +8,7 @@ export type Rebl3DimensionKey = (typeof REBL3_DIMENSIONS)[number];
 export interface Rebl3Dimension {
   key: string;
   name: string;
-  judgment: "GREAT" | "VIABLE" | "CUT" | "N/A";
+  judgment: "GREAT" | "VIABLE" | "CUT" | "GREEN" | "YELLOW" | "RED" | "N/A" | null;
   prose: string;
 }
 
@@ -33,7 +33,7 @@ export interface Rebl3ExternalSite {
   lat: number;
   lng: number;
   classification: "GREEN" | "YELLOW" | "RED" | null;
-  overall_score: number;
+  overall_score: number | null;
   dimensions: Rebl3Dimension[];
   property: Rebl3Property;
   tuition: number | null;

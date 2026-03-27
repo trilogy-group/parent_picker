@@ -16,8 +16,11 @@ const LAUNCH_THRESHOLD = 30;
 
 const JUDGMENT_STYLES: Record<string, { bg: string; text: string; dot: string }> = {
   GREAT:  { bg: "bg-green-50",  text: "text-green-700", dot: "bg-green-500" },
+  GREEN:  { bg: "bg-green-50",  text: "text-green-700", dot: "bg-green-500" },
   VIABLE: { bg: "bg-amber-50",  text: "text-amber-600", dot: "bg-amber-500" },
+  YELLOW: { bg: "bg-amber-50",  text: "text-amber-600", dot: "bg-amber-500" },
   CUT:    { bg: "bg-red-50",    text: "text-red-600",   dot: "bg-red-500" },
+  RED:    { bg: "bg-red-50",    text: "text-red-600",   dot: "bg-red-500" },
   "N/A":  { bg: "bg-gray-50",   text: "text-gray-500",  dot: "bg-gray-400" },
 };
 
@@ -28,7 +31,7 @@ function DimensionCard({ dimension, siteId, userEmail, isAuthenticated, onSignIn
   isAuthenticated: boolean;
   onSignInNeeded: () => void;
 }) {
-  const style = JUDGMENT_STYLES[dimension.judgment] || JUDGMENT_STYLES["N/A"];
+  const style = (dimension.judgment && JUDGMENT_STYLES[dimension.judgment]) || JUDGMENT_STYLES["N/A"];
   const [voted, setVoted] = useState<"agree" | "disagree" | "help" | null>(null);
   const dimKey = dimension.key as Rebl3DimensionKey;
 
