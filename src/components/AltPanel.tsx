@@ -433,7 +433,7 @@ export function AltPanel() {
                               onClick={(e) => { e.stopPropagation(); voteIn(loc.id); }}
                               className="flex-1 py-2.5 rounded-lg text-sm font-semibold bg-indigo-600 text-white hover:bg-indigo-700 transition-colors"
                             >
-                              I&apos;d choose this location
+                              I&apos;m good with this location
                             </button>
                             <button
                               onClick={(e) => { e.stopPropagation(); }}
