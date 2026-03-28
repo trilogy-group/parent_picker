@@ -113,6 +113,17 @@ interface VotesState {
 
 let citySummarySeq = 0;
 
+// Fire-and-forget: sync vote data to rebl3_status for proposed locations with deadlines
+function syncParentStatus(locationId: string, getFn: () => VotesState) {
+  const loc = getFn().locations.find(l => l.id === locationId);
+  if (!loc?.proposed || !loc.feedbackDeadline) return;
+  fetch("/api/sync-parent-status", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ locationId }),
+  }).catch(() => {});
+}
+
 export const useVotesStore = create<VotesState>((set, get) => ({
   locations: [],
   citySummaries: [],
@@ -461,6 +472,7 @@ export const useVotesStore = create<VotesState>((set, get) => ({
           } else {
             // Refresh voter list so Who's in / Concerns tabs update
             get().loadLocationVoters([locationId], true);
+            syncParentStatus(locationId, get);
           }
         });
     }
@@ -520,6 +532,7 @@ export const useVotesStore = create<VotesState>((set, get) => ({
             });
           } else {
             get().loadLocationVoters([locationId], true);
+            syncParentStatus(locationId, get);
           }
         });
     }
@@ -571,6 +584,7 @@ export const useVotesStore = create<VotesState>((set, get) => ({
             });
           } else {
             get().loadLocationVoters([locationId], true);
+            syncParentStatus(locationId, get);
           }
         });
     }

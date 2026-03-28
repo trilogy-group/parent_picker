@@ -241,6 +241,7 @@ function mapRows(rows: Record<string, unknown>[]): Location[] {
     scores: mapRowToScores(row),
     proposed: row.proposed === true,
     rebl3SiteId: (row.property_source_key as string) || null,
+    feedbackDeadline: (row.feedback_deadline as string) || null,
   }));
 }
 
@@ -337,6 +338,7 @@ export async function getNearbyLocations(centerLat: number, centerLng: number, l
       released: row.released as boolean | undefined,
       scores: mapRowToScores(row),
       rebl3SiteId: (row.property_source_key as string) || null,
+      feedbackDeadline: (row.feedback_deadline as string) || null,
     }));
   } catch (error) {
     console.error("Failed to fetch nearby locations:", error);
@@ -369,6 +371,7 @@ function mapBoundsRows(rows: Record<string, unknown>[]): Location[] {
     scores: mapRowToScores(row),
     proposed: row.proposed === true,
     rebl3SiteId: (row.property_source_key as string) || null,
+    feedbackDeadline: (row.feedback_deadline as string) || null,
   }));
 }
 

@@ -32,6 +32,7 @@ export interface Location {
   photos?: string[];
   brochureUrl?: string | null;
   rebl3SiteId?: string | null;
+  feedbackDeadline?: string | null;
 }
 
 export type VoteType = 'in' | 'not_here';

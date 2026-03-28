@@ -11,6 +11,7 @@ import { ProfilePopover } from "./ProfilePopover";
 import { getDistanceMiles } from "@/lib/locations";
 import { findNearestMetro } from "@/lib/metros";
 import { sortMostSupport, sortMostViable, sortMostViableWithPriority, makeSortNearest } from "@/lib/sort";
+import type { Location } from "@/types";
 import { Eye, Check, ChevronDown, Search, X, ChevronLeft, MapPin } from "lucide-react";
 import { extractStreet } from "@/lib/address";
 import { AvatarRow } from "./AvatarRow";
@@ -205,6 +206,20 @@ export function AltPanel() {
     return searchFilteredLocations.filter(loc => !loc.proposed);
   }, [searchFilteredLocations]);
 
+  const getDeadlineInfo = (loc: Location) => {
+    if (!loc.feedbackDeadline) return null;
+    const deadline = new Date(loc.feedbackDeadline);
+    const now = new Date();
+    const msLeft = deadline.getTime() - now.getTime();
+    const daysLeft = Math.ceil(msLeft / (1000 * 60 * 60 * 24));
+    const expired = msLeft <= 0;
+    const dateStr = deadline.toLocaleDateString("en-US", { month: "long", day: "numeric" });
+    let urgency: "green" | "amber" | "red" = "green";
+    if (daysLeft <= 1) urgency = "red";
+    else if (daysLeft <= 3) urgency = "amber";
+    return { daysLeft, expired, dateStr, urgency };
+  };
+
   const TOP_N = 10;
 
   // Pagination — track extra pages loaded beyond first page (only used in "show all" mode)
@@ -356,9 +371,38 @@ export function AltPanel() {
                       {loc.city}, {loc.state}
                       {dist != null ? ` · ${dist.toFixed(1)} mi` : ''}
                     </p>
-                    <p className="text-[13px] text-gray-600 mt-3 leading-snug">
-                      We&rsquo;re in late-stage talks for this space. Enough family support helps us finalize.
-                    </p>
+                    {/* Deadline-aware messaging */}
+                    {(() => {
+                      const dl = getDeadlineInfo(loc);
+                      if (!dl) {
+                        return (
+                          <p className="text-[13px] text-gray-600 mt-3 leading-snug">
+                            We&rsquo;re in late-stage talks for this space. Enough family support helps us finalize.
+                          </p>
+                        );
+                      }
+                      if (dl.expired) {
+                        return (
+                          <p className="text-[13px] text-gray-600 mt-3 leading-snug">
+                            Voting closed &mdash; {loc.votes} {loc.votes === 1 ? "family" : "families"} in{loc.notHereVotes > 0 ? `, ${loc.notHereVotes} concern${loc.notHereVotes !== 1 ? "s" : ""}` : ""}.
+                          </p>
+                        );
+                      }
+                      return (
+                        <>
+                          <p className="text-[13px] text-gray-600 mt-3 leading-snug">
+                            We&rsquo;re finalizing a lease for this space. Tell us if you&rsquo;re in &mdash; voting closes <strong>{dl.dateStr}</strong>.
+                          </p>
+                          <span className={`inline-block mt-2 text-xs font-semibold px-2 py-0.5 rounded-full ${
+                            dl.urgency === "red" ? "bg-red-100 text-red-700" :
+                            dl.urgency === "amber" ? "bg-amber-100 text-amber-700" :
+                            "bg-green-100 text-green-700"
+                          }`}>
+                            {dl.daysLeft <= 1 ? "Closes today!" : `${dl.daysLeft} days left`}
+                          </span>
+                        </>
+                      );
+                    })()}
                     {/* Avatars + count */}
                     {loc.votes > 0 && (
                       <div className="flex items-center gap-2 mt-3">
@@ -372,33 +416,35 @@ export function AltPanel() {
                         {loc.notHereVotes} concern{loc.notHereVotes !== 1 ? "s" : ""}
                       </p>
                     )}
-                    {/* Vote buttons */}
-                    <div className="flex gap-2 mt-4">
-                      {hasVoted ? (
-                        <div className="flex items-center gap-1.5 text-sm text-gray-700 font-medium py-2">
-                          <div className="w-5 h-5 rounded-full bg-indigo-600 flex items-center justify-center">
-                            <Check className="w-3 h-3 text-white" />
+                    {/* Vote buttons — locked after deadline */}
+                    {!getDeadlineInfo(loc)?.expired && (
+                      <div className="flex gap-2 mt-4">
+                        {hasVoted ? (
+                          <div className="flex items-center gap-1.5 text-sm text-gray-700 font-medium py-2">
+                            <div className="w-5 h-5 rounded-full bg-indigo-600 flex items-center justify-center">
+                              <Check className="w-3 h-3 text-white" />
+                            </div>
+                            You&apos;re in
+                            <button onClick={(e) => { e.stopPropagation(); removeVote(loc.id); }} className="ml-2 text-xs text-gray-400 hover:text-gray-600 underline">undo</button>
                           </div>
-                          You&apos;re in
-                          <button onClick={(e) => { e.stopPropagation(); removeVote(loc.id); }} className="ml-2 text-xs text-gray-400 hover:text-gray-600 underline">undo</button>
-                        </div>
-                      ) : (
-                        <>
-                          <button
-                            onClick={(e) => { e.stopPropagation(); voteIn(loc.id); }}
-                            className="flex-1 py-2.5 rounded-lg text-sm font-semibold bg-indigo-600 text-white hover:bg-indigo-700 transition-colors"
-                          >
-                            I&apos;d choose this location
-                          </button>
-                          <button
-                            onClick={(e) => { e.stopPropagation(); }}
-                            className="px-4 py-2.5 rounded-lg text-sm font-medium border border-gray-300 text-gray-700 hover:bg-gray-50 transition-colors"
-                          >
-                            Not for me
-                          </button>
-                        </>
-                      )}
-                    </div>
+                        ) : (
+                          <>
+                            <button
+                              onClick={(e) => { e.stopPropagation(); voteIn(loc.id); }}
+                              className="flex-1 py-2.5 rounded-lg text-sm font-semibold bg-indigo-600 text-white hover:bg-indigo-700 transition-colors"
+                            >
+                              I&apos;d choose this location
+                            </button>
+                            <button
+                              onClick={(e) => { e.stopPropagation(); }}
+                              className="px-4 py-2.5 rounded-lg text-sm font-medium border border-gray-300 text-gray-700 hover:bg-gray-50 transition-colors"
+                            >
+                              Not for me
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    )}
                   </div>
                 );
               })}
