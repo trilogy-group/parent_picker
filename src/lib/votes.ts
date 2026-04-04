@@ -645,6 +645,9 @@ export const useVotesStore = create<VotesState>((set, get) => ({
     const { locations, scoreFilters, isAdmin, viewAsParent, showUnscored, releasedFilter, selectedLocationId } = get();
     const effectiveAdmin = isAdmin && !viewAsParent;
 
+    // Promoted locations (with feedback deadline) always pass through filters
+    const isPromoted = (loc: Location) => !!loc.feedbackDeadline;
+
     // Deep-linked / selected location always passes through filters
     const ensureSelected = (result: typeof locations) => {
       if (!selectedLocationId || result.some((l) => l.id === selectedLocationId)) return result;
@@ -675,6 +678,7 @@ export const useVotesStore = create<VotesState>((set, get) => ({
       const [min, max] = SIZE_RANGES[altSizeFilter] || [0, Infinity];
       const cats = CATEGORY_MAP[altSizeFilter] || [];
       filtered = filtered.filter((loc) => {
+        if (isPromoted(loc)) return true;
         const cap = loc.scores?.capacity;
         if (cap != null) return cap >= min && cap < max;
         const size = loc.scores?.sizeClassification?.toLowerCase();
@@ -685,18 +689,18 @@ export const useVotesStore = create<VotesState>((set, get) => ({
     // Step 3: Apply "No Blockers" filter (GREEN only)
     const { showNoBlockers } = get();
     if (showNoBlockers) {
-      filtered = filtered.filter((loc) => loc.scores?.overallColor === "GREEN");
+      filtered = filtered.filter((loc) => isPromoted(loc) || loc.scores?.overallColor === "GREEN");
     }
 
     // Step 4: Apply score/size filters based on admin status
     if (!effectiveAdmin) {
       // Non-admin: always hide unscored, show all scored (including RED)
-      return ensureSelected(filtered.filter((loc) => loc.scores?.overallColor != null));
+      return ensureSelected(filtered.filter((loc) => isPromoted(loc) || loc.scores?.overallColor != null));
     }
 
     // Admin: hide unscored unless toggled on
     if (!showUnscored) {
-      filtered = filtered.filter((loc) => loc.scores?.overallColor != null);
+      filtered = filtered.filter((loc) => isPromoted(loc) || loc.scores?.overallColor != null);
     }
 
     // Admin (effective): full filter logic
@@ -715,12 +719,14 @@ export const useVotesStore = create<VotesState>((set, get) => ({
     if (!anyFilter) {
       // Default: exclude Red (Reject) size locations
       return ensureSelected(filtered.filter((loc) => {
+        if (isPromoted(loc)) return true;
         const size = loc.scores?.sizeClassification;
         return size !== "Red (Reject)";
       }));
     }
 
     return ensureSelected(filtered.filter((loc) => {
+      if (isPromoted(loc)) return true;
       const scores = loc.scores;
 
       // Color filter categories: location must match each active category

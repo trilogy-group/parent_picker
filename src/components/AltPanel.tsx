@@ -175,9 +175,9 @@ export function AltPanel() {
       sortFn = sortMostViable;
     }
     let sorted = [...pool].sort(sortFn);
-    // Apply "Close to me" drive-time filter
+    // Apply "Close to me" drive-time filter (promoted locations bypass)
     if (showDriveFilter && userIsochrone) {
-      sorted = sorted.filter(loc => pointInIsochrone(loc.lat, loc.lng, userIsochrone));
+      sorted = sorted.filter(loc => !!loc.feedbackDeadline || pointInIsochrone(loc.lat, loc.lng, userIsochrone));
     }
     // Deduplicate by ID (safety net against render-time race conditions)
     const seen = new Set<string>();
