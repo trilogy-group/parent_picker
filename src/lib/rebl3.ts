@@ -84,14 +84,3 @@ export function postRebl3FeedbackAllDimensions(
   }
 }
 
-export function patchRebl3Status(
-  siteId: string,
-  status: string,
-  details: Record<string, unknown>,
-) {
-  fetch(`${REBL3_BASE}/api/site/${encodeURIComponent(siteId)}/status`, {
-    method: "PATCH",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ system: "parents", status, details }),
-  }).catch(() => {});
-}
