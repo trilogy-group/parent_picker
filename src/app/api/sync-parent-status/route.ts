@@ -53,14 +53,29 @@ export async function POST(req: NextRequest) {
   };
 
   // PATCH rebl3_status
+  const apiKey = process.env.REBL3_PP_API_KEY;
+  if (!apiKey) {
+    console.error("[sync-parent-status] REBL3_PP_API_KEY not set");
+    return NextResponse.json({ ok: false, error: "missing_api_key" }, { status: 500 });
+  }
+
   try {
-    await fetch(`${REBL3_BASE}/api/site/${encodeURIComponent(loc.rebl3_site_id)}/status`, {
+    const res = await fetch(`${REBL3_BASE}/api/site/${encodeURIComponent(loc.rebl3_site_id)}/status`, {
       method: "PATCH",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        "X-Consumer-Key": apiKey,
+      },
       body: JSON.stringify({ system: "parents", status, details }),
     });
-  } catch {
-    // Swallow — status sync is best-effort
+    if (!res.ok) {
+      const body = await res.text();
+      console.error(`[sync-parent-status] rebl3 PATCH failed ${res.status}: ${body}`);
+      return NextResponse.json({ ok: false, error: "rebl3_patch_failed", rebl3_status: res.status }, { status: 502 });
+    }
+  } catch (err) {
+    console.error("[sync-parent-status] rebl3 PATCH threw:", err);
+    return NextResponse.json({ ok: false, error: "rebl3_patch_threw" }, { status: 502 });
   }
 
   return NextResponse.json({ ok: true, status });
