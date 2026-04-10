@@ -48,6 +48,7 @@ export async function POST(req: NextRequest) {
     votes_in: loc.vote_count,
     votes_not_here: loc.not_here_count,
     unique_voters: loc.vote_count + loc.not_here_count,
+    detail_url: `https://real-estate.alpha.school/?location=${locationId}`,
     in_comments: inComments,
     not_here_comments: notHereComments,
   };
