@@ -656,14 +656,15 @@ export const useVotesStore = create<VotesState>((set, get) => ({
     };
 
     // Step 1: Apply released filter (belt-and-suspenders; server already filters)
+    // Promoted locations (proposed=true with feedback_deadline) are effectively released to parents.
     let filtered = locations;
     if (!effectiveAdmin) {
-      // Non-admins (or view-as-parent): only released locations
-      filtered = filtered.filter((loc) => loc.released === true);
+      // Non-admins (or view-as-parent): only released or promoted locations
+      filtered = filtered.filter((loc) => loc.released === true || isPromoted(loc));
     } else if (releasedFilter === "released") {
-      filtered = filtered.filter((loc) => loc.released === true);
+      filtered = filtered.filter((loc) => loc.released === true || isPromoted(loc));
     } else if (releasedFilter === "unreleased") {
-      filtered = filtered.filter((loc) => loc.released !== true);
+      filtered = filtered.filter((loc) => loc.released !== true && !isPromoted(loc));
     }
 
     // Step 2: Apply alt UI size filter (capacity first, fall back to sizeClassification)
