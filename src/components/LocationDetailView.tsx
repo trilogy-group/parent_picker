@@ -230,6 +230,11 @@ export default function LocationDetailView({
   const inVoters = voters.filter((v) => v.voteType === "in");
   const concernVoters = voters.filter((v) => v.voteType === "not_here");
 
+  const deadlineExpired = !!location.feedbackDeadline && new Date(location.feedbackDeadline) < new Date();
+  const deadlineDateStr = location.feedbackDeadline
+    ? new Date(location.feedbackDeadline).toLocaleDateString("en-US", { month: "long", day: "numeric" })
+    : "";
+
   const handleVoteIn = () => {
     if (!isAuthenticated) { setShowSignIn(true); return; }
     onVoteIn();
@@ -556,7 +561,16 @@ export default function LocationDetailView({
 
           {/* 4. Vote section */}
           <div className="mt-5">
-            {hasVotedIn ? (
+            {deadlineExpired ? (
+              <div className="bg-gray-50 border border-gray-200 rounded-xl p-5">
+                <p className="text-[10px] font-semibold tracking-widest text-gray-500 mb-2">VOTING CLOSED</p>
+                <p className="text-[15px] leading-snug text-gray-700">
+                  The feedback window closed on {deadlineDateStr}. Final tally: {location.votes} in
+                  {location.notHereVotes > 0 ? `, ${location.notHereVotes} concern${location.notHereVotes !== 1 ? "s" : ""}` : ""}.
+                </p>
+                <p className="text-sm text-gray-500 mt-2">You can still share information about this location below.</p>
+              </div>
+            ) : hasVotedIn ? (
               /* Already voted in */
               <div className="bg-blue-50 rounded-xl p-5">
                 <div className="flex items-center justify-between">
