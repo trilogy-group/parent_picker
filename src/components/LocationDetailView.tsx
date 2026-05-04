@@ -8,6 +8,7 @@ import { fetchRebl3Site, Rebl3ExternalSite, Rebl3Dimension, postRebl3Feedback, R
 import { HelpModal } from "./HelpModal";
 import { SignInPrompt } from "./SignInPrompt";
 import { ChampionButton } from "./ChampionButton";
+import { ProblemList } from "./ProblemList";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { ArrowLeft, ExternalLink, ChevronLeft, ChevronRight, FileText, Plus, Minus, X } from "lucide-react";
 import { useAuth } from "./AuthProvider";
@@ -567,6 +568,18 @@ export default function LocationDetailView({
               ))}
             </div>
           ) : null}
+
+          {/* Open problems for engaged or committed sites */}
+          {(location.derived?.stage === 'engaged' || location.derived?.stage === 'committed') && (
+            <div className="mt-5 pt-4 border-t border-stone-200">
+              <ProblemList
+                siteId={location.id}
+                isAuthenticated={isAuthenticated}
+                session={session}
+                onSignInNeeded={() => setShowSignIn(true)}
+              />
+            </div>
+          )}
 
           {/* 4. Vote section */}
           <div className="mt-5">
