@@ -193,11 +193,12 @@ export function MapView() {
 
   // GeoJSON for individual location dots — filtered by top-N when active
   const locationGeojson = useMemo(() => {
+    const visible = displayLocations.filter(loc => loc.derived?.stage !== "moved_on");
     const locs = selectedLocationId
-      ? displayLocations.filter((loc) => loc.id === selectedLocationId)
+      ? visible.filter((loc) => loc.id === selectedLocationId)
       : topLocationIds
-        ? displayLocations.filter((loc) => topLocationIds.has(loc.id))
-        : displayLocations;
+        ? visible.filter((loc) => topLocationIds.has(loc.id))
+        : visible;
     return {
       type: "FeatureCollection" as const,
       features: locs.map((loc) => ({
@@ -212,6 +213,8 @@ export function MapView() {
           suggested: loc.suggested || false,
           selected: loc.id === selectedLocationId,
           proposed: loc.proposed === true,
+          category: loc.derived?.category ?? "ai",
+          stage: loc.derived?.stage ?? "scored",
         },
       })),
     };
@@ -667,19 +670,31 @@ export function MapView() {
             type="circle"
             paint={{
               "circle-color": [
-                "match", ["get", "overallColor"],
-                "GREEN", "#22c55e",
-                "YELLOW", "#facc15",
-                "AMBER", "#f59e0b",
-                "RED", "#ef4444",
-                "#475569",
+                "case",
+                // Category-driven color for engaged/committed/parent-championed sites
+                ["==", ["get", "category"], "parent"], "#10b981",
+                ["==", ["get", "category"], "short_term"], "#f59e0b",
+                ["!=", ["get", "stage"], "scored"], "#3b82f6",
+                // Otherwise: score-based color (preserves existing RED/AMBER signal for scored sites)
+                ["match", ["get", "overallColor"],
+                  "GREEN", "#22c55e",
+                  "YELLOW", "#facc15",
+                  "AMBER", "#f59e0b",
+                  "RED", "#ef4444",
+                  "#475569"
+                ],
               ],
               "circle-radius": [
-                "case", ["get", "selected"], 14,
+                "case",
+                ["get", "selected"], 14,
+                ["==", ["get", "stage"], "committed"], 12,
+                ["==", ["get", "stage"], "engaged"], 9,
                 6,
               ],
               "circle-stroke-width": [
-                "case", ["get", "selected"], 3,
+                "case",
+                ["get", "selected"], 4,
+                ["==", ["get", "stage"], "committed"], 4,
                 2,
               ],
               "circle-stroke-color": "#ffffff",
