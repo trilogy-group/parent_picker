@@ -5,6 +5,7 @@ import { ShieldCheck, Loader2, ArrowLeft, Check, X, Mail, ExternalLink, Clock, M
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { AdminLocation, LikedLocation, AdminAction } from "@/types";
 import { AdminLocationCard } from "@/components/AdminLocationCard";
+import { ProblemAdmin } from "@/components/admin/ProblemAdmin";
 import { Card, CardContent } from "@/components/ui/card";
 import Link from "next/link";
 
@@ -13,7 +14,7 @@ const ADMIN_EMAILS = (process.env.NEXT_PUBLIC_ADMIN_EMAILS || "")
   .map((e) => e.trim().toLowerCase())
   .filter(Boolean);
 
-type Tab = "suggestions" | "likes" | "history";
+type Tab = "suggestions" | "likes" | "history" | "problems";
 
 function ActionBadge({ action }: { action: string }) {
   switch (action) {
@@ -309,12 +310,15 @@ export default function AdminPage() {
 
   const tabCount = activeTab === "suggestions" ? locations.length
     : activeTab === "likes" ? likedLocations.length
-    : history.length;
+    : activeTab === "history" ? history.length
+    : 0;
   const tabLabel = activeTab === "suggestions"
     ? `${tabCount} pending suggestion${tabCount !== 1 ? "s" : ""}`
     : activeTab === "likes"
     ? `${tabCount} liked location${tabCount !== 1 ? "s" : ""}`
-    : `${tabCount} action${tabCount !== 1 ? "s" : ""}`;
+    : activeTab === "history"
+    ? `${tabCount} action${tabCount !== 1 ? "s" : ""}`
+    : "Problems";
 
   return (
     <div className="min-h-screen bg-background">
@@ -377,6 +381,16 @@ export default function AdminPage() {
             }`}
           >
             History
+          </button>
+          <button
+            onClick={() => setActiveTab("problems")}
+            className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
+              activeTab === "problems"
+                ? "border-primary text-primary"
+                : "border-transparent text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            Problems
           </button>
         </div>
       </div>
@@ -457,6 +471,10 @@ export default function AdminPage() {
               />
             ))}
           </>
+        )}
+
+        {activeTab === "problems" && token && (
+          <ProblemAdmin token={token} />
         )}
       </main>
     </div>

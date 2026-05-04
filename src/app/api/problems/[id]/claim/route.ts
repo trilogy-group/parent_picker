@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase-admin";
+import { sendEmail, generateProblemClaimedHtml } from "@/lib/email";
 
 async function getUserFromAuth(authHeader: string | null) {
   if (!authHeader?.startsWith("Bearer ")) return null;
@@ -50,6 +51,57 @@ export async function POST(
     .update({ status: "in_progress" })
     .eq("id", problemId)
     .eq("status", "open");
+
+  // Notify active champions of the related site that someone stepped up.
+  try {
+    const { data: problem } = await supabase
+      .from("pp_site_problems")
+      .select("id, site_id, title")
+      .eq("id", problemId)
+      .single();
+
+    if (problem?.site_id) {
+      const { data: location } = await supabase
+        .from("pp_locations")
+        .select("id, name, city, state")
+        .eq("id", problem.site_id)
+        .single();
+
+      const { data: champions } = await supabase
+        .from("pp_site_champions")
+        .select("user_id")
+        .eq("site_id", problem.site_id)
+        .is("released_at", null);
+
+      if (location && champions && champions.length > 0) {
+        const { data: profile } = await supabase
+          .from("pp_profiles")
+          .select("display_name")
+          .eq("id", user.id)
+          .maybeSingle();
+        const ownerName = profile?.display_name || user.email?.split("@")[0] || "A parent";
+
+        const detailsUrl = `https://real-estate.alpha.school/?location=${location.id}`;
+        const html = generateProblemClaimedHtml({
+          problemTitle: problem.title,
+          ownerName,
+          location: { name: location.name, city: location.city, state: location.state },
+          detailsUrl,
+        });
+
+        for (const champ of champions) {
+          if (champ.user_id === user.id) continue; // don't email the claimer
+          const { data: userData } = await supabase.auth.admin.getUserById(champ.user_id);
+          const email = userData?.user?.email;
+          if (email) {
+            await sendEmail(email, `Update on a problem you're watching`, html);
+          }
+        }
+      }
+    }
+  } catch (e) {
+    console.error("Failed to send problem-claimed emails:", e);
+  }
 
   return NextResponse.json({ success: true });
 }
