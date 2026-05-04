@@ -33,6 +33,10 @@ export interface Location {
   brochureUrl?: string | null;
   rebl3SiteId?: string | null;
   feedbackDeadline?: string | null;
+  isBridge?: boolean;
+  champions?: SiteChampion[];
+  problems?: SiteProblem[];
+  derived?: LocationDerived;
 }
 
 export type VoteType = 'in' | 'not_here';
@@ -102,5 +106,86 @@ export interface AdminAction {
   state?: string;
   // Computed from rebl3_site_id
   overall_details_url?: string | null;
+}
+
+// === Parent Feedback Redesign types ===
+
+export type SiteStage = 'scored' | 'engaged' | 'committed' | 'moved_on';
+export type SiteCategory = 'parent' | 'ai' | 'short_term';
+export type CommittedSubStage = 'loi' | 'lease' | 'zoning' | 'permits' | 'buildout' | 'co';
+export type ProblemStatus = 'open' | 'in_progress' | 'resolved' | 'unresolvable';
+export type ChampionRole = 'lead' | 'supporter';
+
+export interface SiteChampion {
+  id: string;
+  siteId: string;
+  userId: string;
+  role: ChampionRole;
+  claimedAt: string;
+  releasedAt: string | null;
+  passedToUserId: string | null;
+  // Joined display fields
+  displayName?: string;
+}
+
+export interface SiteProblem {
+  id: string;
+  siteId: string | null;
+  metro: string;
+  title: string;
+  description: string | null;
+  deadline: string | null;
+  pivotTrigger: boolean;
+  status: ProblemStatus;
+  outcomeText: string | null;
+  createdAt: string;
+  closedAt: string | null;
+  // Derived
+  owner?: ProblemOwner | null;
+  updates?: ProblemUpdate[];
+}
+
+export interface ProblemOwner {
+  id: string;
+  problemId: string;
+  userId: string;
+  claimedAt: string;
+  releasedAt: string | null;
+  displayName?: string;
+}
+
+export interface ProblemUpdate {
+  id: string;
+  problemId: string;
+  userId: string;
+  body: string;
+  createdAt: string;
+  displayName?: string;
+}
+
+export interface PivotCondition {
+  triggerProblemId: string;
+  description: string;
+  newRoleAssignment?: { siteId: string; role: 'primary_long_term' | 'bridge' | 'watch' };
+}
+
+export interface MetroPlan {
+  metro: string;
+  narrativeTemplateInputs: {
+    primaryLongTermSiteId?: string;
+    bridgeSiteId?: string;
+    watchSiteIds?: string[];
+  };
+  pivotConditions: PivotCondition[];
+  narrativeOverride: string | null;
+  lastCuratedAt: string;
+}
+
+// Extend Location with derived fields (set client-side, not stored)
+export interface LocationDerived {
+  stage: SiteStage;
+  category: SiteCategory;
+  committedSubStage?: CommittedSubStage;
+  movedOnReason?: string;
 }
 
