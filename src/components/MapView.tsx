@@ -193,7 +193,10 @@ export function MapView() {
 
   // GeoJSON for individual location dots — filtered by top-N when active
   const locationGeojson = useMemo(() => {
-    const visible = displayLocations.filter(loc => loc.derived?.stage !== "moved_on");
+    // Hide moved-on sites by default, but always include the selected one (deep links).
+    const visible = displayLocations.filter(loc =>
+      loc.derived?.stage !== "moved_on" || loc.id === selectedLocationId
+    );
     const locs = selectedLocationId
       ? visible.filter((loc) => loc.id === selectedLocationId)
       : topLocationIds
