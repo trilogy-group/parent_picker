@@ -16,6 +16,9 @@ import { Eye, Check, ChevronDown, Search, X, ChevronLeft, MapPin } from "lucide-
 import { extractStreet } from "@/lib/address";
 import { AvatarRow } from "./AvatarRow";
 import { pointInIsochrone } from "@/lib/geo";
+import { PlanOfRecord } from "./PlanOfRecord";
+import { CategorySection } from "./CategorySection";
+import { StageBadge } from "./StageBadge";
 
 const PAGE_SIZE = 25;
 
@@ -206,6 +209,47 @@ export function AltPanel() {
     return searchFilteredLocations.filter(loc => !loc.proposed);
   }, [searchFilteredLocations]);
 
+  // Category-grouped highlights (only meaningful in metro view)
+  const parentSites = useMemo(
+    () => searchFilteredLocations.filter(l => l.derived?.category === "parent"),
+    [searchFilteredLocations]
+  );
+  const aiActive = useMemo(
+    () => searchFilteredLocations.filter(
+      l => l.derived?.category === "ai" && (l.derived?.stage === "engaged" || l.derived?.stage === "committed")
+    ),
+    [searchFilteredLocations]
+  );
+  const shortTermSites = useMemo(
+    () => searchFilteredLocations.filter(l => l.derived?.category === "short_term"),
+    [searchFilteredLocations]
+  );
+  const committedCount = useMemo(
+    () => searchFilteredLocations.filter(l => l.derived?.stage === "committed").length,
+    [searchFilteredLocations]
+  );
+
+  const CategoryCard = ({ loc }: { loc: Location }) => (
+    <button
+      onClick={() => {
+        setSelectedLocation(loc.id);
+        if (typeof window !== "undefined" && window.innerWidth < 1024) {
+          router.push(`/location/${loc.id}`);
+        }
+      }}
+      className="w-full text-left p-2 rounded border border-stone-200 hover:bg-stone-50 transition-colors"
+    >
+      <div className="flex justify-between items-start gap-2">
+        <div className="flex-1 min-w-0">
+          <div className="text-sm font-semibold text-stone-900 truncate">{loc.name}</div>
+          <div className="text-xs text-stone-500 truncate">{loc.address}, {loc.city}</div>
+        </div>
+        {loc.derived?.stage && <StageBadge stage={loc.derived.stage} />}
+      </div>
+      <div className="text-xs text-stone-600 mt-1">{loc.votes} in &middot; {loc.notHereVotes} concerns</div>
+    </button>
+  );
+
   const getDeadlineInfo = (loc: Location) => {
     if (!loc.feedbackDeadline) return null;
     const deadline = new Date(loc.feedbackDeadline);
@@ -346,6 +390,28 @@ export function AltPanel() {
       ) : (
         /* Zoomed-in: location cards with sort pills */
         <>
+          {/* Plan of Record + Category Highlights — only when in a metro view */}
+          {metroName && !showCityCards && (
+            <div className="border-b border-stone-200 pb-3">
+              <PlanOfRecord metro={metroName} />
+              <CategorySection
+                category="parent"
+                locations={parentSites}
+                renderCard={(l) => <CategoryCard key={l.id} loc={l} />}
+              />
+              <CategorySection
+                category="ai"
+                locations={aiActive}
+                renderCard={(l) => <CategoryCard key={l.id} loc={l} />}
+              />
+              <CategorySection
+                category="short_term"
+                locations={shortTermSites}
+                renderCard={(l) => <CategoryCard key={l.id} loc={l} />}
+              />
+            </div>
+          )}
+
           {/* Hero section for proposed locations (Approach A) */}
           {proposedLocations.length > 0 && (
             <div className="px-5 pb-4">
@@ -688,6 +754,14 @@ export function AltPanel() {
             )}
 
           </div>
+
+          {/* Funnel footer — context for the candidate browse list */}
+          {metroName && !showCityCards && (
+            <div className="mx-5 mt-4 mb-5 pt-4 border-t border-stone-200 text-xs text-stone-500">
+              From {searchFilteredLocations.length} scored, {aiActive.length + parentSites.length} engaged and {committedCount} committed.
+              <a href="/suggest" className="ml-2 text-blue-600 hover:underline">Suggest a site &rarr;</a>
+            </div>
+          )}
         </>
       )}
     </div>
