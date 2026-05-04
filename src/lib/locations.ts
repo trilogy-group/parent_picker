@@ -649,6 +649,19 @@ export async function suggestLocation(
         console.error("Error inserting location:", error.message, error.code, error.details, error.hint);
         // Fall through to return local-only location
       } else if (data) {
+        // Auto-create lead champion row for the submitter
+        try {
+          await supabase
+            .from("pp_site_champions")
+            .insert({
+              site_id: data.id,
+              user_id: userId,
+              role: 'lead',
+            });
+        } catch (e) {
+          // Non-fatal — the location was still created successfully
+          console.error("Failed to auto-create champion row:", e);
+        }
         return {
           id: data.id,
           name: data.name,
