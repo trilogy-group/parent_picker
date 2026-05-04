@@ -13,7 +13,7 @@ export async function PATCH(
 ) {
   const { id } = await params;
   const auth = await verifyAdmin(request.headers.get("authorization"));
-  if (!auth.isAdmin) return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
+  if (!auth.isAdmin) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const body = await request.json().catch(() => ({}));
   const updates: Record<string, unknown> = {};
@@ -42,7 +42,7 @@ export async function DELETE(
 ) {
   const { id } = await params;
   const auth = await verifyAdmin(request.headers.get("authorization"));
-  if (!auth.isAdmin) return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
+  if (!auth.isAdmin) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const supabase = getSupabaseAdmin();
   if (!supabase) return NextResponse.json({ error: "Server not configured" }, { status: 500 });

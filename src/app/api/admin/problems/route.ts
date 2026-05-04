@@ -4,7 +4,7 @@ import { verifyAdmin } from "@/lib/admin";
 
 export async function POST(request: NextRequest) {
   const auth = await verifyAdmin(request.headers.get("authorization"));
-  if (!auth.isAdmin) return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
+  if (!auth.isAdmin) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const body = await request.json().catch(() => ({}));
   const { siteId, metro, title, description, deadline, pivotTrigger } = body as {
