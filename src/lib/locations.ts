@@ -1,6 +1,7 @@
-import { Location, LocationScores, CitySummary } from "@/types";
+import { Location, LocationScores, CitySummary, SiteChampion } from "@/types";
 import { supabase, isSupabaseConfigured } from "./supabase";
 import { sanitizeText } from "./validation";
+import { getStage, getCategory } from "@/lib/sites";
 
 // Seeded pseudo-random for deterministic mock scores
 function seededRandom(seed: number): () => number {
@@ -218,31 +219,96 @@ export async function getLocations(): Promise<Location[]> {
       from += PAGE_SIZE;
     }
 
-    return mapRows(allRows);
+    const locations = mapRows(allRows);
+    await attachChampions(locations);
+    return locations;
   } catch (error) {
     console.error("Failed to fetch locations:", error);
     return mockLocations;
   }
 }
 
+function applyDerived(location: Location, row: Record<string, unknown>): Location {
+  const stage = getStage({
+    leasing: (row.leasing_status as string) ?? null,
+    loi: (row.loi_status as string) ?? null,
+    leasingDetails: (row.leasing_details as { process_exception?: boolean }) ?? undefined,
+  });
+  const category = getCategory({ isBridge: location.isBridge, champions: location.champions ?? [] });
+  location.derived = { stage, category };
+  return location;
+}
+
 function mapRows(rows: Record<string, unknown>[]): Location[] {
-  return rows.map((row) => ({
-    id: row.id as string,
-    name: row.name as string,
-    address: row.address as string,
-    city: row.city as string,
-    state: row.state as string,
-    zip: (row.zip as string) || null,
-    lat: Number(row.lat),
-    lng: Number(row.lng),
-    votes: row.votes as number,
-    notHereVotes: Number(row.not_here_count) || 0,
-    suggested: row.source === "parent_suggested",
-    scores: mapRowToScores(row),
-    proposed: row.proposed === true,
-    rebl3SiteId: (row.property_source_key as string) || null,
-    feedbackDeadline: (row.feedback_deadline as string) || null,
-  }));
+  return rows.map((row) => {
+    const location: Location = {
+      id: row.id as string,
+      name: row.name as string,
+      address: row.address as string,
+      city: row.city as string,
+      state: row.state as string,
+      zip: (row.zip as string) || null,
+      lat: Number(row.lat),
+      lng: Number(row.lng),
+      votes: row.votes as number,
+      notHereVotes: Number(row.not_here_count) || 0,
+      suggested: row.source === "parent_suggested",
+      scores: mapRowToScores(row),
+      proposed: row.proposed === true,
+      rebl3SiteId: (row.property_source_key as string) || null,
+      feedbackDeadline: (row.feedback_deadline as string) || null,
+      isBridge: row.is_bridge === true,
+      champions: [],
+    };
+    return applyDerived(location, row);
+  });
+}
+
+// Bulk-fetch active champions for the given location ids and merge them
+// into the locations in place, recomputing derived.category.
+async function attachChampions(locations: Location[]): Promise<void> {
+  if (!isSupabaseConfigured || !supabase) return;
+  const ids = locations.map((l) => l.id);
+  if (ids.length === 0) return;
+
+  const champById: Record<string, SiteChampion[]> = {};
+  let cFrom = 0;
+  while (true) {
+    const { data: rows, error: cErr } = await supabase
+      .from("pp_site_champions")
+      .select("id, site_id, user_id, role, claimed_at")
+      .in("site_id", ids)
+      .is("released_at", null)
+      .range(cFrom, cFrom + 999);
+    if (cErr || !rows) break;
+    for (const c of rows as Record<string, unknown>[]) {
+      const champ: SiteChampion = {
+        id: c.id as string,
+        siteId: c.site_id as string,
+        userId: c.user_id as string,
+        role: c.role as 'lead' | 'supporter',
+        claimedAt: c.claimed_at as string,
+        releasedAt: null,
+        passedToUserId: null,
+      };
+      (champById[champ.siteId] ??= []).push(champ);
+    }
+    if (rows.length < 1000) break;
+    cFrom += 1000;
+  }
+
+  for (const loc of locations) {
+    const cs = champById[loc.id] ?? [];
+    if (cs.length > 0) {
+      loc.champions = cs;
+      if (loc.derived) {
+        loc.derived = {
+          ...loc.derived,
+          category: getCategory({ isBridge: loc.isBridge, champions: cs }),
+        };
+      }
+    }
+  }
 }
 
 function getMockCitySummaries(releasedOnly?: boolean, excludeRed?: boolean, excludeUnscored?: boolean): CitySummary[] {
@@ -323,23 +389,30 @@ export async function getNearbyLocations(centerLat: number, centerLng: number, l
       console.error("Error fetching nearby locations:", error);
       return mockLocations;
     }
-    return (data || []).map((row: Record<string, unknown>) => ({
-      id: row.id as string,
-      name: row.name as string,
-      address: row.address as string,
-      city: row.city as string,
-      state: row.state as string,
-      zip: (row.zip as string) || null,
-      lat: Number(row.lat),
-      lng: Number(row.lng),
-      votes: Number(row.vote_count),
-      notHereVotes: Number(row.not_here_count) || 0,
-      suggested: (row.source as string) === "parent_suggested",
-      released: row.released as boolean | undefined,
-      scores: mapRowToScores(row),
-      rebl3SiteId: (row.property_source_key as string) || null,
-      feedbackDeadline: (row.feedback_deadline as string) || null,
-    }));
+    const locations: Location[] = (data || []).map((row: Record<string, unknown>) => {
+      const loc: Location = {
+        id: row.id as string,
+        name: row.name as string,
+        address: row.address as string,
+        city: row.city as string,
+        state: row.state as string,
+        zip: (row.zip as string) || null,
+        lat: Number(row.lat),
+        lng: Number(row.lng),
+        votes: Number(row.vote_count),
+        notHereVotes: Number(row.not_here_count) || 0,
+        suggested: (row.source as string) === "parent_suggested",
+        released: row.released as boolean | undefined,
+        scores: mapRowToScores(row),
+        rebl3SiteId: (row.property_source_key as string) || null,
+        feedbackDeadline: (row.feedback_deadline as string) || null,
+        isBridge: row.is_bridge === true,
+        champions: [],
+      };
+      return applyDerived(loc, row);
+    });
+    await attachChampions(locations);
+    return locations;
   } catch (error) {
     console.error("Failed to fetch nearby locations:", error);
     return mockLocations;
@@ -355,24 +428,29 @@ export interface Bounds {
 }
 
 function mapBoundsRows(rows: Record<string, unknown>[]): Location[] {
-  return rows.map((row) => ({
-    id: row.id as string,
-    name: row.name as string,
-    address: row.address as string,
-    city: row.city as string,
-    state: row.state as string,
-    zip: (row.zip as string) || null,
-    lat: Number(row.lat),
-    lng: Number(row.lng),
-    votes: Number(row.vote_count),
-    notHereVotes: Number(row.not_here_count) || 0,
-    suggested: (row.source as string) === "parent_suggested",
-    released: row.released as boolean | undefined,
-    scores: mapRowToScores(row),
-    proposed: row.proposed === true,
-    rebl3SiteId: (row.property_source_key as string) || null,
-    feedbackDeadline: (row.feedback_deadline as string) || null,
-  }));
+  return rows.map((row) => {
+    const loc: Location = {
+      id: row.id as string,
+      name: row.name as string,
+      address: row.address as string,
+      city: row.city as string,
+      state: row.state as string,
+      zip: (row.zip as string) || null,
+      lat: Number(row.lat),
+      lng: Number(row.lng),
+      votes: Number(row.vote_count),
+      notHereVotes: Number(row.not_here_count) || 0,
+      suggested: (row.source as string) === "parent_suggested",
+      released: row.released as boolean | undefined,
+      scores: mapRowToScores(row),
+      proposed: row.proposed === true,
+      rebl3SiteId: (row.property_source_key as string) || null,
+      feedbackDeadline: (row.feedback_deadline as string) || null,
+      isBridge: row.is_bridge === true,
+      champions: [],
+    };
+    return applyDerived(loc, row);
+  });
 }
 
 export async function getLocationsInBounds(bounds: Bounds, releasedOnly?: boolean): Promise<Location[]> {
@@ -411,7 +489,9 @@ export async function getLocationsInBounds(bounds: Bounds, releasedOnly?: boolea
       from += PAGE_SIZE;
     }
 
-    return mapBoundsRows(allRows);
+    const locations = mapBoundsRows(allRows);
+    await attachChampions(locations);
+    return locations;
   } catch (error) {
     console.error("Failed to fetch locations in bounds:", error);
     return mockLocations;
