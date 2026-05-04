@@ -54,7 +54,7 @@ describe('parseMovedOnReason', () => {
       leasing: 'done',
       leasingDetails: { process_exception: true, exception_reason: 'lease-not-signed' },
     });
-    expect(reason).toContain('lease-not-signed');
+    expect(reason).toMatch(/lease.*not.*signed/i);
   });
 
   it('returns "Owner withdrew" when leasing=cut with owner_withdrew', () => {

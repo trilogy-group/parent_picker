@@ -35,11 +35,7 @@ const MOVE_ON_REASON_LABELS: Record<string, string> = {
 export function parseMovedOnReason(input: ParserInput): string | null {
   if (input.leasing === 'done' && input.leasingDetails?.process_exception) {
     const code = input.leasingDetails.exception_reason ?? '';
-    if (!code) return 'Process exception (reason unknown)';
-    const label = MOVE_ON_REASON_LABELS[code];
-    // Surface the raw code alongside any humanized label so callers can
-    // distinguish exception kinds programmatically.
-    return label ? `${label} (${code})` : `Process exception (${code})`;
+    return MOVE_ON_REASON_LABELS[code] ?? `Process exception (${code || 'reason unknown'})`;
   }
 
   if (input.leasing === 'cut') {
