@@ -1139,6 +1139,86 @@ When REBL finishes scoring a parent suggestion (status transitions from `pending
 
 ---
 
+## R-CHAMPIONS — Site Championship
+
+### R-CHAMPIONS-001 — A parent can claim champion of an AI site
+Given a parent is signed in and a site has category=AI, when the parent clicks "Champion this site," then their user_id is written to pp_site_champions, the site's display category becomes Parent, and the parent appears in the Champions section.
+
+### R-CHAMPIONS-002 — A parent who submits a site is auto-champion
+Given a parent submits a new site through SuggestLocationModal, when the submission is accepted, then a pp_site_champions row is auto-created with role='lead' for the submitter.
+
+### R-CHAMPIONS-003 — Champion can release the role
+Given a parent has lead-championed a site, when they click "Pass the torch," then their role is marked released and the next supporter (if any) is promoted to lead, else the site reverts to category AI (or remains parent-submitted with no active champion).
+
+## R-PROBLEMS — Open Problems Board
+
+### R-PROBLEMS-001 — Admin can post a problem on a site
+Given an admin is signed in, when they post a problem with title, description, optional deadline, and optional pivot_trigger flag, then the problem appears on the site's detail view and (if pivot_trigger) on the metro Plan of Record's "What would change this" list.
+
+### R-PROBLEMS-002 — A parent can claim ownership of an unclaimed problem
+Given a parent is signed in and a problem is open + unclaimed, when they click "Sign up to own," then they're recorded as the active owner, the problem flips to "in_progress," and other parents see the owner attribution.
+
+### R-PROBLEMS-003 — Owner can post status updates
+Given a parent owns a problem, when they post an update, the update is visible to all viewers and the "updated N ago" timestamp refreshes.
+
+### R-PROBLEMS-004 — Admin can resolve or mark unresolvable
+Given an admin is signed in, when they resolve a problem with an outcome, the problem closes; if marked unresolvable AND the site dies, the site moves to Moved On with the problem as the explanation.
+
+## R-PLAN — Per-Metro Plan of Record
+
+### R-PLAN-001 — Each metro has a Plan of Record
+Given a parent visits a metro, when the panel loads, then the Plan of Record narrative paragraph is shown at the top with the metro's primary long-term, bridge (if any), and watch sites named.
+
+### R-PLAN-002 — Pivot conditions visible
+Given the Plan of Record exists, the "What would change this" list renders the metro's pivot conditions, each linked to a specific problem on the board.
+
+### R-PLAN-003 — Admin can curate the plan
+Given an admin is signed in, when they edit a metro's plan via /admin, they can set: which site is primary long-term, which is bridge, which are watch, the narrative override (optional), and the pivot conditions list.
+
+## R-LAYOUT — Category-Primary Panel
+
+### R-LAYOUT-001 — Parents block at top
+Given a metro has parent-championed sites, the Parent block renders first under the Plan of Record.
+
+### R-LAYOUT-002 — AI block lists engaged + committed AI sites
+Given a metro has engaged or committed AI sites without champions, they list under the AI block (not in Candidates).
+
+### R-LAYOUT-003 — Short-term block when bridge present
+Given a metro has a site with is_bridge=true, the Short-term block renders.
+
+### R-LAYOUT-004 — Candidates link at bottom
+Given a metro has scored sites, a "Candidates · N scored sites · Browse + like" link appears at the bottom and routes to the existing scored browser.
+
+### R-LAYOUT-005 — Stage as a status badge
+Each site card shows the current stage (Scored / Engaged / Committed) as a small pill, color-coded.
+
+### R-LAYOUT-006 — Footer funnel stat
+Given any metro, the footer shows "From N scored, we engaged X and committed Y" + Moved On link + Suggest a site link.
+
+## R-DETAIL — Tier-specific Detail View
+
+### R-DETAIL-001 — Engaged sites show Open Problems with pivot-trigger callout
+Given a parent opens an Engaged site detail view, the Open Problems for that site render below the title block, with pivot-trigger problems flagged "★ HIGH-LEVERAGE PROBLEM."
+
+### R-DETAIL-002 — Committed sites show LOI→CO timeline
+Given a parent opens a Committed site detail view, a horizontal stage timeline renders (LOI → Lease → Zoning → Permits → Buildout → CO) with the current sub-stage highlighted.
+
+### R-DETAIL-003 — Moved On sites show "what we hit" explainer
+Given a parent opens a Moved On site detail view, a prominent block explains what we hit and links forward to the site we're now pursuing.
+
+## R-MAP — Stage + Category Encoding
+
+### R-MAP-001 — Stage drives marker size
+Scored sites = small dot, Engaged = medium marker, Committed = large with halo.
+
+### R-MAP-002 — Category drives marker color
+AI = blue, Parent = green, Short-term = amber.
+
+### R-MAP-003 — Moved-On sites faded or hidden
+By default Moved-On sites are hidden from the map; an admin toggle reveals them as faded markers.
+
+---
+
 ## Out of Scope (v2 - Future)
 
 See `docs/brainlift-location-selection.md` for full strategic context.
