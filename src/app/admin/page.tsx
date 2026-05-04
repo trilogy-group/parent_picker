@@ -6,6 +6,7 @@ import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { AdminLocation, LikedLocation, AdminAction } from "@/types";
 import { AdminLocationCard } from "@/components/AdminLocationCard";
 import { ProblemAdmin } from "@/components/admin/ProblemAdmin";
+import { PlanAdmin } from "@/components/admin/PlanAdmin";
 import { Card, CardContent } from "@/components/ui/card";
 import Link from "next/link";
 
@@ -14,7 +15,7 @@ const ADMIN_EMAILS = (process.env.NEXT_PUBLIC_ADMIN_EMAILS || "")
   .map((e) => e.trim().toLowerCase())
   .filter(Boolean);
 
-type Tab = "suggestions" | "likes" | "history" | "problems";
+type Tab = "suggestions" | "likes" | "history" | "problems" | "plans";
 
 function ActionBadge({ action }: { action: string }) {
   switch (action) {
@@ -318,6 +319,8 @@ export default function AdminPage() {
     ? `${tabCount} liked location${tabCount !== 1 ? "s" : ""}`
     : activeTab === "history"
     ? `${tabCount} action${tabCount !== 1 ? "s" : ""}`
+    : activeTab === "plans"
+    ? "Plans of Record"
     : "Problems";
 
   return (
@@ -391,6 +394,16 @@ export default function AdminPage() {
             }`}
           >
             Problems
+          </button>
+          <button
+            onClick={() => setActiveTab("plans")}
+            className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
+              activeTab === "plans"
+                ? "border-primary text-primary"
+                : "border-transparent text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            Plans
           </button>
         </div>
       </div>
@@ -475,6 +488,10 @@ export default function AdminPage() {
 
         {activeTab === "problems" && token && (
           <ProblemAdmin token={token} />
+        )}
+
+        {activeTab === "plans" && token && (
+          <PlanAdmin token={token} />
         )}
       </main>
     </div>
