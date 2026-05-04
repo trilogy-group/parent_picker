@@ -128,6 +128,9 @@ export function AltPanel() {
   // Admin search state
   const [adminSearch, setAdminSearch] = useState("");
 
+  // Moved-on sites toggle
+  const [showMovedOn, setShowMovedOn] = useState(false);
+
   // Find selected location for detail view
   const selectedLocation = selectedLocationId
     ? locations.find(l => l.id === selectedLocationId)
@@ -226,6 +229,11 @@ export function AltPanel() {
   );
   const committedCount = useMemo(
     () => searchFilteredLocations.filter(l => l.derived?.stage === "committed").length,
+    [searchFilteredLocations]
+  );
+
+  const movedOnSites = useMemo(
+    () => searchFilteredLocations.filter(l => l.derived?.stage === "moved_on"),
     [searchFilteredLocations]
   );
 
@@ -758,8 +766,40 @@ export function AltPanel() {
           {/* Funnel footer — context for the candidate browse list */}
           {metroName && !showCityCards && (
             <div className="mx-5 mt-4 mb-5 pt-4 border-t border-stone-200 text-xs text-stone-500">
-              From {searchFilteredLocations.length} scored, {aiActive.length + parentSites.length} engaged and {committedCount} committed.
-              <a href="/suggest" className="ml-2 text-blue-600 hover:underline">Suggest a site &rarr;</a>
+              <div>
+                From {searchFilteredLocations.length} scored, {aiActive.length + parentSites.length} engaged and {committedCount} committed.
+                {movedOnSites.length > 0 && (
+                  <button
+                    onClick={() => setShowMovedOn(s => !s)}
+                    className="ml-2 text-blue-600 hover:underline"
+                  >
+                    {showMovedOn ? "Hide" : "Recently moved on"} ({movedOnSites.length}) {showMovedOn ? "↑" : "→"}
+                  </button>
+                )}
+                <a href="/suggest" className="ml-2 text-blue-600 hover:underline">Suggest a site →</a>
+              </div>
+              {showMovedOn && movedOnSites.length > 0 && (
+                <ul className="mt-3 space-y-1">
+                  {movedOnSites.map(loc => (
+                    <li key={loc.id} className="text-stone-400 italic">
+                      <button
+                        onClick={() => {
+                          setSelectedLocation(loc.id);
+                          if (typeof window !== "undefined" && window.innerWidth < 1024) {
+                            router.push(`/location/${loc.id}`);
+                          }
+                        }}
+                        className="text-left hover:underline"
+                      >
+                        {loc.address}, {loc.city}
+                        {loc.derived?.movedOnReason && (
+                          <span className="ml-2 not-italic text-stone-500">— {loc.derived.movedOnReason}</span>
+                        )}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
             </div>
           )}
         </>
