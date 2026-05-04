@@ -9,20 +9,30 @@ interface Props {
 }
 
 export function PlanOfRecord({ metro }: Props) {
-  const [plan, setPlan] = useState<MetroPlan | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [state, setState] = useState<{ metro: string | null; plan: MetroPlan | null }>({
+    metro: null,
+    plan: null,
+  });
   const locations = useVotesStore(s => s.locations);
 
   useEffect(() => {
-    setLoading(true);
+    let cancelled = false;
     fetch(`/api/metro/${encodeURIComponent(metro)}/plan`)
       .then(r => r.json())
-      .then((data: MetroPlan | null) => setPlan(data))
-      .catch(() => {})
-      .finally(() => setLoading(false));
+      .then((data: MetroPlan | null) => {
+        if (!cancelled) setState({ metro, plan: data });
+      })
+      .catch(() => {
+        if (!cancelled) setState({ metro, plan: null });
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [metro]);
 
-  if (loading || !plan) return null;
+  // Hide while the first fetch for this metro is in flight or if no plan exists
+  if (state.metro !== metro || !state.plan) return null;
+  const plan = state.plan;
 
   // Resolve site names for narrative
   const findSite = (id?: string) =>
