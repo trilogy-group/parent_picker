@@ -1,11 +1,12 @@
 "use client";
 
 import { create } from "zustand";
-import { Location, CitySummary, VoterInfo, VoteType } from "@/types";
+import { Location, CitySummary, VoterInfo, VoteType, SiteChampion } from "@/types";
 import { supabase, isSupabaseConfigured } from "./supabase";
 import { getCitySummaries, getNearbyLocations, getLocationsInBounds, getDistanceMiles } from "./locations";
 import { consolidateToMetros } from "./metros";
 import { postRebl3FeedbackAllDimensions } from "./rebl3";
+import { getCategory } from "./sites";
 
 interface MapBounds {
   north: number;
@@ -108,6 +109,7 @@ interface VotesState {
   fetchNearbyForce: (bounds: MapBounds) => Promise<void>;
   loadUserVotes: (userId: string) => Promise<void>;
   clearUserVotes: () => void;
+  refreshChampions: (locationId: string) => Promise<void>;
   filteredLocations: () => Location[];
 }
 
@@ -336,6 +338,32 @@ export const useVotesStore = create<VotesState>((set, get) => ({
   },
 
   clearUserVotes: () => set({ votedLocationIds: new Set<string>(), votedNotHereIds: new Set<string>() }),
+
+  refreshChampions: async (locationId: string) => {
+    try {
+      const res = await fetch(`/api/locations/${locationId}/champions`);
+      if (!res.ok) return;
+      const champions: SiteChampion[] = await res.json();
+      set(state => ({
+        locations: state.locations.map(l =>
+          l.id === locationId
+            ? {
+                ...l,
+                champions,
+                derived: {
+                  stage: l.derived?.stage ?? 'scored',
+                  category: getCategory({ isBridge: l.isBridge, champions }),
+                  committedSubStage: l.derived?.committedSubStage,
+                  movedOnReason: l.derived?.movedOnReason,
+                },
+              }
+            : l
+        ),
+      }));
+    } catch {
+      // Network failure — leave existing state alone
+    }
+  },
 
   addLocation: (location) =>
     set((state) => ({

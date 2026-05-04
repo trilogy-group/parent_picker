@@ -7,6 +7,7 @@ import { extractStreet } from "@/lib/address";
 import { fetchRebl3Site, Rebl3ExternalSite, Rebl3Dimension, postRebl3Feedback, Rebl3DimensionKey } from "@/lib/rebl3";
 import { HelpModal } from "./HelpModal";
 import { SignInPrompt } from "./SignInPrompt";
+import { ChampionButton } from "./ChampionButton";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { ArrowLeft, ExternalLink, ChevronLeft, ChevronRight, FileText, Plus, Minus, X } from "lucide-react";
 import { useAuth } from "./AuthProvider";
@@ -506,6 +507,14 @@ export default function LocationDetailView({
                 <span className="text-xs text-gray-400">{distanceMi.toFixed(1)} mi from you</span>
               </div>
             )}
+            <div className="mt-3">
+              <ChampionButton
+                location={location}
+                isAuthenticated={isAuthenticated}
+                session={session}
+                onSignInNeeded={() => setShowSignIn(true)}
+              />
+            </div>
           </div>
 
           {/* Brochure link for proposed locations */}
