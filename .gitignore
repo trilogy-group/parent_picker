@@ -46,6 +46,9 @@ yarn-error.log*
 # temp files
 tmp/
 
+# superpowers brainstorm cache
+.superpowers/
+
 # macOS
 Icon?
 
