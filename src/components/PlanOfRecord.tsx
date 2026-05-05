@@ -46,10 +46,11 @@ export function PlanOfRecord({ plan, effectivePlan }: Props) {
       {(plan?.pivotConditions?.length ?? 0) > 0 && (
         <div className="mt-3 pt-3 border-t border-stone-200">
           <h3 className="text-xs font-bold uppercase tracking-wider text-stone-500 mb-2">What would change this</h3>
-          <ul className="space-y-1">
+          <ul className="space-y-1.5">
             {plan!.pivotConditions.map((pc, i) => (
-              <li key={i} className="text-sm text-stone-700">
-                <span className="text-orange-600">▸</span> {pc.description}
+              <li key={i} className="text-sm text-stone-700 leading-relaxed flex gap-2">
+                <span className="text-stone-400 leading-relaxed">•</span>
+                <span className="flex-1">{pc.description}</span>
               </li>
             ))}
           </ul>
