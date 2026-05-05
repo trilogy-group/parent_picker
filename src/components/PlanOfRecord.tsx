@@ -1,60 +1,44 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import type { MetroPlan } from "@/types";
+import type { Location, MetroPlan } from "@/types";
 import { useVotesStore } from "@/lib/votes";
+import type { EffectivePlan } from "@/lib/plan-of-record";
 
 interface Props {
   metro: string;
+  plan: MetroPlan | null; // curated; null if none
+  effectivePlan: EffectivePlan; // merged (curated + auto-derived)
 }
 
-export function PlanOfRecord({ metro }: Props) {
-  const [state, setState] = useState<{ metro: string | null; plan: MetroPlan | null }>({
-    metro: null,
-    plan: null,
-  });
+export function PlanOfRecord({ plan, effectivePlan }: Props) {
   const locations = useVotesStore(s => s.locations);
-
-  useEffect(() => {
-    let cancelled = false;
-    fetch(`/api/metro/${encodeURIComponent(metro)}/plan`)
-      .then(r => r.json())
-      .then((data: MetroPlan | null) => {
-        if (!cancelled) setState({ metro, plan: data });
-      })
-      .catch(() => {
-        if (!cancelled) setState({ metro, plan: null });
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [metro]);
-
-  // Hide while the first fetch for this metro is in flight or if no plan exists
-  if (state.metro !== metro || !state.plan) return null;
-  const plan = state.plan;
-
-  // Resolve site names for narrative
-  const findSite = (id?: string) =>
-    id ? locations.find(l => l.id === id) : null;
-  const primary = findSite(plan.narrativeTemplateInputs.primaryLongTermSiteId);
-  const bridge = findSite(plan.narrativeTemplateInputs.bridgeSiteId);
-  const watch = (plan.narrativeTemplateInputs.watchSiteIds ?? [])
+  const findSite = (id?: string) => (id ? locations.find(l => l.id === id) : null);
+  const primary = findSite(effectivePlan.primaryLongTermSiteId);
+  const bridge = findSite(effectivePlan.bridgeSiteId);
+  const watch = (effectivePlan.watchSiteIds ?? [])
     .map(id => findSite(id))
-    .filter((s): s is NonNullable<typeof s> => s !== null && s !== undefined);
+    .filter((s): s is NonNullable<typeof s> => s != null);
 
-  // Build narrative
-  const narrative = plan.narrativeOverride ?? buildAutoNarrative(primary, bridge, watch);
+  // Narrative: curated override > auto narrative built from primary/bridge/watch
+  const hasAnything = !!primary || !!bridge || watch.length > 0 || !!plan?.narrativeOverride;
+  if (!hasAnything) return null; // hide entirely when nothing to say
+
+  const narrative = plan?.narrativeOverride ?? buildAutoNarrative(primary, bridge, watch);
 
   return (
     <div className="mx-4 my-3 p-4 bg-white border-l-4 border-stone-700 rounded-md shadow-sm">
-      <h2 className="text-xs font-bold uppercase tracking-wider text-stone-500 mb-2">Plan of Record</h2>
+      <h2 className="text-xs font-bold uppercase tracking-wider text-stone-500 mb-2">
+        Plan of Record
+        {effectivePlan.source === "auto" && (
+          <span className="ml-2 text-[10px] font-normal text-stone-400">auto</span>
+        )}
+      </h2>
       <p className="text-sm text-stone-700 leading-relaxed">{narrative}</p>
-      {plan.pivotConditions.length > 0 && (
+      {(plan?.pivotConditions?.length ?? 0) > 0 && (
         <div className="mt-3 pt-3 border-t border-stone-200">
           <h3 className="text-xs font-bold uppercase tracking-wider text-stone-500 mb-2">What would change this</h3>
           <ul className="space-y-1">
-            {plan.pivotConditions.map((pc, i) => (
+            {plan!.pivotConditions.map((pc, i) => (
               <li key={i} className="text-sm text-stone-700">
                 <span className="text-orange-600">▸</span> {pc.description}
               </li>
@@ -67,9 +51,9 @@ export function PlanOfRecord({ metro }: Props) {
 }
 
 function buildAutoNarrative(
-  primary: { name: string; address: string } | null | undefined,
-  bridge: { name: string; address: string } | null | undefined,
-  watch: { name: string; address: string }[]
+  primary: Location | null | undefined,
+  bridge: Location | null | undefined,
+  watch: Location[]
 ): string {
   const parts: string[] = [];
   if (bridge) {

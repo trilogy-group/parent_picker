@@ -65,6 +65,7 @@ interface VotesState {
   showDriveFilter: boolean;                          // "Close to me" filter toggle
   showNoBlockers: boolean;                           // "No Blockers" filter — GREEN only
   userIsochrone: GeoJSON.FeatureCollection | null;   // Isochrone polygon from user's location
+  showCandidatesPanel: boolean;                      // Collapse/expand the scored-candidates browser
 
   setLocations: (locations: Location[]) => void;
   toggleScoreFilter: (category: ScoreFilterCategory, value: string) => void;
@@ -104,6 +105,7 @@ interface VotesState {
   setShowDriveFilter: (show: boolean) => void;
   setShowNoBlockers: (show: boolean) => void;
   setUserIsochrone: (data: GeoJSON.FeatureCollection | null) => void;
+  setShowCandidatesPanel: (show: boolean) => void;
   loadCitySummaries: () => Promise<void>;
   fetchNearby: (bounds: MapBounds) => Promise<void>;
   fetchNearbyForce: (bounds: MapBounds) => Promise<void>;
@@ -168,6 +170,7 @@ export const useVotesStore = create<VotesState>((set, get) => ({
   showDriveFilter: false,
   showNoBlockers: false,
   userIsochrone: null,
+  showCandidatesPanel: false,
 
   toggleScoreFilter: (category, value) => {
     const filters = get().scoreFilters;
@@ -244,6 +247,8 @@ export const useVotesStore = create<VotesState>((set, get) => ({
   setShowNoBlockers: (show) => set({ showNoBlockers: show }),
 
   setUserIsochrone: (data) => set({ userIsochrone: data }),
+
+  setShowCandidatesPanel: (show) => set({ showCandidatesPanel: show }),
 
   updateVoteComment: (locationId, comment) => {
     const state = get();

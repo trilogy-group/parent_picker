@@ -19,6 +19,7 @@ import { pointInIsochrone } from "@/lib/geo";
 import { PlanOfRecord } from "./PlanOfRecord";
 import { CategorySection } from "./CategorySection";
 import { StageBadge } from "./StageBadge";
+import { useMetroPlan, autoDerivePlan, mergePlan, getPlanRole, comparePlanOrder, type PlanRole } from "@/lib/plan-of-record";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { SignInPrompt } from "./SignInPrompt";
 
@@ -39,6 +40,8 @@ export function AltPanel() {
     showDriveFilter, setShowDriveFilter, userIsochrone,
     driveTimeMinutes, setDriveTimeMinutes,
     showNoBlockers, setShowNoBlockers,
+    showCandidatesPanel, setShowCandidatesPanel,
+    userId,
   } = useVotesStore(useShallow((s) => ({
     locations: s.locations,
     filteredLocations: s.filteredLocations,
@@ -78,6 +81,9 @@ export function AltPanel() {
     setDriveTimeMinutes: s.setDriveTimeMinutes,
     showNoBlockers: s.showNoBlockers,
     setShowNoBlockers: s.setShowNoBlockers,
+    showCandidatesPanel: s.showCandidatesPanel,
+    setShowCandidatesPanel: s.setShowCandidatesPanel,
+    userId: s.userId,
   })));
 
   const { user, session, isAdmin } = useAuth();
@@ -220,19 +226,30 @@ export function AltPanel() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filteredLocations, metroName, locations]);
 
+  // Plan of Record (curated) + auto-derived defaults, merged into one effective plan
+  const curatedPlan = useMetroPlan(metroName);
+  const effectivePlan = useMemo(
+    () => mergePlan(curatedPlan, autoDerivePlan(metroLocations)),
+    [curatedPlan, metroLocations]
+  );
+
   const parentSites = useMemo(
-    () => metroLocations.filter(l => l.derived?.category === "parent"),
-    [metroLocations]
+    () => metroLocations
+      .filter(l => l.derived?.category === "parent")
+      .sort((a, b) => comparePlanOrder(a, b, effectivePlan, userId)),
+    [metroLocations, effectivePlan, userId]
   );
   const aiActive = useMemo(
-    () => metroLocations.filter(
-      l => l.derived?.category === "ai" && (l.derived?.stage === "engaged" || l.derived?.stage === "committed")
-    ),
-    [metroLocations]
+    () => metroLocations
+      .filter(l => l.derived?.category === "ai" && (l.derived?.stage === "engaged" || l.derived?.stage === "committed"))
+      .sort((a, b) => comparePlanOrder(a, b, effectivePlan, userId)),
+    [metroLocations, effectivePlan, userId]
   );
   const shortTermSites = useMemo(
-    () => metroLocations.filter(l => l.derived?.category === "short_term"),
-    [metroLocations]
+    () => metroLocations
+      .filter(l => l.derived?.category === "short_term")
+      .sort((a, b) => comparePlanOrder(a, b, effectivePlan, userId)),
+    [metroLocations, effectivePlan, userId]
   );
   const committedCount = useMemo(
     () => metroLocations.filter(l => l.derived?.stage === "committed").length,
@@ -244,7 +261,12 @@ export function AltPanel() {
     [metroLocations]
   );
 
-  const RichCategoryCard = ({ loc }: { loc: Location }) => {
+  const scoredCandidatesCount = useMemo(
+    () => metroLocations.filter(l => l.derived?.stage === "scored").length,
+    [metroLocations]
+  );
+
+  const RichCategoryCard = ({ loc, planRole }: { loc: Location; planRole?: PlanRole | null }) => {
     const [showSignIn, setShowSignIn] = useState(false);
     const hasVotedIn = votedLocationIds.has(loc.id);
     const hasVotedNotHere = votedNotHereIds.has(loc.id);
@@ -292,6 +314,15 @@ export function AltPanel() {
           {/* Status row */}
           <div className="flex items-center gap-2 flex-wrap mb-1.5">
             {loc.derived?.stage && <StageBadge stage={loc.derived.stage} />}
+            {planRole === "primary" && (
+              <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-emerald-200 text-emerald-900">★ PRIMARY</span>
+            )}
+            {planRole === "bridge" && (
+              <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-amber-200 text-amber-900">★ BRIDGE</span>
+            )}
+            {planRole === "watch" && (
+              <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-stone-200 text-stone-800">★ WATCH</span>
+            )}
             {leadChampion && (
               <span className="text-[11px] text-emerald-700 font-medium">
                 ★ {leadChampion.displayName || "A parent"} is leading this
@@ -519,25 +550,50 @@ export function AltPanel() {
           {/* Plan of Record + Category Highlights — only when in a metro view */}
           {metroName && !showCityCards && (
             <div className="border-b border-stone-200 pb-3">
-              <PlanOfRecord metro={metroName} />
+              <PlanOfRecord metro={metroName} plan={curatedPlan} effectivePlan={effectivePlan} />
               <CategorySection
                 category="parent"
                 locations={parentSites}
-                renderCard={(l) => <RichCategoryCard key={l.id} loc={l} />}
+                renderCard={(l) => <RichCategoryCard key={l.id} loc={l} planRole={getPlanRole(l.id, effectivePlan)} />}
               />
               <CategorySection
                 category="ai"
                 locations={aiActive}
-                renderCard={(l) => <RichCategoryCard key={l.id} loc={l} />}
+                renderCard={(l) => <RichCategoryCard key={l.id} loc={l} planRole={getPlanRole(l.id, effectivePlan)} />}
               />
               <CategorySection
                 category="short_term"
                 locations={shortTermSites}
-                renderCard={(l) => <RichCategoryCard key={l.id} loc={l} />}
+                renderCard={(l) => <RichCategoryCard key={l.id} loc={l} planRole={getPlanRole(l.id, effectivePlan)} />}
               />
             </div>
           )}
 
+          {/* Candidates banner — gateway to the scored-site browser (metro view only) */}
+          {metroName && !showCityCards && (
+            <button
+              onClick={() => setShowCandidatesPanel(!showCandidatesPanel)}
+              className="mx-4 mb-3 mt-3 w-[calc(100%-2rem)] px-4 py-3 border border-stone-200 rounded-md bg-stone-50 hover:bg-stone-100 transition-colors text-left"
+            >
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="text-xs font-bold uppercase tracking-wider text-stone-600">
+                    Candidates
+                  </div>
+                  <div className="text-sm text-stone-500 mt-0.5">
+                    {scoredCandidatesCount.toLocaleString()} {scoredCandidatesCount === 1 ? "scored site" : "scored sites"} in this metro
+                  </div>
+                </div>
+                <div className="text-sm text-blue-600 font-medium">
+                  {showCandidatesPanel ? "Hide ↑" : "Browse + like →"}
+                </div>
+              </div>
+            </button>
+          )}
+
+          {/* Existing flat candidates list — gated behind banner toggle in metro view, always shown otherwise */}
+          {(!metroName || showCityCards || showCandidatesPanel) && (
+          <>
           {/* Legend + Size filter + Sort pills */}
           <div className="px-5 pb-2 pt-1 sticky top-0 bg-white z-10">
             <div className="flex items-center gap-3 text-[11px] text-gray-500 mb-2">
@@ -722,9 +778,14 @@ export function AltPanel() {
                 </button>
               )}
             </div>
+            <div className="text-xs text-stone-500 shrink-0">
+              {showTopOnly && listLocations.length > TOP_N
+                ? `Top ${TOP_N} of ${listLocations.length} in view`
+                : `${listLocations.length} in view`}
+            </div>
             <button
               onClick={() => { setShowTopOnly(!showTopOnly); setExtraPages(0); }}
-              className="ml-auto text-xs text-blue-600 font-medium hover:underline shrink-0"
+              className="ml-2 text-xs text-blue-600 font-medium hover:underline shrink-0"
             >
               {showTopOnly ? `Show all (${searchFilteredLocations.length})` : 'Top 10'}
             </button>
@@ -770,6 +831,8 @@ export function AltPanel() {
             )}
 
           </div>
+          </>
+          )}
 
           {/* Funnel footer — context for the candidate browse list */}
           {metroName && !showCityCards && (
