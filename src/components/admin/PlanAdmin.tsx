@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { Loader2 } from "lucide-react";
+import { Loader2, Plus, X as XIcon } from "lucide-react";
+import type { SiteProblem } from "@/types";
 
 interface Candidate {
   id: string;
@@ -12,6 +13,11 @@ interface Candidate {
   loi_status: string | null;
   is_bridge: boolean;
   champion_count: number;
+}
+
+interface PivotConditionRow {
+  triggerProblemId: string;
+  description: string;
 }
 
 const COMMITTED_LOI = new Set(["done", "signed", "loi-signed", "completed"]);
@@ -32,11 +38,12 @@ function formatOption(c: Candidate): string {
 export function PlanAdmin({ token }: { token: string }) {
   const [metro, setMetro] = useState("");
   const [candidates, setCandidates] = useState<Candidate[]>([]);
+  const [problems, setProblems] = useState<SiteProblem[]>([]);
   const [primaryLongTermSiteId, setPrimaryLongTermSiteId] = useState("");
   const [bridgeSiteId, setBridgeSiteId] = useState("");
   const [watchSiteIds, setWatchSiteIds] = useState<string[]>([]);
   const [narrativeOverride, setNarrativeOverride] = useState("");
-  const [pivotConditionsJson, setPivotConditionsJson] = useState("[]");
+  const [pivotConditions, setPivotConditions] = useState<PivotConditionRow[]>([]);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
@@ -46,16 +53,20 @@ export function PlanAdmin({ token }: { token: string }) {
     setLoading(true);
     setMessage(null);
     try {
-      // Load candidates and existing plan in parallel.
-      const [candidatesRes, planRes] = await Promise.all([
+      // Load candidates, problems, and existing plan in parallel.
+      const [candidatesRes, problemsRes, planRes] = await Promise.all([
         fetch(`/api/admin/metro/${encodeURIComponent(metro)}/candidates`, {
           headers: { Authorization: `Bearer ${token}` },
         }),
+        fetch(`/api/problems?metro=${encodeURIComponent(metro)}&all=true`),
         fetch(`/api/metro/${encodeURIComponent(metro)}/plan`),
       ]);
 
       const candidatesList: Candidate[] = candidatesRes.ok ? await candidatesRes.json() : [];
       setCandidates(candidatesList);
+
+      const problemsList: SiteProblem[] = problemsRes.ok ? await problemsRes.json() : [];
+      setProblems(problemsList);
 
       const planData = planRes.ok ? await planRes.json() : null;
       if (planData) {
@@ -63,15 +74,19 @@ export function PlanAdmin({ token }: { token: string }) {
         setBridgeSiteId(planData.narrativeTemplateInputs?.bridgeSiteId ?? "");
         setWatchSiteIds(planData.narrativeTemplateInputs?.watchSiteIds ?? []);
         setNarrativeOverride(planData.narrativeOverride ?? "");
-        setPivotConditionsJson(JSON.stringify(planData.pivotConditions ?? [], null, 2));
-        setMessage(`Loaded plan (last curated ${new Date(planData.lastCuratedAt).toLocaleString()}). ${candidatesList.length} candidate sites in this metro.`);
+        // Coerce existing rows into the simple shape; ignore unrecognized fields like newRoleAssignment for now.
+        setPivotConditions((planData.pivotConditions ?? []).map((p: { triggerProblemId?: string; description?: string }) => ({
+          triggerProblemId: p.triggerProblemId ?? "",
+          description: p.description ?? "",
+        })));
+        setMessage(`Loaded plan (last curated ${new Date(planData.lastCuratedAt).toLocaleString()}). ${candidatesList.length} candidate sites, ${problemsList.length} problems in this metro.`);
       } else {
         setPrimaryLongTermSiteId("");
         setBridgeSiteId("");
         setWatchSiteIds([]);
         setNarrativeOverride("");
-        setPivotConditionsJson("[]");
-        setMessage(`No plan curated yet. ${candidatesList.length} candidate sites in this metro.`);
+        setPivotConditions([]);
+        setMessage(`No plan curated yet. ${candidatesList.length} candidate sites, ${problemsList.length} problems in this metro.`);
       }
     } finally {
       setLoading(false);
@@ -81,17 +96,12 @@ export function PlanAdmin({ token }: { token: string }) {
   async function save(e: React.FormEvent) {
     e.preventDefault();
     if (!metro) return;
-    let pivotConditions: unknown[] = [];
-    try {
-      pivotConditions = JSON.parse(pivotConditionsJson);
-      if (!Array.isArray(pivotConditions)) throw new Error("pivot_conditions must be an array");
-    } catch {
-      setMessage("Pivot conditions must be valid JSON array.");
-      return;
-    }
     setSaving(true);
     setMessage(null);
     try {
+      const cleanConditions = pivotConditions
+        .filter(c => c.triggerProblemId && c.description.trim())
+        .map(c => ({ triggerProblemId: c.triggerProblemId, description: c.description.trim() }));
       const res = await fetch(`/api/admin/metro/${encodeURIComponent(metro)}/plan`, {
         method: "PUT",
         headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
@@ -101,7 +111,7 @@ export function PlanAdmin({ token }: { token: string }) {
             bridgeSiteId: bridgeSiteId || undefined,
             watchSiteIds: watchSiteIds.length > 0 ? watchSiteIds : undefined,
           },
-          pivotConditions,
+          pivotConditions: cleanConditions,
           narrativeOverride: narrativeOverride || null,
         }),
       });
@@ -118,6 +128,18 @@ export function PlanAdmin({ token }: { token: string }) {
 
   function toggleWatch(id: string) {
     setWatchSiteIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+  }
+
+  function addPivotCondition() {
+    setPivotConditions(prev => [...prev, { triggerProblemId: "", description: "" }]);
+  }
+
+  function updatePivotCondition(index: number, patch: Partial<PivotConditionRow>) {
+    setPivotConditions(prev => prev.map((c, i) => i === index ? { ...c, ...patch } : c));
+  }
+
+  function removePivotCondition(index: number) {
+    setPivotConditions(prev => prev.filter((_, i) => i !== index));
   }
 
   const watchCandidates = candidates.filter(c => c.id !== primaryLongTermSiteId && c.id !== bridgeSiteId);
@@ -223,16 +245,64 @@ export function PlanAdmin({ token }: { token: string }) {
         </div>
 
         <div>
-          <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block mb-1">
-            Pivot conditions (JSON array)
-          </label>
-          <textarea
-            value={pivotConditionsJson}
-            onChange={e => setPivotConditionsJson(e.target.value)}
-            className="w-full border rounded px-2 py-1 text-xs font-mono"
-            rows={5}
-            placeholder='[{"triggerProblemId": "uuid", "description": "..."}]'
-          />
+          <div className="flex items-center justify-between mb-1">
+            <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+              Pivot conditions ({pivotConditions.length})
+            </label>
+            <button
+              type="button"
+              onClick={addPivotCondition}
+              disabled={problems.length === 0}
+              className="text-xs px-2 py-1 rounded border hover:bg-stone-50 inline-flex items-center gap-1 disabled:opacity-50"
+            >
+              <Plus className="h-3 w-3" /> Add
+            </button>
+          </div>
+          {problems.length === 0 ? (
+            <p className="text-xs text-stone-500 italic">
+              No problems posted in this metro yet. Create problems on the Problems tab first, then come back to link them here.
+            </p>
+          ) : pivotConditions.length === 0 ? (
+            <p className="text-xs text-stone-500 italic">
+              No pivot conditions yet. Click <strong>Add</strong> to link a problem whose resolution would change the plan.
+            </p>
+          ) : (
+            <div className="space-y-2">
+              {pivotConditions.map((c, i) => (
+                <div key={i} className="border rounded bg-white p-2 space-y-2">
+                  <div className="flex items-start gap-2">
+                    <select
+                      value={c.triggerProblemId}
+                      onChange={e => updatePivotCondition(i, { triggerProblemId: e.target.value })}
+                      className="flex-1 border rounded px-2 py-1 text-xs bg-white"
+                    >
+                      <option value="">— pick a problem —</option>
+                      {problems.map(p => (
+                        <option key={p.id} value={p.id}>
+                          [{p.status}] {p.pivotTrigger ? "★ " : ""}{p.title}
+                        </option>
+                      ))}
+                    </select>
+                    <button
+                      type="button"
+                      onClick={() => removePivotCondition(i)}
+                      className="text-xs text-red-600 hover:bg-red-50 p-1 rounded shrink-0"
+                      title="Remove condition"
+                    >
+                      <XIcon className="h-3 w-3" />
+                    </button>
+                  </div>
+                  <textarea
+                    value={c.description}
+                    onChange={e => updatePivotCondition(i, { description: e.target.value })}
+                    placeholder='What would change if this resolves? e.g. "If zoning is denied, we shift to 401 Congress as primary."'
+                    className="w-full border rounded px-2 py-1 text-xs"
+                    rows={2}
+                  />
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
         <button
