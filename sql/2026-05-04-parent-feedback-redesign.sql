@@ -314,3 +314,34 @@ BEGIN
   LIMIT max_results;
 END;
 $function$;
+
+-- ============================================================
+-- 10. Auto-release pp_locations when REBL has any LOI activity.
+-- ============================================================
+CREATE OR REPLACE FUNCTION pp_auto_release_on_loi() RETURNS trigger AS $$
+BEGIN
+  IF NEW.system = 'loi' AND NEW.site_id IS NOT NULL THEN
+    UPDATE pp_locations
+    SET released = true,
+        updated_at = now()
+    WHERE rebl3_site_id = NEW.site_id
+      AND released = false;
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trg_pp_auto_release_on_loi ON rebl3_status;
+CREATE TRIGGER trg_pp_auto_release_on_loi
+  AFTER INSERT OR UPDATE ON rebl3_status
+  FOR EACH ROW
+  WHEN (NEW.system = 'loi')
+  EXECUTE FUNCTION pp_auto_release_on_loi();
+
+-- One-time backfill (idempotent — no-op if already released):
+UPDATE pp_locations l
+SET released = true, updated_at = now()
+FROM rebl3_status s
+WHERE s.system = 'loi'
+  AND s.site_id = l.rebl3_site_id
+  AND l.released = false;
