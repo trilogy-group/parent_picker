@@ -206,29 +206,42 @@ export function AltPanel() {
     });
   }, [sortedLocations, adminSearch]);
 
-  // Category-grouped highlights (only meaningful in metro view)
+  // Category-grouped highlights are METRO-scoped, not viewport-scoped — so zooming
+  // into one site doesn't make the others vanish from the highlights list. Filter
+  // by nearest-metro membership against `metroName` (50-mile radius per metros.ts).
+  const metroLocations = useMemo(() => {
+    if (!metroName) return [];
+    return filteredLocations().filter(loc => {
+      const m = findNearestMetro(loc.lat, loc.lng);
+      if (!m) return false;
+      return (METRO_DISPLAY[m.name] || m.name) === metroName;
+    });
+  // METRO_DISPLAY is a stable inline object; metroName & filteredLocations cover the deps
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filteredLocations, metroName, locations]);
+
   const parentSites = useMemo(
-    () => searchFilteredLocations.filter(l => l.derived?.category === "parent"),
-    [searchFilteredLocations]
+    () => metroLocations.filter(l => l.derived?.category === "parent"),
+    [metroLocations]
   );
   const aiActive = useMemo(
-    () => searchFilteredLocations.filter(
+    () => metroLocations.filter(
       l => l.derived?.category === "ai" && (l.derived?.stage === "engaged" || l.derived?.stage === "committed")
     ),
-    [searchFilteredLocations]
+    [metroLocations]
   );
   const shortTermSites = useMemo(
-    () => searchFilteredLocations.filter(l => l.derived?.category === "short_term"),
-    [searchFilteredLocations]
+    () => metroLocations.filter(l => l.derived?.category === "short_term"),
+    [metroLocations]
   );
   const committedCount = useMemo(
-    () => searchFilteredLocations.filter(l => l.derived?.stage === "committed").length,
-    [searchFilteredLocations]
+    () => metroLocations.filter(l => l.derived?.stage === "committed").length,
+    [metroLocations]
   );
 
   const movedOnSites = useMemo(
-    () => searchFilteredLocations.filter(l => l.derived?.stage === "moved_on"),
-    [searchFilteredLocations]
+    () => metroLocations.filter(l => l.derived?.stage === "moved_on"),
+    [metroLocations]
   );
 
   const RichCategoryCard = ({ loc }: { loc: Location }) => {
@@ -762,7 +775,7 @@ export function AltPanel() {
           {metroName && !showCityCards && (
             <div className="mx-5 mt-4 mb-5 pt-4 border-t border-stone-200 text-xs text-stone-500">
               <div>
-                From {searchFilteredLocations.length} scored, {aiActive.length + parentSites.length} engaged and {committedCount} committed.
+                From {metroLocations.length} scored, {aiActive.length + parentSites.length} engaged and {committedCount} committed.
                 {movedOnSites.length > 0 && (
                   <button
                     onClick={() => setShowMovedOn(s => !s)}
