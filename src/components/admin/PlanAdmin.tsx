@@ -3,11 +3,38 @@
 import { useState } from "react";
 import { Loader2 } from "lucide-react";
 
+interface Candidate {
+  id: string;
+  address: string;
+  city: string;
+  state: string;
+  leasing_status: string | null;
+  loi_status: string | null;
+  is_bridge: boolean;
+  champion_count: number;
+}
+
+const COMMITTED_LOI = new Set(["done", "signed", "loi-signed", "completed"]);
+
+function describeStage(c: Candidate): string {
+  if (c.is_bridge) return "BRIDGE";
+  if ((c.loi_status && COMMITTED_LOI.has(c.loi_status)) || c.leasing_status === "done") return "COMMITTED";
+  if (c.leasing_status || c.loi_status) return "ENGAGED";
+  return "—";
+}
+
+function formatOption(c: Candidate): string {
+  const stage = describeStage(c);
+  const champ = c.champion_count > 0 ? ` · ★${c.champion_count}` : "";
+  return `${stage} · ${c.address}, ${c.city}${champ}`;
+}
+
 export function PlanAdmin({ token }: { token: string }) {
   const [metro, setMetro] = useState("");
+  const [candidates, setCandidates] = useState<Candidate[]>([]);
   const [primaryLongTermSiteId, setPrimaryLongTermSiteId] = useState("");
   const [bridgeSiteId, setBridgeSiteId] = useState("");
-  const [watchSiteIds, setWatchSiteIds] = useState("");  // comma-separated for simplicity
+  const [watchSiteIds, setWatchSiteIds] = useState<string[]>([]);
   const [narrativeOverride, setNarrativeOverride] = useState("");
   const [pivotConditionsJson, setPivotConditionsJson] = useState("[]");
   const [loading, setLoading] = useState(false);
@@ -19,22 +46,33 @@ export function PlanAdmin({ token }: { token: string }) {
     setLoading(true);
     setMessage(null);
     try {
-      const res = await fetch(`/api/metro/${encodeURIComponent(metro)}/plan`);
-      if (!res.ok) {
-        setMessage("Plan not found — fill in fields below to create a new one.");
-        return;
+      // Load candidates and existing plan in parallel.
+      const [candidatesRes, planRes] = await Promise.all([
+        fetch(`/api/admin/metro/${encodeURIComponent(metro)}/candidates`, {
+          headers: { Authorization: `Bearer ${token}` },
+        }),
+        fetch(`/api/metro/${encodeURIComponent(metro)}/plan`),
+      ]);
+
+      const candidatesList: Candidate[] = candidatesRes.ok ? await candidatesRes.json() : [];
+      setCandidates(candidatesList);
+
+      const planData = planRes.ok ? await planRes.json() : null;
+      if (planData) {
+        setPrimaryLongTermSiteId(planData.narrativeTemplateInputs?.primaryLongTermSiteId ?? "");
+        setBridgeSiteId(planData.narrativeTemplateInputs?.bridgeSiteId ?? "");
+        setWatchSiteIds(planData.narrativeTemplateInputs?.watchSiteIds ?? []);
+        setNarrativeOverride(planData.narrativeOverride ?? "");
+        setPivotConditionsJson(JSON.stringify(planData.pivotConditions ?? [], null, 2));
+        setMessage(`Loaded plan (last curated ${new Date(planData.lastCuratedAt).toLocaleString()}). ${candidatesList.length} candidate sites in this metro.`);
+      } else {
+        setPrimaryLongTermSiteId("");
+        setBridgeSiteId("");
+        setWatchSiteIds([]);
+        setNarrativeOverride("");
+        setPivotConditionsJson("[]");
+        setMessage(`No plan curated yet. ${candidatesList.length} candidate sites in this metro.`);
       }
-      const data = await res.json();
-      if (!data) {
-        setMessage("Plan not found — fill in fields below to create a new one.");
-        return;
-      }
-      setPrimaryLongTermSiteId(data.narrativeTemplateInputs?.primaryLongTermSiteId ?? "");
-      setBridgeSiteId(data.narrativeTemplateInputs?.bridgeSiteId ?? "");
-      setWatchSiteIds((data.narrativeTemplateInputs?.watchSiteIds ?? []).join(", "));
-      setNarrativeOverride(data.narrativeOverride ?? "");
-      setPivotConditionsJson(JSON.stringify(data.pivotConditions ?? [], null, 2));
-      setMessage(`Loaded plan (last curated ${new Date(data.lastCuratedAt).toLocaleString()})`);
     } finally {
       setLoading(false);
     }
@@ -54,7 +92,6 @@ export function PlanAdmin({ token }: { token: string }) {
     setSaving(true);
     setMessage(null);
     try {
-      const watchList = watchSiteIds.split(",").map(s => s.trim()).filter(Boolean);
       const res = await fetch(`/api/admin/metro/${encodeURIComponent(metro)}/plan`, {
         method: "PUT",
         headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
@@ -62,7 +99,7 @@ export function PlanAdmin({ token }: { token: string }) {
           narrativeTemplateInputs: {
             primaryLongTermSiteId: primaryLongTermSiteId || undefined,
             bridgeSiteId: bridgeSiteId || undefined,
-            watchSiteIds: watchList.length > 0 ? watchList : undefined,
+            watchSiteIds: watchSiteIds.length > 0 ? watchSiteIds : undefined,
           },
           pivotConditions,
           narrativeOverride: narrativeOverride || null,
@@ -79,11 +116,17 @@ export function PlanAdmin({ token }: { token: string }) {
     }
   }
 
+  function toggleWatch(id: string) {
+    setWatchSiteIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+  }
+
+  const watchCandidates = candidates.filter(c => c.id !== primaryLongTermSiteId && c.id !== bridgeSiteId);
+
   return (
     <div className="space-y-4">
       <div className="flex gap-2">
         <input
-          placeholder="Metro name (e.g. Austin)"
+          placeholder="Metro name (e.g. Austin, Oklahoma City, Dallas-Fort Worth)"
           value={metro}
           onChange={e => setMetro(e.target.value)}
           className="flex-1 border rounded px-3 py-1.5 text-sm"
@@ -102,36 +145,74 @@ export function PlanAdmin({ token }: { token: string }) {
         <div className="text-xs px-3 py-2 rounded bg-stone-100 text-stone-700">{message}</div>
       )}
 
-      <form onSubmit={save} className="space-y-3 border rounded-lg p-4 bg-muted/30">
+      {candidates.length === 0 && metro && !loading && (
+        <div className="text-xs text-stone-500 italic">
+          No REBL-active sites loaded for this metro yet. Click Load to fetch candidates.
+        </div>
+      )}
+
+      <form onSubmit={save} className="space-y-4 border rounded-lg p-4 bg-muted/30">
         <div>
-          <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Primary long-term site (UUID)</label>
-          <input
+          <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block mb-1">
+            Primary long-term site
+          </label>
+          <select
             value={primaryLongTermSiteId}
             onChange={e => setPrimaryLongTermSiteId(e.target.value)}
-            className="w-full border rounded px-2 py-1 text-sm font-mono"
-            placeholder="optional"
-          />
+            className="w-full border rounded px-2 py-1.5 text-sm bg-white"
+            disabled={candidates.length === 0}
+          >
+            <option value="">— none —</option>
+            {candidates.map(c => (
+              <option key={c.id} value={c.id}>{formatOption(c)}</option>
+            ))}
+          </select>
         </div>
+
         <div>
-          <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Bridge site (UUID)</label>
-          <input
+          <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block mb-1">
+            Bridge site
+          </label>
+          <select
             value={bridgeSiteId}
             onChange={e => setBridgeSiteId(e.target.value)}
-            className="w-full border rounded px-2 py-1 text-sm font-mono"
-            placeholder="optional"
-          />
+            className="w-full border rounded px-2 py-1.5 text-sm bg-white"
+            disabled={candidates.length === 0}
+          >
+            <option value="">— none —</option>
+            {candidates.map(c => (
+              <option key={c.id} value={c.id}>{formatOption(c)}</option>
+            ))}
+          </select>
         </div>
+
         <div>
-          <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Watch sites (comma-separated UUIDs)</label>
-          <input
-            value={watchSiteIds}
-            onChange={e => setWatchSiteIds(e.target.value)}
-            className="w-full border rounded px-2 py-1 text-sm font-mono"
-            placeholder="optional"
-          />
+          <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block mb-1">
+            Watch sites ({watchSiteIds.length})
+          </label>
+          {watchCandidates.length === 0 ? (
+            <p className="text-xs text-stone-500 italic">No additional candidates available.</p>
+          ) : (
+            <div className="border rounded bg-white max-h-48 overflow-y-auto p-2 space-y-1">
+              {watchCandidates.map(c => (
+                <label key={c.id} className="flex items-start gap-2 text-xs cursor-pointer hover:bg-stone-50 p-1 rounded">
+                  <input
+                    type="checkbox"
+                    checked={watchSiteIds.includes(c.id)}
+                    onChange={() => toggleWatch(c.id)}
+                    className="mt-0.5"
+                  />
+                  <span>{formatOption(c)}</span>
+                </label>
+              ))}
+            </div>
+          )}
         </div>
+
         <div>
-          <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Narrative override</label>
+          <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block mb-1">
+            Narrative override
+          </label>
           <textarea
             value={narrativeOverride}
             onChange={e => setNarrativeOverride(e.target.value)}
@@ -140,8 +221,11 @@ export function PlanAdmin({ token }: { token: string }) {
             placeholder="Leave blank to use auto-generated narrative"
           />
         </div>
+
         <div>
-          <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Pivot conditions (JSON array)</label>
+          <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block mb-1">
+            Pivot conditions (JSON array)
+          </label>
           <textarea
             value={pivotConditionsJson}
             onChange={e => setPivotConditionsJson(e.target.value)}
@@ -150,6 +234,7 @@ export function PlanAdmin({ token }: { token: string }) {
             placeholder='[{"triggerProblemId": "uuid", "description": "..."}]'
           />
         </div>
+
         <button
           type="submit"
           disabled={saving || !metro}
