@@ -17,6 +17,27 @@ describe('getStage', () => {
     expect(getStage({ loi: 'claimed' })).toBe('engaged');
   });
 
+  it('returns engaged when loi is submitted (LOI sent to landlord)', () => {
+    expect(getStage({ loi: 'submitted' })).toBe('engaged');
+  });
+
+  it('returns engaged for other in-flight leasing states', () => {
+    // Any non-cut/non-done leasing value means REBL is actively working the site.
+    expect(getStage({ leasing: 'claimed' })).toBe('engaged');
+    expect(getStage({ leasing: 'negotiating' })).toBe('engaged');
+    expect(getStage({ leasing: 'received' })).toBe('engaged');
+    expect(getStage({ leasing: 'reset' })).toBe('engaged');
+  });
+
+  it('returns committed when leasing=done (lease executed) without process_exception', () => {
+    expect(getStage({ leasing: 'done' })).toBe('committed');
+  });
+
+  it('forward-compatible: any unknown non-null loi/leasing value is engaged', () => {
+    expect(getStage({ loi: 'some-future-state' })).toBe('engaged');
+    expect(getStage({ leasing: 'some-future-state' })).toBe('engaged');
+  });
+
   it('returns committed when LOI is signed', () => {
     expect(getStage({ loi: 'signed' })).toBe('committed');
     expect(getStage({ loi: 'loi-signed' })).toBe('committed');
