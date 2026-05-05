@@ -6,12 +6,11 @@ export interface StageInput {
   leasingDetails?: { process_exception?: boolean; [k: string]: unknown };
 }
 
-// We enumerate the well-defined "end states" explicitly; everything else with
-// any non-null leasing or loi value is treated as engaged. This is forward-
-// compatible: new REBL state vocab (e.g., 'negotiating', 'received') will
-// surface as engaged instead of silently falling back to scored.
+// COMMITTED is reserved for the binding moment — lease signed. LOI signing is
+// material progress but still engaged (LOI is non-binding). Any other in-flight
+// leasing/loi state is engaged. This is forward-compatible: new REBL state vocab
+// surfaces as engaged instead of silently falling back to scored.
 
-const COMMITTED_LOI = new Set(['signed', 'loi-signed', 'done', 'completed']);
 const MOVED_ON_LEASING = new Set(['cut']);
 const MOVED_ON_LOI = new Set(['cut']);
 
@@ -23,11 +22,11 @@ export function getStage(input: StageInput): SiteStage {
     return 'moved_on';
   }
 
-  // Committed — LOI signed (or lease executed, which implies LOI signed)
-  if (input.loi && COMMITTED_LOI.has(input.loi)) return 'committed';
+  // Committed — lease executed (binding contract)
   if (input.leasing === 'done') return 'committed';
 
   // Engaged — any other active leasing/loi state means REBL is working on this site
+  // (LOI signed counts here — it's progress but not yet binding)
   if (input.leasing) return 'engaged';
   if (input.loi) return 'engaged';
 

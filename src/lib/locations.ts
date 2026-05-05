@@ -1,7 +1,7 @@
-import { Location, LocationScores, CitySummary, SiteChampion } from "@/types";
+import { Location, LocationScores, CitySummary, SiteChampion, CommittedSubStage } from "@/types";
 import { supabase, isSupabaseConfigured } from "./supabase";
 import { sanitizeText } from "./validation";
-import { getStage, getCategory } from "@/lib/sites";
+import { getStage, getCategory, parseCommittedSubStage } from "@/lib/sites";
 
 // Seeded pseudo-random for deterministic mock scores
 function seededRandom(seed: number): () => number {
@@ -229,13 +229,24 @@ export async function getLocations(): Promise<Location[]> {
 }
 
 function applyDerived(location: Location, row: Record<string, unknown>): Location {
-  const stage = getStage({
-    leasing: (row.leasing_status as string) ?? null,
-    loi: (row.loi_status as string) ?? null,
-    leasingDetails: (row.leasing_details as { process_exception?: boolean }) ?? undefined,
-  });
+  const leasing = (row.leasing_status as string) ?? null;
+  const loi = (row.loi_status as string) ?? null;
+  const leasingDetails = (row.leasing_details as { process_exception?: boolean }) ?? undefined;
+  const stage = getStage({ leasing, loi, leasingDetails });
   const category = getCategory({ isBridge: location.isBridge, champions: location.champions ?? [] });
-  location.derived = { stage, category };
+
+  let committedSubStage: CommittedSubStage | undefined;
+  if (stage === "engaged" || stage === "committed") {
+    committedSubStage = parseCommittedSubStage({ leasing, loi });
+  }
+
+  location.derived = {
+    stage,
+    category,
+    committedSubStage,
+    leasingStatus: leasing,
+    loiStatus: loi,
+  };
   return location;
 }
 

@@ -12,7 +12,10 @@ export interface ParserInput {
   coReceivedAt?: string;
 }
 
+const LOI_SIGNED = new Set(['done', 'signed', 'loi-signed', 'completed']);
+
 export function parseCommittedSubStage(input: ParserInput): CommittedSubStage {
+  // Structured milestones (V2; not yet populated by REBL but supported)
   if (input.coReceivedAt) return 'co';
   if (input.buildoutDetails?.started_at) return 'buildout';
   if (input.permitsDetails?.submitted_at) return 'permits';
@@ -21,6 +24,15 @@ export function parseCommittedSubStage(input: ParserInput): CommittedSubStage {
     return 'zoning';
   }
   if (input.leaseDetails?.lease_executed_at) return 'lease';
+
+  // V1 inference from leasing/loi status only.
+  // Lease executed → past lease step (best effort: zoning is current)
+  if (input.leasing === 'done') return 'zoning';
+  // Active lease activity (turn_X / ready / negotiating / claimed / received / reset)
+  if (input.leasing) return 'lease';
+  // LOI signed → lease step current (waiting on lease)
+  if (input.loi && LOI_SIGNED.has(input.loi)) return 'lease';
+  // Pre-LOI-signed (claimed / submitted / etc.) → still on LOI step
   return 'loi';
 }
 

@@ -19,7 +19,10 @@ import { pointInIsochrone } from "@/lib/geo";
 import { PlanOfRecord } from "./PlanOfRecord";
 import { CategorySection } from "./CategorySection";
 import { StageBadge } from "./StageBadge";
-import { useMetroPlan, autoDerivePlan, mergePlan, getPlanRole, comparePlanOrder, type PlanRole } from "@/lib/plan-of-record";
+import { StageTimeline } from "./StageTimeline";
+import { useMetroPlan, useMetroProblems, autoDerivePlan, mergePlan, getPlanRole, comparePlanOrder, type PlanRole } from "@/lib/plan-of-record";
+import { formatPipelineStatus } from "@/lib/sites";
+import type { SiteProblem } from "@/types";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { SignInPrompt } from "./SignInPrompt";
 
@@ -228,6 +231,7 @@ export function AltPanel() {
 
   // Plan of Record (curated) + auto-derived defaults, merged into one effective plan
   const curatedPlan = useMetroPlan(metroName);
+  const problemsBySite = useMetroProblems(metroName);
   const effectivePlan = useMemo(
     () => mergePlan(curatedPlan, autoDerivePlan(metroLocations)),
     [curatedPlan, metroLocations]
@@ -266,13 +270,28 @@ export function AltPanel() {
     [metroLocations]
   );
 
-  const RichCategoryCard = ({ loc, planRole }: { loc: Location; planRole?: PlanRole | null }) => {
+  const RichCategoryCard = ({
+    loc,
+    planRole,
+    problems,
+  }: {
+    loc: Location;
+    planRole?: PlanRole | null;
+    problems?: SiteProblem[];
+  }) => {
     const [showSignIn, setShowSignIn] = useState(false);
     const hasVotedIn = votedLocationIds.has(loc.id);
     const hasVotedNotHere = votedNotHereIds.has(loc.id);
     const dist = userLocation ? getDistanceMiles(userLocation.lat, userLocation.lng, loc.lat, loc.lng) : null;
     const voters = locationVoters.get(loc.id) || [];
     const leadChampion = loc.champions?.find(c => c.role === "lead" && !c.releasedAt);
+    const pipelineStatus = formatPipelineStatus(loc);
+    const stage = loc.derived?.stage;
+    const showTimeline = stage === "engaged" || stage === "committed";
+    const subStage = loc.derived?.committedSubStage ?? "loi";
+    const openProblems = (problems ?? []).filter(p => p.status === "open" || p.status === "in_progress");
+    const hasPivot = openProblems.some(p => p.pivotTrigger);
+    const problemCount = openProblems.length;
 
     // Snapshot/deadline pill text — never gates votes
     const snapshotPill = (() => {
@@ -323,6 +342,16 @@ export function AltPanel() {
             {planRole === "watch" && (
               <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-stone-200 text-stone-800">★ WATCH</span>
             )}
+            {problemCount > 0 && (
+              <span
+                className={`text-[9px] font-bold px-2 py-0.5 rounded-full ${
+                  hasPivot ? "bg-orange-200 text-orange-900" : "bg-stone-100 text-stone-700"
+                }`}
+                title={openProblems.map(p => p.title).join(" · ")}
+              >
+                {hasPivot ? "★ " : ""}{problemCount} {problemCount === 1 ? "PROBLEM" : "PROBLEMS"}
+              </span>
+            )}
             {leadChampion && (
               <span className="text-[11px] text-emerald-700 font-medium">
                 ★ {leadChampion.displayName || "A parent"} is leading this
@@ -335,13 +364,20 @@ export function AltPanel() {
             )}
           </div>
 
-          {/* Name + address */}
+          {/* Title + pipeline status (replaces redundant address) */}
           <h3 className="text-base font-bold text-stone-900 leading-tight">
             {extractStreet(loc.address, loc.city)}
           </h3>
-          <p className="text-xs text-stone-500 mt-0.5 truncate">
-            {loc.address}, {loc.city}
-          </p>
+          {pipelineStatus && (
+            <p className="text-xs text-stone-600 mt-0.5">{pipelineStatus}</p>
+          )}
+
+          {/* Mini stage timeline — engaged or committed only */}
+          {showTimeline && (
+            <div className="mt-2">
+              <StageTimeline current={subStage} compact />
+            </div>
+          )}
 
           {/* Snapshot pill */}
           {snapshotPill && (
@@ -554,17 +590,17 @@ export function AltPanel() {
               <CategorySection
                 category="parent"
                 locations={parentSites}
-                renderCard={(l) => <RichCategoryCard key={l.id} loc={l} planRole={getPlanRole(l.id, effectivePlan)} />}
+                renderCard={(l) => <RichCategoryCard key={l.id} loc={l} planRole={getPlanRole(l.id, effectivePlan)} problems={problemsBySite.get(l.id)} />}
               />
               <CategorySection
                 category="ai"
                 locations={aiActive}
-                renderCard={(l) => <RichCategoryCard key={l.id} loc={l} planRole={getPlanRole(l.id, effectivePlan)} />}
+                renderCard={(l) => <RichCategoryCard key={l.id} loc={l} planRole={getPlanRole(l.id, effectivePlan)} problems={problemsBySite.get(l.id)} />}
               />
               <CategorySection
                 category="short_term"
                 locations={shortTermSites}
-                renderCard={(l) => <RichCategoryCard key={l.id} loc={l} planRole={getPlanRole(l.id, effectivePlan)} />}
+                renderCard={(l) => <RichCategoryCard key={l.id} loc={l} planRole={getPlanRole(l.id, effectivePlan)} problems={problemsBySite.get(l.id)} />}
               />
             </div>
           )}

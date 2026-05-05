@@ -29,20 +29,21 @@ describe('getStage', () => {
     expect(getStage({ leasing: 'reset' })).toBe('engaged');
   });
 
-  it('returns committed when leasing=done (lease executed) without process_exception', () => {
-    expect(getStage({ leasing: 'done' })).toBe('committed');
-  });
-
   it('forward-compatible: any unknown non-null loi/leasing value is engaged', () => {
     expect(getStage({ loi: 'some-future-state' })).toBe('engaged');
     expect(getStage({ leasing: 'some-future-state' })).toBe('engaged');
   });
 
-  it('returns committed when LOI is signed', () => {
-    expect(getStage({ loi: 'signed' })).toBe('committed');
-    expect(getStage({ loi: 'loi-signed' })).toBe('committed');
-    expect(getStage({ loi: 'done' })).toBe('committed');
-    expect(getStage({ loi: 'completed' })).toBe('committed');
+  it('returns engaged when LOI is signed (LOI is non-binding; lease not yet executed)', () => {
+    expect(getStage({ loi: 'signed' })).toBe('engaged');
+    expect(getStage({ loi: 'loi-signed' })).toBe('engaged');
+    expect(getStage({ loi: 'done' })).toBe('engaged');
+    expect(getStage({ loi: 'completed' })).toBe('engaged');
+  });
+
+  it('returns committed only when lease is executed (leasing=done, no process_exception)', () => {
+    expect(getStage({ leasing: 'done' })).toBe('committed');
+    expect(getStage({ leasing: 'done', loi: 'done' })).toBe('committed');
   });
 
   it('returns moved_on when leasing is cut', () => {
@@ -55,11 +56,6 @@ describe('getStage', () => {
 
   it('returns moved_on when leasing is done with process_exception', () => {
     expect(getStage({ leasing: 'done', leasingDetails: { process_exception: true } })).toBe('moved_on');
-  });
-
-  it('committed takes precedence over engaged', () => {
-    expect(getStage({ leasing: 'ready', loi: 'signed' })).toBe('committed');
-    expect(getStage({ loi: 'signed', leasing: 'turn_1' })).toBe('committed');
   });
 
   it('moved_on takes precedence over committed when leasing is cut', () => {

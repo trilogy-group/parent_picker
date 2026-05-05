@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import type { Location, MetroPlan } from "@/types";
+import type { Location, MetroPlan, SiteProblem } from "@/types";
 
 export interface EffectivePlan {
   primaryLongTermSiteId?: string;
@@ -34,6 +34,39 @@ export function useMetroPlan(metro: string | null): MetroPlan | null {
   // When metro is null OR a fetch is still in flight for a different metro,
   // state.metro won't match — return null until the fetch lands.
   return state.metro === metro ? state.plan : null;
+}
+
+/**
+ * Hook: fetches all open/in_progress problems for a metro and returns them
+ * grouped by site_id. Empty Map when no metro or none found.
+ */
+export function useMetroProblems(metro: string | null): Map<string, SiteProblem[]> {
+  const [state, setState] = useState<{ metro: string | null; map: Map<string, SiteProblem[]> }>({
+    metro: null,
+    map: new Map(),
+  });
+  useEffect(() => {
+    if (!metro) return;
+    let cancelled = false;
+    fetch(`/api/problems?metro=${encodeURIComponent(metro)}`)
+      .then(r => (r.ok ? r.json() : []))
+      .then((problems: SiteProblem[]) => {
+        if (cancelled) return;
+        const map = new Map<string, SiteProblem[]>();
+        for (const p of problems ?? []) {
+          if (!p.siteId) continue;
+          (map.get(p.siteId) ?? map.set(p.siteId, []).get(p.siteId))!.push(p);
+        }
+        setState({ metro, map });
+      })
+      .catch(() => {
+        if (!cancelled) setState({ metro, map: new Map() });
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [metro]);
+  return state.metro === metro ? state.map : new Map();
 }
 
 /** Derive a default plan from the data when no admin curation exists. */

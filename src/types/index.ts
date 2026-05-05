@@ -187,5 +187,8 @@ export interface LocationDerived {
   category: SiteCategory;
   committedSubStage?: CommittedSubStage;
   movedOnReason?: string;
+  // Raw REBL pipeline state, surfaced for display (e.g. "LOI sent to landlord")
+  leasingStatus?: string | null;
+  loiStatus?: string | null;
 }
 

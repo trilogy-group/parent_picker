@@ -2,8 +2,24 @@ import { describe, it, expect } from 'vitest';
 import { parseCommittedSubStage, parseMovedOnReason } from './parser';
 
 describe('parseCommittedSubStage', () => {
-  it('returns loi when only loi is set', () => {
-    expect(parseCommittedSubStage({ loi: 'signed' })).toBe('loi');
+  it('returns loi when LOI is pre-signed (claimed/submitted)', () => {
+    expect(parseCommittedSubStage({ loi: 'claimed' })).toBe('loi');
+    expect(parseCommittedSubStage({ loi: 'submitted' })).toBe('loi');
+  });
+
+  it('returns lease when LOI is signed (waiting on lease execution)', () => {
+    expect(parseCommittedSubStage({ loi: 'signed' })).toBe('lease');
+    expect(parseCommittedSubStage({ loi: 'done' })).toBe('lease');
+  });
+
+  it('returns lease when leasing is in active landlord conversation', () => {
+    expect(parseCommittedSubStage({ leasing: 'turn_1' })).toBe('lease');
+    expect(parseCommittedSubStage({ leasing: 'ready' })).toBe('lease');
+    expect(parseCommittedSubStage({ leasing: 'negotiating' })).toBe('lease');
+  });
+
+  it('returns zoning when leasing=done (lease executed; next step is zoning)', () => {
+    expect(parseCommittedSubStage({ leasing: 'done' })).toBe('zoning');
   });
 
   it('returns lease when lease execution date is present', () => {
