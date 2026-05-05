@@ -883,7 +883,6 @@ export function AltPanel() {
                     {showMovedOn ? "Hide" : "Recently moved on"} ({movedOnSites.length}) {showMovedOn ? "↑" : "→"}
                   </button>
                 )}
-                <a href="/suggest" className="ml-2 text-blue-600 hover:underline">Suggest a site →</a>
               </div>
               {showMovedOn && movedOnSites.length > 0 && (
                 <ul className="mt-3 space-y-1">

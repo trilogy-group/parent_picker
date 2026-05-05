@@ -239,8 +239,8 @@ export function PlanAdmin({ token }: { token: string }) {
             value={narrativeOverride}
             onChange={e => setNarrativeOverride(e.target.value)}
             className="w-full border rounded px-2 py-1 text-sm"
-            rows={3}
-            placeholder="Leave blank to use auto-generated narrative"
+            rows={4}
+            placeholder="One bullet per line. Leave blank to use auto-generated narrative."
           />
         </div>
 

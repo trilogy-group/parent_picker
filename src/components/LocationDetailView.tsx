@@ -12,7 +12,7 @@ import { ProblemList } from "./ProblemList";
 import { StageTimeline } from "./StageTimeline";
 import { MovedOnSection } from "./MovedOnSection";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
-import { ArrowLeft, ExternalLink, ChevronLeft, ChevronRight, FileText, Plus, Minus, X } from "lucide-react";
+import { ArrowLeft, ExternalLink, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, FileText, Plus, Minus, X } from "lucide-react";
 import { useAuth } from "./AuthProvider";
 import { useVotesStore } from "@/lib/votes";
 
@@ -165,6 +165,7 @@ export default function LocationDetailView({
   // REBL3 dimension data
   const [rebl3Data, setRebl3Data] = useState<Rebl3ExternalSite | null>(null);
   const [rebl3Loading, setRebl3Loading] = useState(false);
+  const [rebl3Expanded, setRebl3Expanded] = useState(false);
 
   const { isAdmin } = useAuth();
   const userEmail = useVotesStore(s => s.userEmail);
@@ -534,43 +535,6 @@ export default function LocationDetailView({
             </a>
           )}
 
-          {/* Dimension breakdown */}
-          {rebl3Loading ? (
-            <div className="mt-4 space-y-3">
-              {[1,2,3,4].map(i => (
-                <div key={i} className="h-16 bg-gray-100 rounded-xl animate-pulse" />
-              ))}
-            </div>
-          ) : rebl3Data ? (
-            <div className="mt-4 space-y-3">
-              {rebl3Data.dimensions.map(dim => (
-                <DimensionCard
-                  key={dim.key}
-                  dimension={dim}
-                  siteId={location.rebl3SiteId}
-                  userEmail={userEmail}
-                  isAuthenticated={isAuthenticated}
-                  onSignInNeeded={() => setShowSignIn(true)}
-                />
-              ))}
-            </div>
-          ) : location.scores?.overallColor ? (
-            <div className="mt-4 space-y-2">
-              {([
-                { label: "Neighborhood", color: location.scores.neighborhood?.color },
-                { label: "Zoning", color: location.scores.zoning?.color },
-                { label: "Building", color: location.scores.building?.color },
-                { label: "Price", color: location.scores.price?.color },
-              ] as const).filter(d => d.color).map(d => (
-                <div key={d.label} className="flex items-center gap-2">
-                  <span className={`w-2.5 h-2.5 rounded-full ${colorDotClass(d.color!)}`} />
-                  <span className="text-sm text-gray-700">{d.label}</span>
-                  <span className={`text-xs ${colorTextClass(d.color!)}`}>{colorLabel(d.color!)}</span>
-                </div>
-              ))}
-            </div>
-          ) : null}
-
           {/* Tier-specific bottom sections */}
           {location.derived?.stage === "engaged" && (
             <div className="px-4 py-3 mt-5 pt-4 border-t border-stone-200">
@@ -858,6 +822,62 @@ export default function LocationDetailView({
               )}
             </div>
           </div>
+
+          {/* AI scoring breakdown — collapsed by default */}
+          {(rebl3Loading || rebl3Data || location.scores?.overallColor) && (
+            <div className="mt-6 border-t border-gray-200 pt-4">
+              <button
+                onClick={() => setRebl3Expanded(v => !v)}
+                className="w-full flex items-center justify-between text-left"
+              >
+                <span className="text-[10px] font-semibold tracking-widest text-gray-500">AI SCORING</span>
+                {rebl3Expanded ? (
+                  <ChevronUp className="w-4 h-4 text-gray-400" />
+                ) : (
+                  <ChevronDown className="w-4 h-4 text-gray-400" />
+                )}
+              </button>
+              {rebl3Expanded && (
+                <div className="mt-3">
+                  {rebl3Loading ? (
+                    <div className="space-y-3">
+                      {[1,2,3,4].map(i => (
+                        <div key={i} className="h-16 bg-gray-100 rounded-xl animate-pulse" />
+                      ))}
+                    </div>
+                  ) : rebl3Data ? (
+                    <div className="space-y-3">
+                      {rebl3Data.dimensions.map(dim => (
+                        <DimensionCard
+                          key={dim.key}
+                          dimension={dim}
+                          siteId={location.rebl3SiteId}
+                          userEmail={userEmail}
+                          isAuthenticated={isAuthenticated}
+                          onSignInNeeded={() => setShowSignIn(true)}
+                        />
+                      ))}
+                    </div>
+                  ) : location.scores?.overallColor ? (
+                    <div className="space-y-2">
+                      {([
+                        { label: "Neighborhood", color: location.scores.neighborhood?.color },
+                        { label: "Zoning", color: location.scores.zoning?.color },
+                        { label: "Building", color: location.scores.building?.color },
+                        { label: "Price", color: location.scores.price?.color },
+                      ] as const).filter(d => d.color).map(d => (
+                        <div key={d.label} className="flex items-center gap-2">
+                          <span className={`w-2.5 h-2.5 rounded-full ${colorDotClass(d.color!)}`} />
+                          <span className="text-sm text-gray-700">{d.label}</span>
+                          <span className={`text-xs ${colorTextClass(d.color!)}`}>{colorLabel(d.color!)}</span>
+                        </div>
+                      ))}
+                    </div>
+                  ) : null}
+                </div>
+              )}
+            </div>
+          )}
 
         </div>
       </div>

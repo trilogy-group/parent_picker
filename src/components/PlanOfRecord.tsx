@@ -23,7 +23,9 @@ export function PlanOfRecord({ plan, effectivePlan }: Props) {
   const hasAnything = !!primary || !!bridge || watch.length > 0 || !!plan?.narrativeOverride;
   if (!hasAnything) return null; // hide entirely when nothing to say
 
-  const narrative = plan?.narrativeOverride ?? buildAutoNarrative(primary, bridge, watch);
+  const bullets = plan?.narrativeOverride
+    ? splitNarrative(plan.narrativeOverride)
+    : buildAutoNarrative(primary, bridge, watch);
 
   return (
     <div className="mx-4 my-3 p-4 bg-white border-l-4 border-stone-700 rounded-md shadow-sm">
@@ -33,7 +35,14 @@ export function PlanOfRecord({ plan, effectivePlan }: Props) {
           <span className="ml-2 text-[10px] font-normal text-stone-400">auto</span>
         )}
       </h2>
-      <p className="text-sm text-stone-700 leading-relaxed">{narrative}</p>
+      <ul className="space-y-1.5">
+        {bullets.map((b, i) => (
+          <li key={i} className="text-sm text-stone-700 leading-relaxed flex gap-2">
+            <span className="text-stone-400 leading-relaxed">•</span>
+            <span className="flex-1">{b}</span>
+          </li>
+        ))}
+      </ul>
       {(plan?.pivotConditions?.length ?? 0) > 0 && (
         <div className="mt-3 pt-3 border-t border-stone-200">
           <h3 className="text-xs font-bold uppercase tracking-wider text-stone-500 mb-2">What would change this</h3>
@@ -54,22 +63,27 @@ function buildAutoNarrative(
   primary: Location | null | undefined,
   bridge: Location | null | undefined,
   watch: Location[]
-): string {
-  const parts: string[] = [];
-  if (bridge) {
-    parts.push(`Launching at ${bridge.name} as a bridge site`);
-    if (primary) {
-      parts.push(`while we build out ${primary.name} for the long term.`);
-    } else {
-      parts.push("while we evaluate longer-term options.");
-    }
+): string[] {
+  const bullets: string[] = [];
+  if (bridge && primary) {
+    bullets.push(`Launching at ${bridge.name} as a bridge site while we build out ${primary.name} for the long term.`);
+  } else if (bridge) {
+    bullets.push(`Launching at ${bridge.name} as a bridge site while we evaluate longer-term options.`);
   } else if (primary) {
-    parts.push(`Pursuing ${primary.name} as our primary long-term home.`);
+    bullets.push(`Pursuing ${primary.name} as our primary long-term home.`);
   } else {
-    parts.push("Evaluating sites in this metro.");
+    bullets.push("Evaluating sites in this metro.");
   }
   if (watch.length > 0) {
-    parts.push(`Also watching: ${watch.map(w => w.name).join(", ")}.`);
+    bullets.push(`Also watching: ${watch.map(w => w.name).join(", ")}.`);
   }
-  return parts.join(" ");
+  return bullets;
+}
+
+function splitNarrative(text: string): string[] {
+  // Prefer line-separated bullets; fall back to splitting on sentence boundaries.
+  const lines = text.split(/\r?\n/).map(s => s.trim()).filter(Boolean);
+  if (lines.length > 1) return lines;
+  const sentences = text.match(/[^.!?]+[.!?]+(\s|$)|[^.!?]+$/g) ?? [text];
+  return sentences.map(s => s.trim()).filter(Boolean);
 }
