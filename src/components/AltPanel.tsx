@@ -512,10 +512,15 @@ export function AltPanel() {
             ALPHA SCHOOL
             {metroName && !showCityCards ? (
               <button
-                onClick={() => setZoomLevel(4)}
-                className="lg:pointer-events-none inline-flex items-center gap-0.5"
+                onClick={() => {
+                  setSelectedLocation(null);
+                  setFlyToTarget({ lat: 39.5, lng: -98.35, zoom: 4 });
+                  setZoomLevel(4);
+                }}
+                title="Back to all metros"
+                className="inline-flex items-center gap-0.5 hover:text-blue-700 transition-colors"
               >
-                <ChevronLeft className="h-4 w-4 lg:hidden" />
+                <ChevronLeft className="h-4 w-4" />
                 <span> &middot; {metroName.toUpperCase()}</span>
               </button>
             ) : metroName ? (
