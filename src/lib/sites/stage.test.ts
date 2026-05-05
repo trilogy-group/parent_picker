@@ -13,6 +13,10 @@ describe('getStage', () => {
     expect(getStage({ leasing: 'ready' })).toBe('engaged');
   });
 
+  it('returns engaged when loi is claimed (REBL pursuing the site, no landlord turns yet)', () => {
+    expect(getStage({ loi: 'claimed' })).toBe('engaged');
+  });
+
   it('returns committed when LOI is signed', () => {
     expect(getStage({ loi: 'signed' })).toBe('committed');
     expect(getStage({ loi: 'loi-signed' })).toBe('committed');
@@ -24,15 +28,28 @@ describe('getStage', () => {
     expect(getStage({ leasing: 'cut' })).toBe('moved_on');
   });
 
+  it('returns moved_on when loi is cut (LOI process killed)', () => {
+    expect(getStage({ loi: 'cut' })).toBe('moved_on');
+  });
+
   it('returns moved_on when leasing is done with process_exception', () => {
     expect(getStage({ leasing: 'done', leasingDetails: { process_exception: true } })).toBe('moved_on');
   });
 
   it('committed takes precedence over engaged', () => {
     expect(getStage({ leasing: 'ready', loi: 'signed' })).toBe('committed');
+    expect(getStage({ loi: 'signed', leasing: 'turn_1' })).toBe('committed');
   });
 
   it('moved_on takes precedence over committed when leasing is cut', () => {
     expect(getStage({ loi: 'signed', leasing: 'cut' })).toBe('moved_on');
+  });
+
+  it('moved_on takes precedence over engaged when loi is cut', () => {
+    expect(getStage({ loi: 'cut', leasing: 'turn_1' })).toBe('moved_on');
+  });
+
+  it('signed leasing then cut should be moved_on (cut wins)', () => {
+    expect(getStage({ loi: 'cut', leasing: 'cut' })).toBe('moved_on');
   });
 });
