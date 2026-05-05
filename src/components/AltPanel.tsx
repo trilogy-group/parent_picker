@@ -19,6 +19,8 @@ import { pointInIsochrone } from "@/lib/geo";
 import { PlanOfRecord } from "./PlanOfRecord";
 import { CategorySection } from "./CategorySection";
 import { StageBadge } from "./StageBadge";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { SignInPrompt } from "./SignInPrompt";
 
 const PAGE_SIZE = 25;
 
@@ -204,14 +206,6 @@ export function AltPanel() {
     });
   }, [sortedLocations, adminSearch]);
 
-  const proposedLocations = useMemo(() => {
-    return searchFilteredLocations.filter(loc => loc.proposed);
-  }, [searchFilteredLocations]);
-
-  const regularLocations = useMemo(() => {
-    return searchFilteredLocations.filter(loc => !loc.proposed);
-  }, [searchFilteredLocations]);
-
   // Category-grouped highlights (only meaningful in metro view)
   const parentSites = useMemo(
     () => searchFilteredLocations.filter(l => l.derived?.category === "parent"),
@@ -237,39 +231,150 @@ export function AltPanel() {
     [searchFilteredLocations]
   );
 
-  const CategoryCard = ({ loc }: { loc: Location }) => (
-    <button
-      onClick={() => {
-        setSelectedLocation(loc.id);
-        if (typeof window !== "undefined" && window.innerWidth < 1024) {
-          router.push(`/location/${loc.id}`);
-        }
-      }}
-      className="w-full text-left p-2 rounded border border-stone-200 hover:bg-stone-50 transition-colors"
-    >
-      <div className="flex justify-between items-start gap-2">
-        <div className="flex-1 min-w-0">
-          <div className="text-sm font-semibold text-stone-900 truncate">{loc.name}</div>
-          <div className="text-xs text-stone-500 truncate">{loc.address}, {loc.city}</div>
-        </div>
-        {loc.derived?.stage && <StageBadge stage={loc.derived.stage} />}
-      </div>
-      <div className="text-xs text-stone-600 mt-1">{loc.votes} in &middot; {loc.notHereVotes} concerns</div>
-    </button>
-  );
+  const RichCategoryCard = ({ loc }: { loc: Location }) => {
+    const [showSignIn, setShowSignIn] = useState(false);
+    const hasVotedIn = votedLocationIds.has(loc.id);
+    const hasVotedNotHere = votedNotHereIds.has(loc.id);
+    const dist = userLocation ? getDistanceMiles(userLocation.lat, userLocation.lng, loc.lat, loc.lng) : null;
+    const voters = locationVoters.get(loc.id) || [];
+    const leadChampion = loc.champions?.find(c => c.role === "lead" && !c.releasedAt);
 
-  const getDeadlineInfo = (loc: Location) => {
-    if (!loc.feedbackDeadline) return null;
-    const deadline = new Date(loc.feedbackDeadline);
-    const now = new Date();
-    const msLeft = deadline.getTime() - now.getTime();
-    const daysLeft = Math.ceil(msLeft / (1000 * 60 * 60 * 24));
-    const expired = msLeft <= 0;
-    const dateStr = deadline.toLocaleDateString("en-US", { month: "long", day: "numeric" });
-    let urgency: "green" | "amber" | "red" = "green";
-    if (daysLeft <= 1) urgency = "red";
-    else if (daysLeft <= 3) urgency = "amber";
-    return { daysLeft, expired, dateStr, urgency };
+    // Snapshot/deadline pill text — never gates votes
+    const snapshotPill = (() => {
+      if (!loc.feedbackDeadline) return null;
+      const deadline = new Date(loc.feedbackDeadline);
+      const now = new Date();
+      const expired = deadline.getTime() - now.getTime() <= 0;
+      const dateStr = deadline.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+      return expired
+        ? { label: `Snapshot taken ${dateStr} · still open`, className: "bg-stone-100 text-stone-600" }
+        : { label: `First snapshot: ${dateStr}`, className: "bg-indigo-50 text-indigo-700" };
+    })();
+
+    const navigateToDetail = () => {
+      setSelectedLocation(loc.id);
+      if (typeof window !== "undefined" && window.innerWidth < 1024) {
+        router.push(`/location/${loc.id}`);
+      }
+    };
+
+    const handleVoteIn = (e: React.MouseEvent) => {
+      e.stopPropagation();
+      if (!isAuthenticated) { setShowSignIn(true); return; }
+      voteIn(loc.id);
+    };
+
+    const handleVoteNotHere = (e: React.MouseEvent) => {
+      e.stopPropagation();
+      if (!isAuthenticated) { setShowSignIn(true); return; }
+      voteNotHere(loc.id);
+    };
+
+    return (
+      <>
+        <div
+          onClick={navigateToDetail}
+          className="w-full text-left p-3 rounded-lg border border-stone-200 bg-white hover:shadow-sm transition-all cursor-pointer"
+        >
+          {/* Status row */}
+          <div className="flex items-center gap-2 flex-wrap mb-1.5">
+            {loc.derived?.stage && <StageBadge stage={loc.derived.stage} />}
+            {leadChampion && (
+              <span className="text-[11px] text-emerald-700 font-medium">
+                ★ {leadChampion.displayName || "A parent"} is leading this
+              </span>
+            )}
+            {dist != null && (
+              <span className="ml-auto text-[11px] text-gray-400">
+                {dist.toFixed(1)} mi
+              </span>
+            )}
+          </div>
+
+          {/* Name + address */}
+          <h3 className="text-base font-bold text-stone-900 leading-tight">
+            {extractStreet(loc.address, loc.city)}
+          </h3>
+          <p className="text-xs text-stone-500 mt-0.5 truncate">
+            {loc.address}, {loc.city}
+          </p>
+
+          {/* Snapshot pill */}
+          {snapshotPill && (
+            <span className={`inline-block mt-2 text-[11px] font-medium px-2 py-0.5 rounded-full ${snapshotPill.className}`}>
+              {snapshotPill.label}
+            </span>
+          )}
+
+          {/* Vote stats */}
+          {(loc.votes > 0 || voters.length > 0) && (
+            <div className="flex items-center gap-2 mt-2.5">
+              <AvatarRow voters={voters} />
+              <span className="text-xs text-stone-700 font-medium">
+                {loc.votes} {loc.votes === 1 ? "family" : "families"} in
+              </span>
+              {loc.notHereVotes > 0 && (
+                <span className="text-xs text-amber-600">
+                  · {loc.notHereVotes} concern{loc.notHereVotes !== 1 ? "s" : ""}
+                </span>
+              )}
+            </div>
+          )}
+
+          {/* Vote action row */}
+          <div className="flex gap-2 mt-3">
+            {hasVotedIn ? (
+              <div className="flex items-center gap-1.5 text-sm text-stone-700 font-medium py-1.5">
+                <div className="w-5 h-5 rounded-full bg-indigo-600 flex items-center justify-center">
+                  <Check className="w-3 h-3 text-white" />
+                </div>
+                You&apos;re in
+                <button
+                  onClick={(e) => { e.stopPropagation(); removeVote(loc.id); }}
+                  className="ml-2 text-xs text-stone-400 hover:text-stone-600 underline"
+                >
+                  undo
+                </button>
+              </div>
+            ) : hasVotedNotHere ? (
+              <div className="flex items-center gap-1.5 text-sm text-stone-500 font-medium py-1.5">
+                Concern noted
+                <button
+                  onClick={(e) => { e.stopPropagation(); removeVote(loc.id); }}
+                  className="ml-2 text-xs text-stone-400 hover:text-stone-600 underline"
+                >
+                  undo
+                </button>
+              </div>
+            ) : (
+              <>
+                <button
+                  onClick={handleVoteIn}
+                  className="flex-1 py-2 rounded-lg text-sm font-semibold bg-indigo-600 text-white hover:bg-indigo-700 transition-colors"
+                >
+                  I&apos;m good with this location
+                </button>
+                <button
+                  onClick={handleVoteNotHere}
+                  className="px-3 py-2 rounded-lg text-sm font-medium border border-stone-300 text-stone-700 hover:bg-stone-50 transition-colors"
+                >
+                  Not for me
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+
+        <Dialog open={showSignIn} onOpenChange={setShowSignIn}>
+          <DialogContent className="sm:max-w-md">
+            <SignInPrompt
+              title="Sign in to vote"
+              description="Enter your email and we'll send you a code. No password needed."
+            />
+          </DialogContent>
+        </Dialog>
+      </>
+    );
   };
 
   const TOP_N = 10;
@@ -283,7 +388,7 @@ export function AltPanel() {
     setPrevResetKey(resetKey);
     if (extraPages !== 0) setExtraPages(0);
   }
-  const listLocations = proposedLocations.length > 0 ? regularLocations : searchFilteredLocations;
+  const listLocations = searchFilteredLocations;
   const visibleLocations = showTopOnly
     ? listLocations.slice(0, TOP_N)
     : listLocations.slice(0, (extraPages + 1) * PAGE_SIZE);
@@ -405,128 +510,18 @@ export function AltPanel() {
               <CategorySection
                 category="parent"
                 locations={parentSites}
-                renderCard={(l) => <CategoryCard key={l.id} loc={l} />}
+                renderCard={(l) => <RichCategoryCard key={l.id} loc={l} />}
               />
               <CategorySection
                 category="ai"
                 locations={aiActive}
-                renderCard={(l) => <CategoryCard key={l.id} loc={l} />}
+                renderCard={(l) => <RichCategoryCard key={l.id} loc={l} />}
               />
               <CategorySection
                 category="short_term"
                 locations={shortTermSites}
-                renderCard={(l) => <CategoryCard key={l.id} loc={l} />}
+                renderCard={(l) => <RichCategoryCard key={l.id} loc={l} />}
               />
-            </div>
-          )}
-
-          {/* Hero section for proposed locations (Approach A) */}
-          {proposedLocations.length > 0 && (
-            <div className="px-5 pb-4">
-              {proposedLocations.map((loc) => {
-                const hasVoted = votedLocationIds.has(loc.id);
-                const dist = userLocation ? getDistanceMiles(userLocation.lat, userLocation.lng, loc.lat, loc.lng) : null;
-                return (
-                  <div
-                    key={loc.id}
-                    onClick={() => {
-                      setSelectedLocation(loc.id);
-                      if (typeof window !== 'undefined' && window.innerWidth < 1024) {
-                        router.push(`/location/${loc.id}`);
-                      }
-                    }}
-                    className="border-2 border-indigo-300 bg-indigo-50/50 rounded-xl p-5 cursor-pointer hover:shadow-lg transition-all"
-                  >
-                    <span className="text-[10px] font-bold tracking-widest text-indigo-600 uppercase">Proposed Location</span>
-                    <h3 className="text-lg font-bold text-gray-900 mt-1">
-                      {extractStreet(loc.address, loc.city)}
-                    </h3>
-                    <p className="text-sm text-gray-500 mt-0.5">
-                      {loc.city}, {loc.state}
-                      {dist != null ? ` · ${dist.toFixed(1)} mi` : ''}
-                    </p>
-                    {/* Deadline-aware messaging */}
-                    {(() => {
-                      const dl = getDeadlineInfo(loc);
-                      if (!dl) {
-                        return (
-                          <p className="text-[13px] text-gray-600 mt-3 leading-snug">
-                            We&rsquo;re in late-stage talks for this space. Enough family support helps us finalize.
-                          </p>
-                        );
-                      }
-                      if (dl.expired) {
-                        return (
-                          <p className="text-[13px] text-gray-600 mt-3 leading-snug">
-                            Voting closed &mdash; {loc.votes} {loc.votes === 1 ? "family" : "families"} in{loc.notHereVotes > 0 ? `, ${loc.notHereVotes} concern${loc.notHereVotes !== 1 ? "s" : ""}` : ""}.
-                          </p>
-                        );
-                      }
-                      return (
-                        <>
-                          <p className="text-[13px] text-gray-600 mt-3 leading-snug">
-                            We&rsquo;re finalizing a lease for this space. Tell us if you&rsquo;re in &mdash; voting closes <strong>{dl.dateStr}</strong>.
-                          </p>
-                          <span className={`inline-block mt-2 text-xs font-semibold px-2 py-0.5 rounded-full ${
-                            dl.urgency === "red" ? "bg-red-100 text-red-700" :
-                            dl.urgency === "amber" ? "bg-amber-100 text-amber-700" :
-                            "bg-green-100 text-green-700"
-                          }`}>
-                            {dl.daysLeft <= 1 ? "Closes today!" : `${dl.daysLeft} days left`}
-                          </span>
-                        </>
-                      );
-                    })()}
-                    {/* Avatars + count */}
-                    {loc.votes > 0 && (
-                      <div className="flex items-center gap-2 mt-3">
-                        <AvatarRow voters={locationVoters.get(loc.id) || []} />
-                        <span className="text-sm text-gray-600 font-medium">{loc.votes} in</span>
-                      </div>
-                    )}
-                    {/* Concerns */}
-                    {loc.notHereVotes > 0 && (
-                      <p className="text-xs text-amber-600 mt-1">
-                        {loc.notHereVotes} concern{loc.notHereVotes !== 1 ? "s" : ""}
-                      </p>
-                    )}
-                    {/* Vote buttons — locked after deadline */}
-                    {!getDeadlineInfo(loc)?.expired && (
-                      <div className="flex gap-2 mt-4">
-                        {hasVoted ? (
-                          <div className="flex items-center gap-1.5 text-sm text-gray-700 font-medium py-2">
-                            <div className="w-5 h-5 rounded-full bg-indigo-600 flex items-center justify-center">
-                              <Check className="w-3 h-3 text-white" />
-                            </div>
-                            You&apos;re in
-                            <button onClick={(e) => { e.stopPropagation(); removeVote(loc.id); }} className="ml-2 text-xs text-gray-400 hover:text-gray-600 underline">undo</button>
-                          </div>
-                        ) : (
-                          <>
-                            <button
-                              onClick={(e) => { e.stopPropagation(); voteIn(loc.id); }}
-                              className="flex-1 py-2.5 rounded-lg text-sm font-semibold bg-indigo-600 text-white hover:bg-indigo-700 transition-colors"
-                            >
-                              I&apos;m good with this location
-                            </button>
-                            <button
-                              onClick={(e) => { e.stopPropagation(); }}
-                              className="px-4 py-2.5 rounded-lg text-sm font-medium border border-gray-300 text-gray-700 hover:bg-gray-50 transition-colors"
-                            >
-                              Not for me
-                            </button>
-                          </>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-              <div className="flex items-center gap-3 mt-4 mb-1">
-                <div className="flex-1 h-px bg-gray-200" />
-                <span className="text-xs text-gray-400 font-medium">Also in this area</span>
-                <div className="flex-1 h-px bg-gray-200" />
-              </div>
             </div>
           )}
 
