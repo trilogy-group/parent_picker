@@ -69,4 +69,20 @@ describe('getStage', () => {
   it('signed leasing then cut should be moved_on (cut wins)', () => {
     expect(getStage({ loi: 'cut', leasing: 'cut' })).toBe('moved_on');
   });
+
+  it('returns moved_on when strategy is kill (REBL killed the deal)', () => {
+    expect(getStage({ strategy: 'kill' })).toBe('moved_on');
+  });
+
+  it('strategy=kill takes precedence over engaged/committed states', () => {
+    // Real Southgate case: loi=done, leasing=ready, strategy=kill → moved_on
+    expect(getStage({ leasing: 'ready', loi: 'done', strategy: 'kill' })).toBe('moved_on');
+    // Even with leasing=done (would be committed), strategy=kill wins
+    expect(getStage({ leasing: 'done', strategy: 'kill' })).toBe('moved_on');
+  });
+
+  it('strategy=start does not affect stage (only kill is meaningful here)', () => {
+    expect(getStage({ leasing: 'ready', strategy: 'start' })).toBe('engaged');
+    expect(getStage({ strategy: 'start' })).toBe('scored');
+  });
 });

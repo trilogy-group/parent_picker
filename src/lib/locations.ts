@@ -231,8 +231,9 @@ export async function getLocations(): Promise<Location[]> {
 function applyDerived(location: Location, row: Record<string, unknown>): Location {
   const leasing = (row.leasing_status as string) ?? null;
   const loi = (row.loi_status as string) ?? null;
+  const strategy = (row.strategy_status as string) ?? null;
   const leasingDetails = (row.leasing_details as { process_exception?: boolean }) ?? undefined;
-  const stage = getStage({ leasing, loi, leasingDetails });
+  const stage = getStage({ leasing, loi, strategy, leasingDetails });
   const category = getCategory({ isBridge: location.isBridge, champions: location.champions ?? [] });
 
   let committedSubStage: CommittedSubStage | undefined;
