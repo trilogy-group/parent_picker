@@ -331,16 +331,30 @@ export function AltPanel() {
             {planRole === "watch" && (
               <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-stone-200 text-stone-800">★ WATCH</span>
             )}
-            {problemCount > 0 && (
-              <span
-                className={`text-[9px] font-bold px-2 py-0.5 rounded-full ${
-                  hasPivot ? "bg-orange-200 text-orange-900" : "bg-stone-100 text-stone-700"
-                }`}
-                title={openProblems.map(p => p.title).join(" · ")}
-              >
-                {hasPivot ? "★ " : ""}{problemCount} {problemCount === 1 ? "PROBLEM" : "PROBLEMS"}
-              </span>
-            )}
+            {problemCount > 0 && (() => {
+              const SEVERITY_RANK: Record<'H' | 'M' | 'L', number> = { H: 0, M: 1, L: 2 };
+              const ranked = [...openProblems].sort((a, b) => {
+                const aNeeds = a.parentOwnable && !a.owner ? 0 : 1;
+                const bNeeds = b.parentOwnable && !b.owner ? 0 : 1;
+                if (aNeeds !== bNeeds) return aNeeds - bNeeds;
+                return SEVERITY_RANK[a.severity] - SEVERITY_RANK[b.severity];
+              });
+              const top = ranked[0];
+              const isOrange = (top.parentOwnable && !top.owner) || top.severity === "H" || hasPivot;
+              const label = top.parentOwnable && !top.owner
+                ? `${top.category.toUpperCase()} · Needs an owner`
+                : `${problemCount} ${problemCount === 1 ? "PROBLEM" : "PROBLEMS"}`;
+              return (
+                <span
+                  className={`text-[9px] font-bold px-2 py-0.5 rounded-full ${
+                    isOrange ? "bg-orange-200 text-orange-900" : "bg-stone-100 text-stone-700"
+                  }`}
+                  title={openProblems.map(p => p.title).join(" · ")}
+                >
+                  {isOrange ? "★ " : ""}{label}
+                </span>
+              );
+            })()}
             {leadChampion && (
               <span className="text-[11px] text-emerald-700 font-medium">
                 ★ {leadChampion.displayName || "A parent"} is leading this
