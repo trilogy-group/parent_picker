@@ -290,30 +290,37 @@ async function attachChampions(locations: Location[]): Promise<void> {
   const ids = locations.map((l) => l.id);
   if (ids.length === 0) return;
 
+  // Chunk ids into batches small enough that the resulting `?site_id=in.(...)`
+  // URL stays under Supabase/PostgREST's URL-length limit (~8KB). 36-char UUIDs
+  // + commas → 150 IDs ≈ 5.5KB, well within limits.
+  const ID_CHUNK = 150;
   const champById: Record<string, SiteChampion[]> = {};
-  let cFrom = 0;
-  while (true) {
-    const { data: rows, error: cErr } = await supabase
-      .from("pp_site_champions")
-      .select("id, site_id, user_id, role, claimed_at")
-      .in("site_id", ids)
-      .is("released_at", null)
-      .range(cFrom, cFrom + 999);
-    if (cErr || !rows) break;
-    for (const c of rows as Record<string, unknown>[]) {
-      const champ: SiteChampion = {
-        id: c.id as string,
-        siteId: c.site_id as string,
-        userId: c.user_id as string,
-        role: c.role as 'lead' | 'supporter',
-        claimedAt: c.claimed_at as string,
-        releasedAt: null,
-        passedToUserId: null,
-      };
-      (champById[champ.siteId] ??= []).push(champ);
+  for (let i = 0; i < ids.length; i += ID_CHUNK) {
+    const idChunk = ids.slice(i, i + ID_CHUNK);
+    let cFrom = 0;
+    while (true) {
+      const { data: rows, error: cErr } = await supabase
+        .from("pp_site_champions")
+        .select("id, site_id, user_id, role, claimed_at")
+        .in("site_id", idChunk)
+        .is("released_at", null)
+        .range(cFrom, cFrom + 999);
+      if (cErr || !rows) break;
+      for (const c of rows as Record<string, unknown>[]) {
+        const champ: SiteChampion = {
+          id: c.id as string,
+          siteId: c.site_id as string,
+          userId: c.user_id as string,
+          role: c.role as 'lead' | 'supporter',
+          claimedAt: c.claimed_at as string,
+          releasedAt: null,
+          passedToUserId: null,
+        };
+        (champById[champ.siteId] ??= []).push(champ);
+      }
+      if (rows.length < 1000) break;
+      cFrom += 1000;
     }
-    if (rows.length < 1000) break;
-    cFrom += 1000;
   }
 
   for (const loc of locations) {
