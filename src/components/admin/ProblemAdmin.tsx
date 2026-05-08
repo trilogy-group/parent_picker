@@ -3,6 +3,9 @@
 import { useEffect, useState } from "react";
 import { Loader2, Plus, X as XIcon } from "lucide-react";
 
+type Category = "zoning" | "licensing" | "other";
+type Severity = "H" | "M" | "L";
+
 interface AdminProblem {
   id: string;
   site_id: string | null;
@@ -15,6 +18,10 @@ interface AdminProblem {
   outcome_text: string | null;
   created_at: string;
   closed_at: string | null;
+  parent_ownable: boolean;
+  category: Category;
+  severity: Severity;
+  source_ref: { system: string; site_id: string; name: string } | null;
   site: { name: string; city: string; state: string } | null;
 }
 
@@ -25,21 +32,29 @@ interface NewProblem {
   deadline: string;
   pivotTrigger: boolean;
   siteId: string;
+  parentOwnable: boolean;
+  category: Category;
+  severity: Severity;
 }
+
+const EMPTY_FORM: NewProblem = {
+  metro: "",
+  title: "",
+  description: "",
+  deadline: "",
+  pivotTrigger: false,
+  siteId: "",
+  parentOwnable: false,
+  category: "other",
+  severity: "M",
+};
 
 export function ProblemAdmin({ token }: { token: string }) {
   const [problems, setProblems] = useState<AdminProblem[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [form, setForm] = useState<NewProblem>({
-    metro: "",
-    title: "",
-    description: "",
-    deadline: "",
-    pivotTrigger: false,
-    siteId: "",
-  });
+  const [form, setForm] = useState<NewProblem>(EMPTY_FORM);
 
   async function refresh() {
     setLoading(true);
@@ -73,10 +88,13 @@ export function ProblemAdmin({ token }: { token: string }) {
           deadline: form.deadline || undefined,
           pivotTrigger: form.pivotTrigger,
           siteId: form.siteId || undefined,
+          parentOwnable: form.parentOwnable,
+          category: form.category,
+          severity: form.severity,
         }),
       });
       if (res.ok) {
-        setForm({ metro: "", title: "", description: "", deadline: "", pivotTrigger: false, siteId: "" });
+        setForm(EMPTY_FORM);
         setShowForm(false);
         await refresh();
       }
@@ -85,15 +103,19 @@ export function ProblemAdmin({ token }: { token: string }) {
     }
   }
 
-  async function resolveProblem(p: AdminProblem) {
-    const outcome = window.prompt("Outcome (will be emailed to owner + champions):");
-    if (!outcome) return;
+  async function patchProblem(p: AdminProblem, body: Record<string, unknown>) {
     const res = await fetch(`/api/admin/problems/${p.id}`, {
       method: "PATCH",
       headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ status: "resolved", outcome_text: outcome }),
+      body: JSON.stringify(body),
     });
     if (res.ok) await refresh();
+  }
+
+  async function resolveProblem(p: AdminProblem) {
+    const outcome = window.prompt("Outcome (will be emailed to owner + champions):");
+    if (!outcome) return;
+    await patchProblem(p, { status: "resolved", outcome_text: outcome });
   }
 
   async function deleteProblem(p: AdminProblem) {
@@ -154,6 +176,40 @@ export function ProblemAdmin({ token }: { token: string }) {
             className="w-full border rounded px-2 py-1.5 text-sm"
             rows={2}
           />
+          <div className="grid grid-cols-3 gap-3">
+            <label className="text-xs text-stone-700 space-y-1">
+              <span className="font-semibold">Category</span>
+              <select
+                value={form.category}
+                onChange={e => setForm({ ...form, category: e.target.value as Category })}
+                className="block w-full border rounded px-2 py-1.5 text-sm"
+              >
+                <option value="zoning">Zoning</option>
+                <option value="licensing">Licensing</option>
+                <option value="other">Other</option>
+              </select>
+            </label>
+            <label className="text-xs text-stone-700 space-y-1">
+              <span className="font-semibold">Severity</span>
+              <select
+                value={form.severity}
+                onChange={e => setForm({ ...form, severity: e.target.value as Severity })}
+                className="block w-full border rounded px-2 py-1.5 text-sm"
+              >
+                <option value="H">High</option>
+                <option value="M">Medium</option>
+                <option value="L">Low</option>
+              </select>
+            </label>
+            <label className="flex items-end gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={form.parentOwnable}
+                onChange={e => setForm({ ...form, parentOwnable: e.target.checked })}
+              />
+              Parent-ownable
+            </label>
+          </div>
           <div className="flex gap-3 items-center">
             <input
               type="date"
@@ -186,8 +242,10 @@ export function ProblemAdmin({ token }: { token: string }) {
       )}
       {problems.map(p => (
         <div key={p.id} className={`border rounded-lg p-3 ${p.pivot_trigger ? "border-orange-400 border-l-4" : ""}`}>
-          {p.pivot_trigger && (
-            <div className="text-[10px] font-bold text-orange-700 mb-1 uppercase tracking-wider">★ HIGH-LEVERAGE</div>
+          {p.source_ref && (
+            <div className="text-[11px] text-stone-500 italic mb-1">
+              Synced from REBL · {p.source_ref.system} · {p.source_ref.name}
+            </div>
           )}
           <div className="flex justify-between gap-2 items-start">
             <div className="flex-1">
@@ -197,9 +255,49 @@ export function ProblemAdmin({ token }: { token: string }) {
                 {p.deadline && ` · Deadline ${p.deadline}`}
               </div>
               {p.description && <p className="text-xs text-muted-foreground mt-1">{p.description}</p>}
-              <div className="mt-1.5 text-[11px]">
+              <div className="mt-1.5 flex flex-wrap items-center gap-2 text-[11px]">
                 <StatusPill status={p.status} />
-                {p.outcome_text && <span className="ml-2 text-muted-foreground italic">{p.outcome_text}</span>}
+                <CategoryPill category={p.category} />
+                <SeverityPill severity={p.severity} />
+                {p.pivot_trigger && (
+                  <span className="text-[10px] font-bold text-orange-700 uppercase tracking-wider">★ HIGH-LEVERAGE</span>
+                )}
+                {p.outcome_text && <span className="text-muted-foreground italic">{p.outcome_text}</span>}
+              </div>
+              {/* Inline curation row */}
+              <div className="mt-2 flex flex-wrap items-center gap-3 text-[11px]">
+                <label className="flex items-center gap-1">
+                  <input
+                    type="checkbox"
+                    checked={p.parent_ownable}
+                    onChange={e => patchProblem(p, { parentOwnable: e.target.checked })}
+                  />
+                  Parent-ownable
+                </label>
+                <label className="inline-flex items-center gap-1">
+                  Cat:
+                  <select
+                    value={p.category}
+                    onChange={e => patchProblem(p, { category: e.target.value })}
+                    className="border rounded px-1 py-0.5"
+                  >
+                    <option value="zoning">zoning</option>
+                    <option value="licensing">licensing</option>
+                    <option value="other">other</option>
+                  </select>
+                </label>
+                <label className="inline-flex items-center gap-1">
+                  Sev:
+                  <select
+                    value={p.severity}
+                    onChange={e => patchProblem(p, { severity: e.target.value })}
+                    className="border rounded px-1 py-0.5"
+                  >
+                    <option value="H">H</option>
+                    <option value="M">M</option>
+                    <option value="L">L</option>
+                  </select>
+                </label>
               </div>
             </div>
             <div className="flex gap-1 shrink-0">
@@ -223,4 +321,17 @@ function StatusPill({ status }: { status: "open" | "in_progress" | "resolved" | 
     unresolvable: "bg-stone-100 text-stone-700",
   };
   return <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${styles[status]}`}>{status.replace("_", " ")}</span>;
+}
+
+function CategoryPill({ category }: { category: Category }) {
+  return <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-stone-200 text-stone-800">{category}</span>;
+}
+
+function SeverityPill({ severity }: { severity: Severity }) {
+  const styles: Record<Severity, string> = {
+    H: "bg-orange-200 text-orange-900",
+    M: "bg-stone-200 text-stone-800",
+    L: "bg-stone-100 text-stone-600",
+  };
+  return <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${styles[severity]}`}>{severity}</span>;
 }
