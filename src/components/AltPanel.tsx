@@ -883,9 +883,6 @@ export function AltPanel() {
                 key={loc.id}
                 location={loc}
                 voters={locationVoters.get(loc.id) || []}
-                hasVotedIn={votedLocationIds.has(loc.id)}
-                hasVotedNotHere={votedNotHereIds.has(loc.id)}
-                isAuthenticated={isAuthenticated}
                 isSelected={false}
                 isProposed={false}
                 distanceMi={userLocation ? getDistanceMiles(userLocation.lat, userLocation.lng, loc.lat, loc.lng) : null}
@@ -895,10 +892,6 @@ export function AltPanel() {
                     router.push(`/location/${loc.id}`);
                   }
                 }}
-                onVoteIn={() => voteIn(loc.id)}
-                onVoteNotHere={(comment) => voteNotHere(loc.id, comment)}
-                onRemoveVote={() => removeVote(loc.id)}
-                onUpdateVoteComment={(comment) => updateVoteComment(loc.id, comment)}
               />
             ))}
             {!showTopOnly && listLocations.length > visibleLocations.length && (
