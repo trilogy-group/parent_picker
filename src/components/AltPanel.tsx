@@ -28,6 +28,13 @@ import { SignInPrompt } from "./SignInPrompt";
 
 const PAGE_SIZE = 25;
 
+function formatOpeningDate(iso: string | null | undefined): string | null {
+  if (!iso) return null;
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return null;
+  return d.toLocaleDateString("en-US", { month: "short", year: "numeric" });
+}
+
 export function AltPanel() {
   const {
     locations, filteredLocations, selectedLocationId, setSelectedLocation,
@@ -371,6 +378,43 @@ export function AltPanel() {
           {pipelineStatus && (
             <p className="text-xs text-stone-600 mt-0.5">{pipelineStatus}</p>
           )}
+
+          {/* Facts row — capacity / REBL score / opening date (committed only) */}
+          {(() => {
+            const capacity = loc.derived?.fastOpenCapacity ?? loc.scores?.capacity ?? null;
+            const score = loc.derived?.reblScore ?? null;
+            const opening = stage === "committed" ? formatOpeningDate(loc.derived?.fastOpenDate) : null;
+            const colorClass =
+              loc.scores?.overallColor === "GREEN" ? "bg-emerald-500" :
+              loc.scores?.overallColor === "YELLOW" ? "bg-yellow-500" :
+              loc.scores?.overallColor === "AMBER" ? "bg-amber-500" :
+              loc.scores?.overallColor === "RED" ? "bg-rose-500" : "bg-stone-300";
+            const facts: { key: string; node: React.ReactNode }[] = [];
+            if (capacity != null) facts.push({ key: "cap", node: <span>~{capacity} students</span> });
+            if (score != null) {
+              facts.push({
+                key: "score",
+                node: (
+                  <span className="inline-flex items-center gap-1">
+                    <span className={`inline-block w-2 h-2 rounded-full ${colorClass}`} />
+                    {score}
+                  </span>
+                ),
+              });
+            }
+            if (opening) facts.push({ key: "open", node: <span>Opens {opening}</span> });
+            if (facts.length === 0) return null;
+            return (
+              <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-stone-600">
+                {facts.map((f, i) => (
+                  <span key={f.key} className="inline-flex items-center gap-x-2">
+                    {i > 0 && <span aria-hidden="true">·</span>}
+                    {f.node}
+                  </span>
+                ))}
+              </div>
+            );
+          })()}
 
           {/* Mini stage timeline — engaged or committed only */}
           {showTimeline && (
