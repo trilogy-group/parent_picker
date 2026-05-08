@@ -128,6 +128,15 @@ export interface SiteChampion {
   displayName?: string;
 }
 
+export type ProblemCategory = 'zoning' | 'licensing' | 'other';
+export type ProblemSeverity = 'H' | 'M' | 'L';
+
+export interface ProblemSourceRef {
+  system: string;
+  site_id: string;
+  name: string;
+}
+
 export interface SiteProblem {
   id: string;
   siteId: string | null;
@@ -140,6 +149,10 @@ export interface SiteProblem {
   outcomeText: string | null;
   createdAt: string;
   closedAt: string | null;
+  parentOwnable: boolean;
+  category: ProblemCategory;
+  severity: ProblemSeverity;
+  sourceRef: ProblemSourceRef | null;
   // Derived
   owner?: ProblemOwner | null;
   updates?: ProblemUpdate[];
@@ -190,5 +203,10 @@ export interface LocationDerived {
   // Raw REBL pipeline state, surfaced for display (e.g. "LOI sent to landlord")
   leasingStatus?: string | null;
   loiStatus?: string | null;
+  // REBL numeric overall score (0-100); paired with scores.overallColor on the UI
+  reblScore?: number | null;
+  // Due-diligence "fast open" capacity + projected open date (committed sites only)
+  fastOpenCapacity?: number | null;
+  fastOpenDate?: string | null;
 }
 
