@@ -241,12 +241,19 @@ function applyDerived(location: Location, row: Record<string, unknown>): Locatio
     committedSubStage = parseCommittedSubStage({ leasing, loi });
   }
 
+  const reblScore = row.overall_score != null ? Number(row.overall_score) : null;
+  const fastOpenCapacity = row.dd_fast_open_capacity != null ? Number(row.dd_fast_open_capacity) : null;
+  const fastOpenDate = row.dd_fast_open_proj_open_date != null ? String(row.dd_fast_open_proj_open_date) : null;
+
   location.derived = {
     stage,
     category,
     committedSubStage,
     leasingStatus: leasing,
     loiStatus: loi,
+    reblScore,
+    fastOpenCapacity,
+    fastOpenDate,
   };
   return location;
 }
