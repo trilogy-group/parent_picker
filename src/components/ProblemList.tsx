@@ -50,13 +50,25 @@ export function ProblemList({ siteId, metro, isAuthenticated, session, onSignInN
     return null;
   }
 
+  const SEVERITY_RANK: Record<'H' | 'M' | 'L', number> = { H: 0, M: 1, L: 2 };
+  const sorted = [...problems].sort((a, b) => {
+    const aOpen = a.status === "open" || a.status === "in_progress";
+    const bOpen = b.status === "open" || b.status === "in_progress";
+    const aNeeds = a.parentOwnable && !a.owner && aOpen ? 0 : 1;
+    const bNeeds = b.parentOwnable && !b.owner && bOpen ? 0 : 1;
+    if (aNeeds !== bNeeds) return aNeeds - bNeeds;
+    const sevDiff = SEVERITY_RANK[a.severity] - SEVERITY_RANK[b.severity];
+    if (sevDiff !== 0) return sevDiff;
+    return (b.createdAt ?? "").localeCompare(a.createdAt ?? "");
+  });
+
   return (
     <div>
       <h3 className="text-xs font-bold uppercase tracking-wider text-stone-500 mb-2">
-        Open Problems · {problems.length}
+        Open Problems · {sorted.length}
       </h3>
       <div className="space-y-2">
-        {problems.map(p => (
+        {sorted.map(p => (
           <ProblemCard
             key={p.id}
             problem={p}
