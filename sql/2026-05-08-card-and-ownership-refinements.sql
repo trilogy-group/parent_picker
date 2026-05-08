@@ -240,3 +240,35 @@ BEGIN
   LIMIT max_results;
 END;
 $function$;
+
+-- 5. pg_cron job — sync regulatory rebl3_status → pp_site_problems every 5 minutes.
+-- Mirrors the pp_watch_loi_status pattern: vault holds the URL+service-role key,
+-- pg_net.http_post calls the Next.js route with Bearer auth.
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM cron.job WHERE jobname = 'pp_sync_regulatory') THEN
+    PERFORM cron.unschedule('pp_sync_regulatory');
+  END IF;
+END $$;
+
+SELECT cron.schedule(
+  'pp_sync_regulatory',
+  '*/5 * * * *',
+  $cron$
+    SELECT net.http_post(
+      url := wh.url,
+      headers := jsonb_build_object(
+        'Content-Type', 'application/json',
+        'Authorization', 'Bearer ' || wh.key
+      ),
+      body := '{}'::jsonb
+    )
+    FROM (
+      SELECT
+        replace(ds1.decrypted_secret, '/webhooks/suggestion-scored', '/cron/sync-regulatory') AS url,
+        ds2.decrypted_secret AS key
+      FROM vault.decrypted_secrets ds1, vault.decrypted_secrets ds2
+      WHERE ds1.name = 'pp_webhook_url' AND ds2.name = 'pp_webhook_key'
+    ) wh;
+  $cron$
+);

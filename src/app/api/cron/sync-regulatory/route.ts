@@ -8,10 +8,12 @@ import {
 
 export const dynamic = "force-dynamic";
 
-export async function GET(req: Request) {
-  // Vercel cron sends Authorization: Bearer <CRON_SECRET>
+// Called by pg_cron via pg_net.http_post with Bearer = SUPABASE_SERVICE_ROLE_KEY,
+// matching the existing webhook auth pattern (see /api/webhooks/location-promoted).
+export async function POST(req: Request) {
   const auth = req.headers.get("authorization");
-  if (auth !== `Bearer ${process.env.CRON_SECRET}`) {
+  const expected = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
+  if (!expected || auth !== `Bearer ${expected}`) {
     return new NextResponse("Unauthorized", { status: 401 });
   }
 
