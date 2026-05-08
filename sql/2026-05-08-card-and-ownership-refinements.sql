@@ -59,6 +59,7 @@ SELECT l.id,
     leasing.status AS leasing_status,
     leasing.details AS leasing_details,
     loi.status AS loi_status,
+    strat.status AS strategy_status,
     dd.fast_open_capacity AS dd_fast_open_capacity,
     dd.fast_open_proj_open_date AS dd_fast_open_proj_open_date
 FROM pp_locations l
@@ -73,6 +74,11 @@ LEFT JOIN LATERAL (
   WHERE s.site_id = l.rebl3_site_id AND s.system = 'loi'
   ORDER BY s.updated_at DESC NULLS LAST LIMIT 1
 ) loi ON true
+LEFT JOIN LATERAL (
+  SELECT s.status FROM rebl3_status s
+  WHERE s.site_id = l.rebl3_site_id AND s.system = 'strategy'
+  ORDER BY s.updated_at DESC NULLS LAST LIMIT 1
+) strat ON true
 LEFT JOIN LATERAL (
   SELECT
     NULLIF(s.details->'fast_open'->>'capacity','')::int        AS fast_open_capacity,
@@ -99,7 +105,7 @@ RETURNS TABLE(
   price_color text, zoning_color text, neighborhood_color text, play_area_color text, building_color text,
   school_size_category text, capacity integer,
   proposed boolean, property_source_key text, feedback_deadline timestamp with time zone,
-  is_bridge boolean, leasing_status text, leasing_details jsonb, loi_status text,
+  is_bridge boolean, leasing_status text, leasing_details jsonb, loi_status text, strategy_status text,
   dd_fast_open_capacity integer, dd_fast_open_proj_open_date date
 )
 LANGUAGE plpgsql AS $function$
@@ -133,6 +139,7 @@ BEGIN
     leasing.status::text,
     leasing.details,
     loi.status::text,
+    strat.status::text,
     dd.fast_open_capacity,
     dd.fast_open_proj_open_date
   FROM pp_locations l
@@ -147,6 +154,11 @@ BEGIN
     WHERE s.site_id = l.rebl3_site_id AND s.system = 'loi'
     ORDER BY s.updated_at DESC NULLS LAST LIMIT 1
   ) loi ON true
+  LEFT JOIN LATERAL (
+    SELECT s.status FROM rebl3_status s
+    WHERE s.site_id = l.rebl3_site_id AND s.system = 'strategy'
+    ORDER BY s.updated_at DESC NULLS LAST LIMIT 1
+  ) strat ON true
   LEFT JOIN LATERAL (
     SELECT
       NULLIF(s.details->'fast_open'->>'capacity','')::int        AS fast_open_capacity,
@@ -178,7 +190,7 @@ RETURNS TABLE(
   price_color text, zoning_color text, neighborhood_color text, play_area_color text, building_color text,
   school_size_category text, capacity integer,
   property_source_key text, feedback_deadline timestamp with time zone,
-  is_bridge boolean, leasing_status text, leasing_details jsonb, loi_status text,
+  is_bridge boolean, leasing_status text, leasing_details jsonb, loi_status text, strategy_status text,
   dd_fast_open_capacity integer, dd_fast_open_proj_open_date date
 )
 LANGUAGE plpgsql AS $function$
@@ -211,6 +223,7 @@ BEGIN
     leasing.status::text,
     leasing.details,
     loi.status::text,
+    strat.status::text,
     dd.fast_open_capacity,
     dd.fast_open_proj_open_date
   FROM pp_locations l
@@ -225,6 +238,11 @@ BEGIN
     WHERE s.site_id = l.rebl3_site_id AND s.system = 'loi'
     ORDER BY s.updated_at DESC NULLS LAST LIMIT 1
   ) loi ON true
+  LEFT JOIN LATERAL (
+    SELECT s.status FROM rebl3_status s
+    WHERE s.site_id = l.rebl3_site_id AND s.system = 'strategy'
+    ORDER BY s.updated_at DESC NULLS LAST LIMIT 1
+  ) strat ON true
   LEFT JOIN LATERAL (
     SELECT
       NULLIF(s.details->'fast_open'->>'capacity','')::int        AS fast_open_capacity,
