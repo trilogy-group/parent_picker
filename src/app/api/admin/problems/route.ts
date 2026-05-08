@@ -11,7 +11,7 @@ export async function GET(request: NextRequest) {
 
   const { data: rows, error } = await supabase
     .from("pp_site_problems")
-    .select("id, site_id, metro, title, description, deadline, pivot_trigger, status, outcome_text, created_at, closed_at")
+    .select("id, site_id, metro, title, description, deadline, pivot_trigger, status, outcome_text, created_at, closed_at, parent_ownable, category, severity, source_ref, admin_edited_at")
     .order("status", { ascending: true })
     .order("pivot_trigger", { ascending: false })
     .order("created_at", { ascending: false });
@@ -42,18 +42,32 @@ export async function POST(request: NextRequest) {
   if (!auth.isAdmin) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const body = await request.json().catch(() => ({}));
-  const { siteId, metro, title, description, deadline, pivotTrigger } = body as {
+  const { siteId, metro, title, description, deadline, pivotTrigger, parentOwnable, category, severity } = body as {
     siteId?: string | null;
     metro?: string;
     title?: string;
     description?: string;
     deadline?: string;
     pivotTrigger?: boolean;
+    parentOwnable?: boolean;
+    category?: string;
+    severity?: string;
   };
 
   if (!metro || !title) {
     return NextResponse.json({ error: "metro and title required" }, { status: 400 });
   }
+
+  const validCategories = ['zoning', 'licensing', 'other'] as const;
+  const validSeverities = ['H', 'M', 'L'] as const;
+  type Cat = typeof validCategories[number];
+  type Sev = typeof validSeverities[number];
+  const cat: Cat = (validCategories as readonly string[]).includes(category ?? '')
+    ? (category as Cat)
+    : 'other';
+  const sev: Sev = (validSeverities as readonly string[]).includes(severity ?? '')
+    ? (severity as Sev)
+    : 'M';
 
   const supabase = getSupabaseAdmin();
   if (!supabase) return NextResponse.json({ error: "Server not configured" }, { status: 500 });
@@ -67,6 +81,9 @@ export async function POST(request: NextRequest) {
       description: description ?? null,
       deadline: deadline ?? null,
       pivot_trigger: pivotTrigger ?? false,
+      parent_ownable: parentOwnable === true,
+      category: cat,
+      severity: sev,
       created_by: auth.userId,
     })
     .select()

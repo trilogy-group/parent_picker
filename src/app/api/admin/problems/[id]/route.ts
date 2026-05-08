@@ -3,11 +3,6 @@ import { getSupabaseAdmin } from "@/lib/supabase-admin";
 import { verifyAdmin } from "@/lib/admin";
 import { sendEmail, generateProblemResolvedHtml } from "@/lib/email";
 
-const ALLOWED_KEYS = new Set([
-  "title", "description", "deadline", "pivot_trigger",
-  "status", "outcome_text",
-]);
-
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -18,9 +13,47 @@ export async function PATCH(
 
   const body = await request.json().catch(() => ({}));
   const updates: Record<string, unknown> = {};
-  for (const [k, v] of Object.entries(body)) {
-    if (ALLOWED_KEYS.has(k)) updates[k] = v;
+  let adminEdited = false;
+
+  // Curation fields — set admin_edited_at when any are present.
+  if (typeof body.title === "string") {
+    updates.title = body.title;
+    adminEdited = true;
   }
+  if (typeof body.description === "string" || body.description === null) {
+    updates.description = body.description;
+    adminEdited = true;
+  }
+  if (typeof body.parentOwnable === "boolean") {
+    updates.parent_ownable = body.parentOwnable;
+    adminEdited = true;
+  }
+  if (body.category && (['zoning', 'licensing', 'other'] as const).includes(body.category)) {
+    updates.category = body.category;
+    adminEdited = true;
+  }
+  if (body.severity && (['H', 'M', 'L'] as const).includes(body.severity)) {
+    updates.severity = body.severity;
+    adminEdited = true;
+  }
+
+  // Operational fields — do NOT trigger admin_edited_at.
+  // Accept both camelCase (new) and snake_case (legacy clients).
+  if (typeof body.status === "string") updates.status = body.status;
+  if (typeof body.outcomeText === "string" || body.outcomeText === null) {
+    updates.outcome_text = body.outcomeText;
+  } else if (typeof body.outcome_text === "string" || body.outcome_text === null) {
+    updates.outcome_text = body.outcome_text;
+  }
+  if (typeof body.pivotTrigger === "boolean") {
+    updates.pivot_trigger = body.pivotTrigger;
+  } else if (typeof body.pivot_trigger === "boolean") {
+    updates.pivot_trigger = body.pivot_trigger;
+  }
+  if (typeof body.deadline === "string" || body.deadline === null) updates.deadline = body.deadline;
+
+  if (adminEdited) updates.admin_edited_at = new Date().toISOString();
+
   if (body.status === "resolved" || body.status === "unresolvable") {
     updates.closed_at = new Date().toISOString();
   }
@@ -36,7 +69,8 @@ export async function PATCH(
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
   // Notify owner + champions when a problem is resolved with an outcome.
-  if (body.status === "resolved" && body.outcome_text) {
+  const resolvedOutcome = body.outcomeText ?? body.outcome_text;
+  if (body.status === "resolved" && resolvedOutcome) {
     try {
       const { data: problem } = await supabase
         .from("pp_site_problems")
@@ -70,7 +104,7 @@ export async function PATCH(
           const detailsUrl = `https://real-estate.alpha.school/?location=${location.id}`;
           const html = generateProblemResolvedHtml({
             problemTitle: problem.title,
-            outcome: body.outcome_text,
+            outcome: resolvedOutcome,
             location: { name: location.name, city: location.city, state: location.state },
             detailsUrl,
           });

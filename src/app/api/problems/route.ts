@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase-admin";
-import type { SiteProblem, ProblemOwner } from "@/types";
+import type { SiteProblem, ProblemOwner, ProblemCategory, ProblemSeverity, ProblemSourceRef } from "@/types";
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
@@ -13,7 +13,7 @@ export async function GET(request: NextRequest) {
 
   let query = supabase
     .from("pp_site_problems")
-    .select("id, site_id, metro, title, description, deadline, pivot_trigger, status, outcome_text, created_at, closed_at")
+    .select("id, site_id, metro, title, description, deadline, pivot_trigger, status, outcome_text, created_at, closed_at, parent_ownable, category, severity, source_ref, admin_edited_at")
     .eq("metro", metro);
 
   if (!all) {
@@ -59,6 +59,10 @@ export async function GET(request: NextRequest) {
     outcomeText: r.outcome_text,
     createdAt: r.created_at,
     closedAt: r.closed_at,
+    parentOwnable: r.parent_ownable === true,
+    category: r.category as ProblemCategory,
+    severity: r.severity as ProblemSeverity,
+    sourceRef: (r.source_ref as ProblemSourceRef | null) ?? null,
     owner: ownerByProblem.get(r.id) ?? null,
   }));
 
