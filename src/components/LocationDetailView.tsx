@@ -9,8 +9,8 @@ import { HelpModal } from "./HelpModal";
 import { SignInPrompt } from "./SignInPrompt";
 import { ChampionButton } from "./ChampionButton";
 import { ProblemList } from "./ProblemList";
-import { StageTimeline } from "./StageTimeline";
 import { MovedOnSection } from "./MovedOnSection";
+import { StageTimeline } from "./StageTimeline";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { ArrowLeft, ExternalLink, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, FileText, Plus, Minus, X } from "lucide-react";
 import { useAuth } from "./AuthProvider";
@@ -560,22 +560,14 @@ export default function LocationDetailView({
           )}
 
           {/* Tier-specific bottom sections */}
-          {(location.derived?.stage === "diligence" || location.derived?.stage === "ready_to_commit") && (
-            <div className="px-4 py-3 mt-5 pt-4 border-t border-stone-200">
-              <ProblemList
-                siteId={location.id}
-                isAuthenticated={isAuthenticated}
-                session={session}
-                onSignInNeeded={() => setShowSignIn(true)}
-              />
-            </div>
-          )}
-
-          {(location.derived?.stage === "build_out" || location.derived?.stage === "ready_to_open") && (
+          {(location.derived?.stage === "diligence" ||
+            location.derived?.stage === "ready_to_commit" ||
+            location.derived?.stage === "build_out" ||
+            location.derived?.stage === "ready_to_open") && (
             <>
               <div className="px-4 py-3 mt-5 pt-4 border-t border-stone-200">
                 <h3 className="text-xs font-bold uppercase tracking-wider text-stone-500 mb-2">Path to opening</h3>
-                <StageTimeline current={location.derived?.stage ?? "diligence"} />
+                <StageTimeline current={location.derived.stage} />
               </div>
               <div className="px-4 py-3">
                 <ProblemList

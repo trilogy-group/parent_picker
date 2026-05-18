@@ -21,7 +21,6 @@ import { CategorySection } from "./CategorySection";
 import { StageBadge } from "./StageBadge";
 import { StageTimeline } from "./StageTimeline";
 import { useMetroPlan, useMetroProblems, autoDerivePlan, mergePlan, getPlanRole, comparePlanOrder, type PlanRole } from "@/lib/plan-of-record";
-import { formatPipelineStatus } from "@/lib/sites";
 import type { SiteProblem } from "@/types";
 
 const PAGE_SIZE = 25;
@@ -314,7 +313,6 @@ export function AltPanel() {
     const dist = userLocation ? getDistanceMiles(userLocation.lat, userLocation.lng, loc.lat, loc.lng) : null;
     const voters = locationVoters.get(loc.id) || [];
     const leadChampion = loc.champions?.find(c => c.role === "lead" && !c.releasedAt);
-    const pipelineStatus = formatPipelineStatus(loc);
     const stage = loc.derived?.stage;
     const showTimeline =
       stage === "diligence" ||
@@ -324,18 +322,6 @@ export function AltPanel() {
     const openProblems = (problems ?? []).filter(p => p.status === "open" || p.status === "in_progress");
     const hasPivot = openProblems.some(p => p.pivotTrigger);
     const problemCount = openProblems.length;
-
-    // Snapshot/deadline pill text — never gates votes
-    const snapshotPill = (() => {
-      if (!loc.feedbackDeadline) return null;
-      const deadline = new Date(loc.feedbackDeadline);
-      const now = new Date();
-      const expired = deadline.getTime() - now.getTime() <= 0;
-      const dateStr = deadline.toLocaleDateString("en-US", { month: "short", day: "numeric" });
-      return expired
-        ? { label: `Snapshot taken ${dateStr} · still open`, className: "bg-stone-100 text-stone-600" }
-        : { label: `First snapshot: ${dateStr}`, className: "bg-indigo-50 text-indigo-700" };
-    })();
 
     const navigateToDetail = () => {
       setSelectedLocation(loc.id);
@@ -434,13 +420,9 @@ export function AltPanel() {
             );
           })()}
 
-          {/* Title + pipeline status (replaces redundant address) */}
           <h3 className="text-base font-bold text-stone-900 leading-tight">
             {extractStreet(loc.address, loc.city)}
           </h3>
-          {pipelineStatus && (
-            <p className="text-xs text-stone-600 mt-0.5">{pipelineStatus}</p>
-          )}
 
           {/* Facts row — capacity / REBL score / opening date(s). For sites with
               both fast-open and max-cap DD blocks we show two rows: Phase 1 first,
@@ -535,32 +517,9 @@ export function AltPanel() {
             return <div className="mt-1 space-y-0.5">{rows}</div>;
           })()}
 
-          {/* Mini stage timeline — pipeline stages only */}
           {showTimeline && stage && (
             <div className="mt-2">
               <StageTimeline current={stage} compact />
-            </div>
-          )}
-
-          {/* Snapshot pill */}
-          {snapshotPill && (
-            <span className={`inline-block mt-2 text-[11px] font-medium px-2 py-0.5 rounded-full ${snapshotPill.className}`}>
-              {snapshotPill.label}
-            </span>
-          )}
-
-          {/* Vote stats */}
-          {(loc.votes > 0 || voters.length > 0) && (
-            <div className="flex items-center gap-2 mt-2.5">
-              <AvatarRow voters={voters} />
-              <span className="text-xs text-stone-700 font-medium">
-                {loc.votes} {loc.votes === 1 ? "family" : "families"} in
-              </span>
-              {loc.notHereVotes > 0 && (
-                <span className="text-xs text-amber-600">
-                  · {loc.notHereVotes} concern{loc.notHereVotes !== 1 ? "s" : ""}
-                </span>
-              )}
             </div>
           )}
 
