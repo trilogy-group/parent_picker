@@ -28,7 +28,11 @@ const PAGE_SIZE = 25;
 
 function formatOpeningDate(iso: string | null | undefined): string | null {
   if (!iso) return null;
-  const d = new Date(iso);
+  // Date-only strings like "2027-01-01" must be parsed as local-midnight to
+  // avoid the date shifting back a day in negative timezones (e.g. parsed
+  // as UTC midnight, "2027-01-01" renders as "Dec 2026" in US Central).
+  const m = iso.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  const d = m ? new Date(+m[1], +m[2] - 1, +m[3]) : new Date(iso);
   if (isNaN(d.getTime())) return null;
   return d.toLocaleDateString("en-US", { month: "short", year: "numeric" });
 }
@@ -332,37 +336,9 @@ export function AltPanel() {
           onClick={navigateToDetail}
           className="w-full text-left p-3 rounded-lg border border-stone-200 bg-white hover:shadow-sm transition-all cursor-pointer"
         >
-          {/* Status row */}
+          {/* Status row — stage + summary chips */}
           <div className="flex items-center gap-2 flex-wrap mb-1.5">
             {loc.derived?.stage && <StageBadge stage={loc.derived.stage} />}
-            {(() => {
-              // For build-out / ready-to-open sites, render the 3 hurdle chips
-              // even when value is null (default to "pending"). For all other
-              // stages, only show chips that are explicitly true or false.
-              const buildoutLike =
-                loc.derived?.stage === "build_out" || loc.derived?.stage === "ready_to_open";
-              const renderChip = (
-                label: string,
-                value: boolean | null | undefined,
-                titleDone: string,
-                titlePending: string
-              ) => {
-                const v = value ?? (buildoutLike ? false : null);
-                if (v === null) return null;
-                return v ? (
-                  <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700" title={titleDone}>{label} ✓</span>
-                ) : (
-                  <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-700" title={titlePending}>{label} · pending</span>
-                );
-              };
-              return (
-                <>
-                  {renderChip("REGULATORY", loc.regulatoryApproved, "Regulatory approval complete", "Regulatory approval in progress")}
-                  {renderChip("ZONING", loc.zoningCleared, "Zoning cleared", "Zoning in progress")}
-                  {renderChip("PERMITS", loc.permitsAcquired, "Permits acquired", "Permits in progress")}
-                </>
-              );
-            })()}
             {loc.summerProgram === true && (
               <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-700" title="Summer program runs on this site">SUMMER</span>
             )}
@@ -410,6 +386,40 @@ export function AltPanel() {
               </span>
             )}
           </div>
+
+          {/* Build-out details row — regulatory/zoning/permits hurdle chips.
+              For build-out + ready-to-open: always render the 3 chips (null
+              defaults to "pending"). For other stages: only render when value
+              is explicit (true=done, false=pending). */}
+          {(() => {
+            const buildoutLike =
+              loc.derived?.stage === "build_out" || loc.derived?.stage === "ready_to_open";
+            const renderChip = (
+              label: string,
+              value: boolean | null | undefined,
+              titleDone: string,
+              titlePending: string
+            ) => {
+              const v = value ?? (buildoutLike ? false : null);
+              if (v === null) return null;
+              return v ? (
+                <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700" title={titleDone}>{label} ✓</span>
+              ) : (
+                <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-700" title={titlePending}>{label} · pending</span>
+              );
+            };
+            const chips = [
+              renderChip("REGULATORY", loc.regulatoryApproved, "Regulatory approval complete", "Regulatory approval in progress"),
+              renderChip("ZONING",     loc.zoningCleared,      "Zoning cleared",                "Zoning in progress"),
+              renderChip("PERMITS",    loc.permitsAcquired,    "Permits acquired",              "Permits in progress"),
+            ].filter(Boolean);
+            if (chips.length === 0) return null;
+            return (
+              <div className="flex items-center gap-2 flex-wrap mb-1.5">
+                {chips}
+              </div>
+            );
+          })()}
 
           {/* Title + pipeline status (replaces redundant address) */}
           <h3 className="text-base font-bold text-stone-900 leading-tight">
