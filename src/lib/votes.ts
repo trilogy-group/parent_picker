@@ -1,10 +1,9 @@
 "use client";
 
 import { create } from "zustand";
-import { Location, CitySummary, VoterInfo, VoteType, SiteChampion } from "@/types";
+import { Location, VoterInfo, VoteType, SiteChampion } from "@/types";
 import { supabase, isSupabaseConfigured } from "./supabase";
-import { getCitySummaries, getNearbyLocations, getLocationsInBounds, getDistanceMiles } from "./locations";
-import { consolidateToMetros } from "./metros";
+import { getLocationsInBounds } from "./locations";
 import { postRebl3FeedbackAllDimensions } from "./rebl3";
 import { getCategory } from "./sites";
 
@@ -30,7 +29,6 @@ export type ReleasedFilter = "all" | "released" | "unreleased";
 
 interface VotesState {
   locations: Location[];
-  citySummaries: CitySummary[];
   lastFetchBounds: MapBounds | null;
   zoomLevel: number;
   votedLocationIds: Set<string>;
@@ -106,7 +104,6 @@ interface VotesState {
   setShowNoBlockers: (show: boolean) => void;
   setUserIsochrone: (data: GeoJSON.FeatureCollection | null) => void;
   setShowCandidatesPanel: (show: boolean) => void;
-  loadCitySummaries: () => Promise<void>;
   fetchNearby: (bounds: MapBounds) => Promise<void>;
   fetchNearbyForce: (bounds: MapBounds) => Promise<void>;
   loadUserVotes: (userId: string) => Promise<void>;
@@ -114,8 +111,6 @@ interface VotesState {
   refreshChampions: (locationId: string) => Promise<void>;
   filteredLocations: () => Location[];
 }
-
-let citySummarySeq = 0;
 
 // Fire-and-forget: sync vote data to rebl3_status for proposed locations with deadlines
 function syncParentStatus(locationId: string, getFn: () => VotesState) {
@@ -130,7 +125,6 @@ function syncParentStatus(locationId: string, getFn: () => VotesState) {
 
 export const useVotesStore = create<VotesState>((set, get) => ({
   locations: [],
-  citySummaries: [],
   lastFetchBounds: null,
   zoomLevel: 4,
   votedLocationIds: new Set<string>(),
@@ -262,24 +256,6 @@ export const useVotesStore = create<VotesState>((set, get) => ({
         if (error) console.error("Error updating vote comment:", error);
         else get().loadLocationVoters([locationId], true);
       });
-  },
-
-  loadCitySummaries: async () => {
-    const seq = ++citySummarySeq;
-    const { isAdmin, viewAsParent, releasedFilter, showUnscored } = get();
-    const effectiveAdmin = isAdmin && !viewAsParent;
-    // Non-admins (or view-as-parent): always released only. Admins: based on filter.
-    const releasedOnly = !effectiveAdmin ? true : releasedFilter === "released" ? true : releasedFilter === "unreleased" ? false : undefined;
-    // Always include RED in counts (parents see all scored locations)
-    const excludeRed = false;
-    // Parents always exclude unscored; admins based on toggle
-    const excludeUnscored = !effectiveAdmin || !showUnscored;
-    const rawSummaries = await getCitySummaries(releasedOnly, excludeRed, excludeUnscored);
-    // Discard stale response if a newer fetch was started
-    if (seq !== citySummarySeq) return;
-    // Consolidate to metro-level bubbles
-    const summaries = consolidateToMetros(rawSummaries);
-    set({ citySummaries: summaries, isLoading: false });
   },
 
   fetchNearby: async (bounds) => {

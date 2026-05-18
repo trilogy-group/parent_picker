@@ -74,7 +74,7 @@ function DeepLinkHandler() {
 }
 
 export function HomeContent() {
-  const { loadCitySummaries, setReferencePoint, setIsAdmin, releasedFilter, showUnscored, viewAsParent } = useVotesStore();
+  const { setReferencePoint, setIsAdmin } = useVotesStore();
   const { isAdmin } = useAuth();
 
   // Sync isAdmin from AuthProvider into Zustand store
@@ -85,11 +85,6 @@ export function HomeContent() {
   useEffect(() => {
     setReferencePoint(AUSTIN_CENTER);
   }, [setReferencePoint]);
-
-  // Fetch city summaries on mount and when filters/admin state change
-  useEffect(() => {
-    loadCitySummaries();
-  }, [releasedFilter, isAdmin, showUnscored, viewAsParent, loadCitySummaries]);
 
   return (
     <div className="relative h-screen w-screen overflow-hidden">

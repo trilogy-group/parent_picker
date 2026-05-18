@@ -1,4 +1,4 @@
-import { Location, LocationScores, CitySummary, SiteChampion, CommittedSubStage } from "@/types";
+import { Location, LocationScores, SiteChampion, CommittedSubStage } from "@/types";
 import { supabase, isSupabaseConfigured } from "./supabase";
 import { sanitizeText } from "./validation";
 import { getStage, getCategory, parseCommittedSubStage } from "@/lib/sites";
@@ -163,29 +163,6 @@ export function findNearbyLocations(
   );
 }
 
-// Get initial map view based on user location and nearby cities
-export function getInitialMapView(
-  userLat: number | null,
-  userLng: number | null,
-  citySummaries: { lat: number; lng: number }[]
-): { center: { lat: number; lng: number }; zoom: number } {
-  // If no user location, show US-wide city bubbles view
-  if (userLat === null || userLng === null) {
-    return { center: US_CENTER, zoom: US_ZOOM };
-  }
-
-  // Check if any city with locations is within 100 miles of user
-  const hasNearby = citySummaries.some(
-    (c) => getDistanceMiles(userLat, userLng, c.lat, c.lng) <= 100
-  );
-  if (!hasNearby) {
-    // Nothing near user — show US-wide so they can pick from the city list
-    return { center: US_CENTER, zoom: US_ZOOM };
-  }
-
-  // Center on user at zoom 11; fetchNearbyForce will load nearby dots
-  return { center: { lat: userLat, lng: userLng }, zoom: 11 };
-}
 
 export async function getLocations(): Promise<Location[]> {
   // If Supabase is not configured, return mock data
@@ -337,65 +314,6 @@ async function attachChampions(locations: Location[]): Promise<void> {
   }
 }
 
-function getMockCitySummaries(releasedOnly?: boolean, excludeRed?: boolean, excludeUnscored?: boolean): CitySummary[] {
-  let locs = releasedOnly ? mockLocations.filter(l => l.released === true) : mockLocations;
-  if (excludeRed) {
-    locs = locs.filter(l => l.scores?.overallColor !== "RED" && l.scores?.sizeClassification !== "Red (Reject)");
-  }
-  if (excludeUnscored) {
-    locs = locs.filter(l => l.scores?.overallColor != null);
-  }
-  const map = new Map<string, { city: string; state: string; lats: number[]; lngs: number[]; count: number; votes: number }>();
-  for (const loc of locs) {
-    const key = `${loc.city}|${loc.state}`;
-    const entry = map.get(key);
-    if (entry) {
-      entry.lats.push(loc.lat);
-      entry.lngs.push(loc.lng);
-      entry.count++;
-      entry.votes += loc.votes;
-    } else {
-      map.set(key, { city: loc.city, state: loc.state, lats: [loc.lat], lngs: [loc.lng], count: 1, votes: loc.votes });
-    }
-  }
-  return Array.from(map.values()).map(e => ({
-    city: e.city,
-    state: e.state,
-    lat: e.lats.reduce((a, b) => a + b, 0) / e.lats.length,
-    lng: e.lngs.reduce((a, b) => a + b, 0) / e.lngs.length,
-    locationCount: e.count,
-    totalVotes: e.votes,
-  }));
-}
-
-export async function getCitySummaries(releasedOnly?: boolean, excludeRed?: boolean, excludeUnscored?: boolean): Promise<CitySummary[]> {
-  if (!isSupabaseConfigured || !supabase) {
-    return getMockCitySummaries(releasedOnly, excludeRed, excludeUnscored);
-  }
-
-  try {
-    const { data, error } = await supabase.rpc("get_location_cities", {
-      released_only: releasedOnly ?? false,
-      exclude_red: excludeRed ?? false,
-      exclude_unscored: excludeUnscored ?? false,
-    });
-    if (error) {
-      console.error("Error fetching city summaries:", error);
-      return getMockCitySummaries(releasedOnly, excludeRed, excludeUnscored);
-    }
-    return (data || []).map((row: Record<string, unknown>) => ({
-      city: row.city as string,
-      state: row.state as string,
-      lat: Number(row.lat),
-      lng: Number(row.lng),
-      locationCount: Number(row.location_count),
-      totalVotes: Number(row.total_votes),
-    }));
-  } catch (error) {
-    console.error("Failed to fetch city summaries:", error);
-    return getMockCitySummaries(releasedOnly, excludeRed, excludeUnscored);
-  }
-}
 
 export async function getNearbyLocations(centerLat: number, centerLng: number, limit: number = 500, releasedOnly?: boolean): Promise<Location[]> {
   if (!isSupabaseConfigured || !supabase) {
