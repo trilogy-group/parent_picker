@@ -500,7 +500,7 @@ export function AltPanel() {
               rows.push(
                 <div key="score" className="flex items-center gap-1 text-xs text-stone-600">
                   <span className={`inline-block w-2 h-2 rounded-full ${colorClass}`} />
-                  REBL score {score}
+                  AI score {score}
                 </div>
               );
             }

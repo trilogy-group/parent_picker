@@ -6,7 +6,7 @@ const CATEGORY_HEADERS: Record<SiteCategory, {
   textClass: string;
 }> = {
   parent: { label: "PARENT", borderClass: "border-emerald-600", textClass: "text-emerald-700" },
-  ai: { label: "AI", borderClass: "border-blue-600", textClass: "text-blue-700" },
+  ai: { label: "NEW", borderClass: "border-blue-600", textClass: "text-blue-700" },
   short_term: { label: "SHORT-TERM", borderClass: "border-amber-600", textClass: "text-amber-700" },
 };
 
