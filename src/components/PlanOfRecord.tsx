@@ -3,6 +3,7 @@
 import type { Location, MetroPlan } from "@/types";
 import { useVotesStore } from "@/lib/votes";
 import type { EffectivePlan } from "@/lib/plan-of-record";
+import { extractStreet } from "@/lib/address";
 
 interface Props {
   metro: string;
@@ -12,6 +13,7 @@ interface Props {
 
 export function PlanOfRecord({ plan, effectivePlan }: Props) {
   const locations = useVotesStore(s => s.locations);
+  const setSelectedLocation = useVotesStore(s => s.setSelectedLocation);
   const findSite = (id?: string) => (id ? locations.find(l => l.id === id) : null);
   const primary = findSite(effectivePlan.primaryLongTermSiteId);
   const bridge = findSite(effectivePlan.bridgeSiteId);
@@ -27,6 +29,8 @@ export function PlanOfRecord({ plan, effectivePlan }: Props) {
     ? splitNarrative(plan.narrativeOverride)
     : buildAutoNarrative(primary, bridge, watch);
 
+  const linkify = (text: string) => renderWithLinks(text, locations, setSelectedLocation);
+
   return (
     <div className="mx-4 my-3 p-4 bg-white border-l-4 border-stone-700 rounded-md shadow-sm">
       <h2 className="text-xs font-bold uppercase tracking-wider text-stone-500 mb-2">
@@ -39,7 +43,7 @@ export function PlanOfRecord({ plan, effectivePlan }: Props) {
         {bullets.map((b, i) => (
           <li key={i} className="text-sm text-stone-700 leading-relaxed flex gap-2">
             <span className="text-stone-400 leading-relaxed">•</span>
-            <span className="flex-1">{b}</span>
+            <span className="flex-1">{linkify(b)}</span>
           </li>
         ))}
       </ul>
@@ -50,7 +54,7 @@ export function PlanOfRecord({ plan, effectivePlan }: Props) {
             {plan!.pivotConditions.map((pc, i) => (
               <li key={i} className="text-sm text-stone-700 leading-relaxed flex gap-2">
                 <span className="text-stone-400 leading-relaxed">•</span>
-                <span className="flex-1">{pc.description}</span>
+                <span className="flex-1">{linkify(pc.description)}</span>
               </li>
             ))}
           </ul>
@@ -59,11 +63,67 @@ export function PlanOfRecord({ plan, effectivePlan }: Props) {
       {plan?.backupPlan && (
         <div className="mt-3 pt-3 border-t border-stone-200">
           <h3 className="text-xs font-bold uppercase tracking-wider text-stone-500 mb-2">Backup plan</h3>
-          <p className="text-sm text-stone-700 leading-relaxed">{plan.backupPlan}</p>
+          <p className="text-sm text-stone-700 leading-relaxed">{linkify(plan.backupPlan)}</p>
         </div>
       )}
     </div>
   );
+}
+
+// Scan plain-text narrative for any known location's street address and wrap
+// each occurrence in a clickable link that opens the detail view. Token-level
+// regex tolerates hyphen/space/case differences ("5000 T-Rex Ave" matches
+// stored "5000 T REX AVE").
+function renderWithLinks(
+  text: string,
+  locations: Location[],
+  onSelect: (id: string) => void
+): React.ReactNode {
+  const candidates = locations
+    .map(l => {
+      const street = extractStreet(l.address, l.city);
+      if (!street || street.length < 6) return null;
+      const tokens = street.split(/\s+/).map(t => t.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
+      return { regex: new RegExp(tokens.join("[\\s\\-]+"), "i"), id: l.id, length: street.length };
+    })
+    .filter((c): c is { regex: RegExp; id: string; length: number } => c != null)
+    .sort((a, b) => b.length - a.length);
+
+  if (candidates.length === 0) return text;
+
+  type Match = { start: number; end: number; id: string };
+  const matches: Match[] = [];
+  for (const c of candidates) {
+    const m = c.regex.exec(text);
+    if (m && m.index != null) {
+      const start = m.index;
+      const end = start + m[0].length;
+      if (!matches.some(x => start < x.end && end > x.start)) {
+        matches.push({ start, end, id: c.id });
+      }
+    }
+  }
+  if (matches.length === 0) return text;
+  matches.sort((a, b) => a.start - b.start);
+
+  const parts: React.ReactNode[] = [];
+  let pos = 0;
+  matches.forEach((m, i) => {
+    if (m.start > pos) parts.push(text.slice(pos, m.start));
+    parts.push(
+      <button
+        key={`a-${i}-${m.start}`}
+        type="button"
+        onClick={() => onSelect(m.id)}
+        className="text-blue-600 hover:text-blue-700 hover:underline font-medium cursor-pointer"
+      >
+        {text.slice(m.start, m.end)}
+      </button>
+    );
+    pos = m.end;
+  });
+  if (pos < text.length) parts.push(text.slice(pos));
+  return parts;
 }
 
 function buildAutoNarrative(
