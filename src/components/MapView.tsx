@@ -12,6 +12,7 @@ import { getInitialMapView, US_CENTER, US_ZOOM } from "@/lib/locations";
 import { sortMostSupport, sortMostViable, sortMostViableWithPriority, makeSortNearest } from "@/lib/sort";
 import { fetchIsochrone } from "@/lib/isochrone";
 import { pointInIsochrone } from "@/lib/geo";
+import { ACTIVE_METROS } from "@/lib/active-metros";
 import "mapbox-gl/dist/mapbox-gl.css";
 import type { MapMouseEvent } from "react-map-gl/mapbox";
 
@@ -38,7 +39,6 @@ export function MapView() {
     selectedLocationId,
     setSelectedLocation,
     locations,
-    citySummaries,
     zoomLevel,
     setZoomLevel,
     flyToTarget,
@@ -65,7 +65,6 @@ export function MapView() {
     selectedLocationId: s.selectedLocationId,
     setSelectedLocation: s.setSelectedLocation,
     locations: s.locations,
-    citySummaries: s.citySummaries,
     zoomLevel: s.zoomLevel,
     setZoomLevel: s.setZoomLevel,
     flyToTarget: s.flyToTarget,
@@ -153,22 +152,21 @@ export function MapView() {
   // Pick which isochrone to display: location (detail) takes priority, else user (list)
   const activeIsochrone = selectedLocation ? locationIsochrone : userIsochrone;
 
-  // GeoJSON for city bubbles
+  // GeoJSON for the curated active-metro bubble layer
   const cityGeojson = useMemo(() => ({
     type: "FeatureCollection" as const,
-    features: citySummaries.map((c) => ({
+    features: ACTIVE_METROS.map((m) => ({
       type: "Feature" as const,
-      geometry: { type: "Point" as const, coordinates: [c.lng, c.lat] },
+      geometry: { type: "Point" as const, coordinates: [m.lng, m.lat] },
       properties: {
-        city: c.city,
-        state: c.state,
-        locationCount: c.locationCount,
-        totalVotes: c.totalVotes,
-        lng: c.lng,
-        lat: c.lat,
+        slug: m.slug,
+        displayName: m.displayName,
+        defaultZoom: m.defaultZoom,
+        lng: m.lng,
+        lat: m.lat,
       },
     })),
-  }), [citySummaries]);
+  }), []);
 
   // Compute top-N IDs for dot filtering (only when showTopOnly + altUI)
   const topLocationIds = useMemo(() => {
@@ -224,7 +222,7 @@ export function MapView() {
   }, [displayLocations, selectedLocationId, topLocationIds]);
 
   const interactiveLayerIds = useMemo(
-    () => (showCities ? ["city-clusters", "city-circles"] : ["unclustered-point"]),
+    () => (showCities ? ["city-circles"] : ["unclustered-point"]),
     [showCities]
   );
 
@@ -262,7 +260,7 @@ export function MapView() {
   const initialViewLocation = storeUserLocation ?? userLocation;
 
   useEffect(() => {
-    if (!geoResolved || !mapReady || citySummaries.length === 0) return;
+    if (!geoResolved || !mapReady) return;
     // Allow re-fire when profile location arrives after geo-based initial view
     if (initialViewSetRef.current && userLocationSource !== "profile") return;
     if (initialViewSetRef.current === "profile") return;
@@ -272,7 +270,7 @@ export function MapView() {
     const { center, zoom } = getInitialMapView(
       initialViewLocation?.lat ?? null,
       initialViewLocation?.lng ?? null,
-      citySummaries
+      ACTIVE_METROS
     );
 
     setReferencePoint(center);
@@ -316,7 +314,7 @@ export function MapView() {
     }
 
     initialViewSetRef.current = userLocationSource === "profile" ? "profile" : true;
-  }, [initialViewLocation, userLocationSource, citySummaries, geoResolved, mapReady, locations, setReferencePoint, setMapBounds, setMapCenter, setZoomLevel, fetchNearbyForce]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [initialViewLocation, userLocationSource, geoResolved, mapReady, locations, setReferencePoint, setMapBounds, setMapCenter, setZoomLevel, fetchNearbyForce]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const flyToCoords = useCallback((coords: { lat: number; lng: number }, zoom?: number) => {
     flyingRef.current = true;
@@ -372,13 +370,15 @@ export function MapView() {
 
     const feature = features[0];
 
-    if (feature.layer?.id === "city-clusters" || feature.layer?.id === "city-circles") {
+    if (feature.layer?.id === "city-circles") {
       const coords = (feature.geometry as GeoJSON.Point).coordinates;
+      const props = feature.properties as { defaultZoom?: number } | undefined;
       if (coords) {
         const lng = coords[0];
         const lat = coords[1];
-        flyToCoords({ lat, lng }, 9);
-        fetchNearbyForce(approxBounds({ lat, lng }, 9));
+        const z = props?.defaultZoom ?? 10;
+        flyToCoords({ lat, lng }, z);
+        fetchNearbyForce(approxBounds({ lat, lng }, z));
       }
     } else if (feature.layer?.id === "unclustered-point") {
       const props = feature.properties;
@@ -580,86 +580,18 @@ export function MapView() {
     >
       <NavigationControl position="top-right" />
 
-      {/* City bubbles layer (zoom < 9) */}
+      {/* Curated active-metro bubble layer (zoom < 9) */}
       {showCities && (
-        <Source id="cities" type="geojson" data={cityGeojson}
-          cluster={true}
-          clusterRadius={50}
-          clusterMaxZoom={8}
-          clusterProperties={{
-            totalLocations: ["+", ["get", "locationCount"]],
-            totalVotes: ["+", ["get", "totalVotes"]],
-          }}
-        >
-          {/* Cluster circles */}
-          <Layer
-            id="city-clusters"
-            type="circle"
-            filter={["has", "point_count"]}
-            paint={{
-              "circle-color": "#2563eb",
-              "circle-radius": [
-                "interpolate", ["linear"], ["get", "totalLocations"],
-                1, 16,
-                50, 24,
-                200, 34,
-                500, 42,
-              ],
-              "circle-opacity": 1,
-              "circle-stroke-width": 3,
-              "circle-stroke-color": "#ffffff",
-            }}
-          />
-          {/* Cluster labels */}
-          <Layer
-            id="city-cluster-labels"
-            type="symbol"
-            filter={["has", "point_count"]}
-            layout={{
-              "text-field": ["to-string", ["get", "totalLocations"]],
-              "text-font": ["DIN Pro Bold", "Arial Unicode MS Bold"],
-              "text-size": 13,
-              "text-allow-overlap": false,
-            }}
-            paint={{
-              "text-color": "#ffffff",
-              "text-halo-color": "#1e40af",
-              "text-halo-width": 1.5,
-            }}
-          />
-          {/* Unclustered city circles */}
+        <Source id="cities" type="geojson" data={cityGeojson}>
           <Layer
             id="city-circles"
             type="circle"
-            filter={["!", ["has", "point_count"]]}
             paint={{
               "circle-color": "#2563eb",
-              "circle-radius": [
-                "interpolate", ["linear"], ["get", "locationCount"],
-                1, 14,
-                50, 22,
-                200, 32,
-              ],
+              "circle-radius": 14,
               "circle-opacity": 1,
               "circle-stroke-width": 3,
               "circle-stroke-color": "#ffffff",
-            }}
-          />
-          {/* City labels */}
-          <Layer
-            id="city-labels"
-            type="symbol"
-            filter={["!", ["has", "point_count"]]}
-            layout={{
-              "text-field": ["to-string", ["get", "locationCount"]],
-              "text-font": ["DIN Pro Bold", "Arial Unicode MS Bold"],
-              "text-size": 13,
-              "text-allow-overlap": false,
-            }}
-            paint={{
-              "text-color": "#ffffff",
-              "text-halo-color": "#1e40af",
-              "text-halo-width": 1.5,
             }}
           />
         </Source>
