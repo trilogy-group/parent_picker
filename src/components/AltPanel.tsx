@@ -243,17 +243,20 @@ export function AltPanel() {
   );
   const aiActive = useMemo(
     () => metroLocations
-      .filter(l => l.derived?.category === "ai" && (l.derived?.stage === "engaged" || l.derived?.stage === "committed"))
+      .filter(l => l.derived?.category === "ai" && (
+        l.derived?.stage === "diligence" ||
+        l.derived?.stage === "ready_to_commit" ||
+        l.derived?.stage === "build_out"
+      ))
       .sort((a, b) => comparePlanOrder(a, b, effectivePlan, userId)),
     [metroLocations, effectivePlan, userId]
   );
-  // Open + Ready campuses get their own section at the top — they're the spec's
-  // first stage and don't fit the parent/ai/short-term category split.
+  // Open + Ready-to-open campuses get their own section at the top.
   const openCampuses = useMemo(
     () => metroLocations
-      .filter(l => l.derived?.stage === "open" || l.derived?.stage === "ready")
+      .filter(l => l.derived?.stage === "open" || l.derived?.stage === "ready_to_open")
       .sort((a, b) => {
-        // Open first, then Ready; within each, earliest opened first
+        // Open first, then Ready-to-open; within each, earliest opened first
         const aOpen = a.derived?.stage === "open" ? 0 : 1;
         const bOpen = b.derived?.stage === "open" ? 0 : 1;
         if (aOpen !== bOpen) return aOpen - bOpen;
@@ -267,8 +270,8 @@ export function AltPanel() {
       .sort((a, b) => comparePlanOrder(a, b, effectivePlan, userId)),
     [metroLocations, effectivePlan, userId]
   );
-  const committedCount = useMemo(
-    () => metroLocations.filter(l => l.derived?.stage === "committed").length,
+  const buildOutCount = useMemo(
+    () => metroLocations.filter(l => l.derived?.stage === "build_out").length,
     [metroLocations]
   );
 
@@ -277,8 +280,8 @@ export function AltPanel() {
     [metroLocations]
   );
 
-  const scoredCandidatesCount = useMemo(
-    () => metroLocations.filter(l => l.derived?.stage === "scored").length,
+  const prospectsCount = useMemo(
+    () => metroLocations.filter(l => l.derived?.stage === "prospect").length,
     [metroLocations]
   );
 
@@ -296,7 +299,11 @@ export function AltPanel() {
     const leadChampion = loc.champions?.find(c => c.role === "lead" && !c.releasedAt);
     const pipelineStatus = formatPipelineStatus(loc);
     const stage = loc.derived?.stage;
-    const showTimeline = stage === "engaged" || stage === "committed";
+    const showTimeline =
+      stage === "diligence" ||
+      stage === "ready_to_commit" ||
+      stage === "build_out" ||
+      stage === "ready_to_open";
     const subStage = loc.derived?.committedSubStage ?? "loi";
     const openProblems = (problems ?? []).filter(p => p.status === "open" || p.status === "in_progress");
     const hasPivot = openProblems.some(p => p.pivotTrigger);
@@ -328,21 +335,35 @@ export function AltPanel() {
         >
           {/* Status row */}
           <div className="flex items-center gap-2 flex-wrap mb-1.5">
-            {loc.derived?.stage && (
-              <StageBadge stage={loc.derived.stage} inDiligence={loc.derived.inDiligence} />
-            )}
-            {loc.regulatoryApproved === true && (
-              <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700" title="Regulatory approval complete">REGULATORY ✓</span>
-            )}
-            {loc.regulatoryApproved === false && (
-              <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-700" title="Regulatory approval in progress">REGULATORY · pending</span>
-            )}
-            {loc.permitsAcquired === true && (
-              <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700" title="Permits acquired">PERMITS ✓</span>
-            )}
-            {loc.permitsAcquired === false && (
-              <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-700" title="Permits in progress">PERMITS · pending</span>
-            )}
+            {loc.derived?.stage && <StageBadge stage={loc.derived.stage} />}
+            {(() => {
+              // For build-out / ready-to-open sites, render the 3 hurdle chips
+              // even when value is null (default to "pending"). For all other
+              // stages, only show chips that are explicitly true or false.
+              const buildoutLike =
+                loc.derived?.stage === "build_out" || loc.derived?.stage === "ready_to_open";
+              const renderChip = (
+                label: string,
+                value: boolean | null | undefined,
+                titleDone: string,
+                titlePending: string
+              ) => {
+                const v = value ?? (buildoutLike ? false : null);
+                if (v === null) return null;
+                return v ? (
+                  <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700" title={titleDone}>{label} ✓</span>
+                ) : (
+                  <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-700" title={titlePending}>{label} · pending</span>
+                );
+              };
+              return (
+                <>
+                  {renderChip("REGULATORY", loc.regulatoryApproved, "Regulatory approval complete", "Regulatory approval in progress")}
+                  {renderChip("ZONING", loc.zoningCleared, "Zoning cleared", "Zoning in progress")}
+                  {renderChip("PERMITS", loc.permitsAcquired, "Permits acquired", "Permits in progress")}
+                </>
+              );
+            })()}
             {loc.summerProgram === true && (
               <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-700" title="Summer program runs on this site">SUMMER</span>
             )}
@@ -418,7 +439,7 @@ export function AltPanel() {
               loc.scores?.overallColor === "RED" ? "bg-rose-500" : "bg-stone-300";
 
             const showDualRows =
-              (stage === "committed" || stage === "engaged") &&
+              (stage === "build_out" || stage === "ready_to_commit" || stage === "diligence") &&
               (fastCap != null || maxCap != null) &&
               (fastCap !== maxCap || fastDate !== maxDate);
 
@@ -446,8 +467,8 @@ export function AltPanel() {
             } else {
               const capacity = fastCap ?? maxCap ?? fallbackCap;
               const opening =
-                stage === "committed" ? formatOpeningDate(fastDate ?? maxDate) :
-                stage === "ready" ? formatOpeningDate(loc.openedAt) :
+                stage === "build_out" ? formatOpeningDate(fastDate ?? maxDate) :
+                stage === "ready_to_open" ? formatOpeningDate(loc.openedAt) :
                 null;
               const facts: { key: string; node: React.ReactNode }[] = [];
               if (capacity != null) facts.push({ key: "cap", node: <span>~{capacity} students</span> });
@@ -703,7 +724,7 @@ export function AltPanel() {
                     Candidates
                   </div>
                   <div className="text-sm text-stone-500 mt-0.5">
-                    {scoredCandidatesCount.toLocaleString()} {scoredCandidatesCount === 1 ? "scored site" : "scored sites"} in this metro
+                    {prospectsCount.toLocaleString()} {prospectsCount === 1 ? "prospect" : "prospects"} in this metro
                   </div>
                 </div>
                 <div className="text-sm text-blue-600 font-medium">
@@ -953,7 +974,7 @@ export function AltPanel() {
           {metroName && !showCityCards && (
             <div className="mx-5 mt-4 mb-5 pt-4 border-t border-stone-200 text-xs text-stone-500">
               <div>
-                From {metroLocations.length} scored, {aiActive.length + parentSites.length} engaged, {committedCount} committed and {openCampuses.length} open.
+                From {prospectsCount} prospect{prospectsCount === 1 ? "" : "s"}, {aiActive.length + parentSites.length} in diligence/committed, {buildOutCount} in build-out and {openCampuses.length} open.
                 {movedOnSites.length > 0 && (
                   <button
                     onClick={() => setShowMovedOn(s => !s)}

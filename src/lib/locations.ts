@@ -210,11 +210,17 @@ function applyDerived(location: Location, row: Record<string, unknown>): Locatio
   const loi = (row.loi_status as string) ?? null;
   const strategy = (row.strategy_status as string) ?? null;
   const leasingDetails = (row.leasing_details as { process_exception?: boolean }) ?? undefined;
-  const stage = getStage({ leasing, loi, strategy, leasingDetails, openedAt: location.openedAt });
+  const stage = getStage({
+    leasing,
+    loi,
+    strategy,
+    leasingDetails,
+    openedAt: location.openedAt,
+  });
   const category = getCategory({ isBridge: location.isBridge, champions: location.champions ?? [] });
 
   let committedSubStage: CommittedSubStage | undefined;
-  if (stage === "engaged" || stage === "committed") {
+  if (stage === "diligence" || stage === "ready_to_commit" || stage === "build_out") {
     committedSubStage = parseCommittedSubStage({ leasing, loi });
   }
 
@@ -223,10 +229,6 @@ function applyDerived(location: Location, row: Record<string, unknown>): Locatio
   const fastOpenDate = row.dd_fast_open_proj_open_date != null ? String(row.dd_fast_open_proj_open_date) : null;
   const maxCapCapacity = row.dd_max_cap_capacity != null ? Number(row.dd_max_cap_capacity) : null;
   const maxCapDate = row.dd_max_cap_proj_open_date != null ? String(row.dd_max_cap_proj_open_date) : null;
-
-  // "In Diligence" — engaged, LOI signed (loi=done), but DD hasn't produced a
-  // projected open date yet. Surfaces as a sub-label on the LOI stage badge.
-  const inDiligence = stage === 'engaged' && loi === 'done' && fastOpenDate == null;
 
   location.derived = {
     stage,
@@ -239,7 +241,6 @@ function applyDerived(location: Location, row: Record<string, unknown>): Locatio
     fastOpenDate,
     maxCapCapacity,
     maxCapDate,
-    inDiligence,
   };
   return location;
 }
@@ -271,6 +272,9 @@ function mapRows(rows: Record<string, unknown>[]): Location[] {
       permitsAcquired: row.permits_acquired === null || row.permits_acquired === undefined
         ? null
         : Boolean(row.permits_acquired),
+      zoningCleared: row.zoning_cleared === null || row.zoning_cleared === undefined
+        ? null
+        : Boolean(row.zoning_cleared),
       summerProgram: row.summer_program === null || row.summer_program === undefined
         ? null
         : Boolean(row.summer_program),
@@ -379,6 +383,7 @@ export async function getNearbyLocations(centerLat: number, centerLng: number, l
         upgradeForLocationId: (row.upgrade_for_location_id as string) || null,
         regulatoryApproved: row.regulatory_approved == null ? null : Boolean(row.regulatory_approved),
         permitsAcquired: row.permits_acquired == null ? null : Boolean(row.permits_acquired),
+        zoningCleared: row.zoning_cleared == null ? null : Boolean(row.zoning_cleared),
         summerProgram: row.summer_program == null ? null : Boolean(row.summer_program),
         capacityOverride: row.capacity_override != null ? Number(row.capacity_override) : null,
         targetOpenDateOverride: (row.target_open_date_override as string) || null,
@@ -428,6 +433,7 @@ function mapBoundsRows(rows: Record<string, unknown>[]): Location[] {
       upgradeForLocationId: (row.upgrade_for_location_id as string) || null,
       regulatoryApproved: row.regulatory_approved == null ? null : Boolean(row.regulatory_approved),
       permitsAcquired: row.permits_acquired == null ? null : Boolean(row.permits_acquired),
+      zoningCleared: row.zoning_cleared == null ? null : Boolean(row.zoning_cleared),
       summerProgram: row.summer_program == null ? null : Boolean(row.summer_program),
       capacityOverride: row.capacity_override != null ? Number(row.capacity_override) : null,
       targetOpenDateOverride: (row.target_open_date_override as string) || null,

@@ -71,12 +71,15 @@ export function useMetroProblems(metro: string | null): Map<string, SiteProblem[
 
 /** Derive a default plan from the data when no admin curation exists. */
 export function autoDerivePlan(metroLocations: Location[]): EffectivePlan {
-  const committedAI = metroLocations.filter(
-    l => l.derived?.category === "ai" && l.derived?.stage === "committed"
+  // "Primary" auto-picks: the single AI site furthest down the pipeline.
+  // Build-out / Ready-to-open / Open are stronger signals than Diligence.
+  const PRIMARY_STAGES = new Set(["build_out", "ready_to_open", "open"]);
+  const primaryCandidates = metroLocations.filter(
+    l => l.derived?.category === "ai" && PRIMARY_STAGES.has(l.derived.stage)
   );
   const bridges = metroLocations.filter(l => l.isBridge === true);
   return {
-    primaryLongTermSiteId: committedAI.length === 1 ? committedAI[0].id : undefined,
+    primaryLongTermSiteId: primaryCandidates.length === 1 ? primaryCandidates[0].id : undefined,
     bridgeSiteId: bridges.length === 1 ? bridges[0].id : undefined,
     watchSiteIds: [],
     source: "auto",
@@ -116,17 +119,16 @@ export function getPlanRole(
   return null;
 }
 
-/** Stage rank for sort: committed > engaged > scored > moved_on. */
+/** Stage rank for sort: open > ready_to_open > build_out > ready_to_commit > diligence > prospect > moved_on. */
 function stageRank(stage?: string): number {
   switch (stage) {
-    case "committed":
-      return 0;
-    case "engaged":
-      return 1;
-    case "scored":
-      return 2;
-    default:
-      return 3; // moved_on / undefined
+    case "open":             return 0;
+    case "ready_to_open":    return 1;
+    case "build_out":        return 2;
+    case "ready_to_commit":  return 3;
+    case "diligence":        return 4;
+    case "prospect":         return 5;
+    default:                 return 6; // moved_on / undefined
   }
 }
 
@@ -169,8 +171,8 @@ export function comparePlanOrder(
   const sr = stageRank(a.derived?.stage) - stageRank(b.derived?.stage);
   if (sr !== 0) return sr;
 
-  // 4. Committed sites: closest deadline first
-  if (a.derived?.stage === "committed" && b.derived?.stage === "committed") {
+  // 4. Build-out sites: closest deadline first
+  if (a.derived?.stage === "build_out" && b.derived?.stage === "build_out") {
     const aD = a.feedbackDeadline ? new Date(a.feedbackDeadline).getTime() : Infinity;
     const bD = b.feedbackDeadline ? new Date(b.feedbackDeadline).getTime() : Infinity;
     if (aD !== bD) return aD - bD;

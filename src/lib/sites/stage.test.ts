@@ -2,91 +2,63 @@ import { describe, it, expect } from 'vitest';
 import { getStage } from './stage';
 
 describe('getStage', () => {
-  it('returns scored when no leasing or loi data', () => {
-    expect(getStage({})).toBe('scored');
+  it('returns prospect when no data', () => {
+    expect(getStage({})).toBe('prospect');
   });
 
-  it('returns engaged when leasing is in active landlord conversation', () => {
-    expect(getStage({ leasing: 'turn_1' })).toBe('engaged');
-    expect(getStage({ leasing: 'turn_2' })).toBe('engaged');
-    expect(getStage({ leasing: 'turn_3' })).toBe('engaged');
-    expect(getStage({ leasing: 'ready' })).toBe('engaged');
+  it('returns prospect for pre-LOI activity (loi not done)', () => {
+    expect(getStage({ loi: 'claimed' })).toBe('prospect');
+    expect(getStage({ loi: 'submitted' })).toBe('prospect');
+    expect(getStage({ loi: 'in_progress' })).toBe('prospect');
+    expect(getStage({ leasing: 'turn_1' })).toBe('prospect');
+    expect(getStage({ leasing: 'turn_2', loi: 'submitted' })).toBe('prospect');
   });
 
-  it('returns engaged when loi is claimed (REBL pursuing the site, no landlord turns yet)', () => {
-    expect(getStage({ loi: 'claimed' })).toBe('engaged');
+  it('returns diligence when LOI is done and leasing is still working', () => {
+    expect(getStage({ loi: 'done', leasing: 'claimed' })).toBe('diligence');
+    expect(getStage({ loi: 'done', leasing: 'turn_1' })).toBe('diligence');
+    expect(getStage({ loi: 'done', leasing: 'negotiating' })).toBe('diligence');
+    expect(getStage({ loi: 'done' })).toBe('diligence');
   });
 
-  it('returns engaged when loi is submitted (LOI sent to landlord)', () => {
-    expect(getStage({ loi: 'submitted' })).toBe('engaged');
+  it('returns ready_to_commit when LOI is done and lease is ready to sign', () => {
+    expect(getStage({ loi: 'done', leasing: 'ready' })).toBe('ready_to_commit');
   });
 
-  it('returns engaged for other in-flight leasing states', () => {
-    // Any non-cut/non-done leasing value means REBL is actively working the site.
-    expect(getStage({ leasing: 'claimed' })).toBe('engaged');
-    expect(getStage({ leasing: 'negotiating' })).toBe('engaged');
-    expect(getStage({ leasing: 'received' })).toBe('engaged');
-    expect(getStage({ leasing: 'reset' })).toBe('engaged');
+  it('returns build_out when lease is executed (leasing=done)', () => {
+    expect(getStage({ leasing: 'done' })).toBe('build_out');
+    expect(getStage({ loi: 'done', leasing: 'done' })).toBe('build_out');
   });
 
-  it('forward-compatible: any unknown non-null loi/leasing value is engaged', () => {
-    expect(getStage({ loi: 'some-future-state' })).toBe('engaged');
-    expect(getStage({ leasing: 'some-future-state' })).toBe('engaged');
-  });
-
-  it('returns engaged when LOI is signed (LOI is non-binding; lease not yet executed)', () => {
-    expect(getStage({ loi: 'signed' })).toBe('engaged');
-    expect(getStage({ loi: 'loi-signed' })).toBe('engaged');
-    expect(getStage({ loi: 'done' })).toBe('engaged');
-    expect(getStage({ loi: 'completed' })).toBe('engaged');
-  });
-
-  it('returns committed only when lease is executed (leasing=done, no process_exception)', () => {
-    expect(getStage({ leasing: 'done' })).toBe('committed');
-    expect(getStage({ leasing: 'done', loi: 'done' })).toBe('committed');
+  it('returns build_out when leasing=done with no opened_at', () => {
+    expect(getStage({ leasing: 'done', loi: 'done' })).toBe('build_out');
   });
 
   it('returns moved_on when leasing is cut', () => {
     expect(getStage({ leasing: 'cut' })).toBe('moved_on');
   });
 
-  it('returns moved_on when loi is cut (LOI process killed)', () => {
+  it('returns moved_on when loi is cut', () => {
     expect(getStage({ loi: 'cut' })).toBe('moved_on');
   });
 
-  it('returns moved_on when leasing is done with process_exception', () => {
+  it('returns moved_on when leasing=done with process_exception', () => {
     expect(getStage({ leasing: 'done', leasingDetails: { process_exception: true } })).toBe('moved_on');
   });
 
-  it('moved_on takes precedence over committed when leasing is cut', () => {
-    expect(getStage({ loi: 'signed', leasing: 'cut' })).toBe('moved_on');
-  });
-
-  it('moved_on takes precedence over engaged when loi is cut', () => {
-    expect(getStage({ loi: 'cut', leasing: 'turn_1' })).toBe('moved_on');
-  });
-
-  it('signed leasing then cut should be moved_on (cut wins)', () => {
-    expect(getStage({ loi: 'cut', leasing: 'cut' })).toBe('moved_on');
-  });
-
-  it('returns moved_on when strategy is kill (REBL killed the deal)', () => {
+  it('returns moved_on when strategy=kill (REBL killed the deal)', () => {
     expect(getStage({ strategy: 'kill' })).toBe('moved_on');
-  });
-
-  it('strategy=kill takes precedence over engaged/committed states', () => {
-    // Real Southgate case: loi=done, leasing=ready, strategy=kill → moved_on
+    // strategy=kill wins over any pipeline state
     expect(getStage({ leasing: 'ready', loi: 'done', strategy: 'kill' })).toBe('moved_on');
-    // Even with leasing=done (would be committed), strategy=kill wins
     expect(getStage({ leasing: 'done', strategy: 'kill' })).toBe('moved_on');
   });
 
-  it('strategy=start does not affect stage (only kill is meaningful here)', () => {
-    expect(getStage({ leasing: 'ready', strategy: 'start' })).toBe('engaged');
-    expect(getStage({ strategy: 'start' })).toBe('scored');
+  it('strategy=start does not promote stage by itself', () => {
+    expect(getStage({ strategy: 'start' })).toBe('prospect');
+    expect(getStage({ leasing: 'ready', strategy: 'start' })).toBe('prospect');
   });
 
-  describe('opened_at (Open / Ready stages)', () => {
+  describe('opened_at (Open / Ready to Open stages)', () => {
     const now = new Date('2026-05-18T00:00:00Z');
 
     it('returns open when opened_at is in the past', () => {
@@ -94,26 +66,26 @@ describe('getStage', () => {
       expect(getStage({ openedAt: '2025-08-12T00:00:00Z', now })).toBe('open');
     });
 
-    it('returns ready when opened_at is in the future', () => {
-      expect(getStage({ openedAt: '2027-08-12', now })).toBe('ready');
+    it('returns ready_to_open when opened_at is in the future', () => {
+      expect(getStage({ openedAt: '2027-08-12', now })).toBe('ready_to_open');
     });
 
     it('returns open when opened_at equals now (boundary)', () => {
       expect(getStage({ openedAt: '2026-05-18T00:00:00Z', now })).toBe('open');
     });
 
-    it('open/ready supersedes a stale leasing/loi pipeline (e.g. 353 Hiatt has loi=done)', () => {
+    it('open/ready_to_open supersedes a stale pipeline (353 Hiatt: loi=done, leasing=claimed)', () => {
       expect(getStage({ openedAt: '2025-08-12', leasing: 'claimed', loi: 'done', now })).toBe('open');
     });
 
-    it('moved_on still wins over open/ready', () => {
+    it('moved_on still wins over open/ready_to_open', () => {
       expect(getStage({ openedAt: '2024-08-12', strategy: 'kill', now })).toBe('moved_on');
       expect(getStage({ openedAt: '2024-08-12', leasing: 'cut', now })).toBe('moved_on');
     });
 
     it('ignores invalid opened_at strings (falls back to pipeline)', () => {
-      expect(getStage({ openedAt: 'not-a-date', leasing: 'done', now })).toBe('committed');
-      expect(getStage({ openedAt: '', leasing: 'done', now })).toBe('committed');
+      expect(getStage({ openedAt: 'not-a-date', leasing: 'done', now })).toBe('build_out');
+      expect(getStage({ openedAt: '', leasing: 'done', now })).toBe('build_out');
     });
   });
 });

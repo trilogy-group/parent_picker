@@ -214,7 +214,7 @@ export function MapView() {
           suggested: loc.suggested || false,
           selected: loc.id === selectedLocationId,
           category: loc.derived?.category ?? "ai",
-          stage: loc.derived?.stage ?? "scored",
+          stage: loc.derived?.stage ?? "prospect",
         },
       })),
     };
@@ -604,11 +604,11 @@ export function MapView() {
             paint={{
               "circle-color": [
                 "case",
-                // Category-driven color for engaged/committed/parent-championed sites
+                // Category-driven color for in-pipeline / parent-championed sites
                 ["==", ["get", "category"], "parent"], "#10b981",
                 ["==", ["get", "category"], "short_term"], "#f59e0b",
-                ["!=", ["get", "stage"], "scored"], "#3b82f6",
-                // Otherwise: score-based color (preserves existing RED/AMBER signal for scored sites)
+                ["!=", ["get", "stage"], "prospect"], "#3b82f6",
+                // Otherwise: score-based color (preserves RED/AMBER signal for prospects)
                 ["match", ["get", "overallColor"],
                   "GREEN", "#22c55e",
                   "YELLOW", "#facc15",
@@ -620,14 +620,18 @@ export function MapView() {
               "circle-radius": [
                 "case",
                 ["get", "selected"], 14,
-                ["==", ["get", "stage"], "committed"], 12,
-                ["==", ["get", "stage"], "engaged"], 9,
+                ["==", ["get", "stage"], "open"], 14,
+                ["==", ["get", "stage"], "ready_to_open"], 12,
+                ["==", ["get", "stage"], "build_out"], 12,
+                ["==", ["get", "stage"], "ready_to_commit"], 10,
+                ["==", ["get", "stage"], "diligence"], 9,
                 6,
               ],
               "circle-stroke-width": [
                 "case",
                 ["get", "selected"], 4,
-                ["==", ["get", "stage"], "committed"], 4,
+                ["==", ["get", "stage"], "open"], 4,
+                ["==", ["get", "stage"], "build_out"], 4,
                 2,
               ],
               "circle-stroke-color": "#ffffff",

@@ -40,6 +40,7 @@ export interface Location {
   upgradeForLocationId?: string | null;
   regulatoryApproved?: boolean | null;
   permitsAcquired?: boolean | null;
+  zoningCleared?: boolean | null;
   summerProgram?: boolean | null;
   // pp_location_overrides — temporary admin overrides until upstream data is fixed
   capacityOverride?: number | null;
@@ -113,7 +114,22 @@ export interface AdminAction {
 
 // === Parent Feedback Redesign types ===
 
-export type SiteStage = 'scored' | 'engaged' | 'committed' | 'ready' | 'open' | 'moved_on';
+// Site stages map the real-estate pipeline parents see:
+//   prospect          → not yet pursued (or pre-LOI activity)
+//   diligence         → LOI signed, working out lease terms + diligence
+//   ready_to_commit   → lease terms ready to sign, diligence done
+//   build_out         → lease signed, school under construction
+//   ready_to_open     → construction done, awaiting first day
+//   open              → school operating
+//   moved_on          → killed / cut / process-exception
+export type SiteStage =
+  | 'prospect'
+  | 'diligence'
+  | 'ready_to_commit'
+  | 'build_out'
+  | 'ready_to_open'
+  | 'open'
+  | 'moved_on';
 export type SiteCategory = 'parent' | 'ai' | 'short_term';
 export type CommittedSubStage = 'loi' | 'lease' | 'zoning' | 'permits' | 'buildout' | 'co';
 export type ProblemStatus = 'open' | 'in_progress' | 'resolved' | 'unresolvable';
@@ -215,7 +231,5 @@ export interface LocationDerived {
   // Due-diligence "max capacity" (full buildout)
   maxCapCapacity?: number | null;
   maxCapDate?: string | null;
-  // Derived: site is at LOI signed but no fast-open date yet → still in diligence
-  inDiligence?: boolean;
 }
 

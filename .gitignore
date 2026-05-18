@@ -59,3 +59,4 @@ next-env.d.ts
 # Local test scripts
 test_compare.py
 test_smoke.py
+.playwright-mcp/

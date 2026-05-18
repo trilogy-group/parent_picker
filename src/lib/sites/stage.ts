@@ -6,24 +6,26 @@ export interface StageInput {
   strategy?: string | null;
   leasingDetails?: { process_exception?: boolean; [k: string]: unknown };
   // `opened_at` from pp_locations (timestamptz). When set, signals school is
-  // operating (Open) or about to (Ready) — supersedes the leasing/loi pipeline.
+  // operating (Open) or about to (Ready to open) — supersedes the pipeline.
   openedAt?: string | null;
   // Override "now" for deterministic tests.
   now?: Date;
 }
 
-// COMMITTED is reserved for the binding moment — lease signed. LOI signing is
-// material progress but still engaged (LOI is non-binding). Any other in-flight
-// leasing/loi state is engaged. This is forward-compatible: new REBL state vocab
-// surfaces as engaged instead of silently falling back to scored.
+// Stage taxonomy (parent-visible pipeline):
+//   prospect          → not yet pursued (or pre-LOI activity)
+//   diligence         → LOI signed (loi='done'), working out lease terms
+//   ready_to_commit   → lease terms ready to sign (leasing='ready') + LOI done
+//   build_out         → lease signed (leasing='done'), school under construction
+//   ready_to_open     → construction done, opened_at in the future
+//   open              → opened_at <= now
+//   moved_on          → killed / cut / process-exception
 
 const MOVED_ON_LEASING = new Set(['cut']);
 const MOVED_ON_LOI = new Set(['cut']);
 
 export function getStage(input: StageInput): SiteStage {
-  // Moved On — definitive end state, takes top priority. strategy='kill' is
-  // REBL's authoritative kill signal (used by pp_watch_loi_status to demote);
-  // it can be set while leasing/loi remain in non-cut states.
+  // 1. Moved On — highest priority, terminal end state.
   if (input.strategy === 'kill') return 'moved_on';
   if (input.leasing && MOVED_ON_LEASING.has(input.leasing)) return 'moved_on';
   if (input.loi && MOVED_ON_LOI.has(input.loi)) return 'moved_on';
@@ -31,23 +33,24 @@ export function getStage(input: StageInput): SiteStage {
     return 'moved_on';
   }
 
-  // Open / Ready — opened_at signals school is/will be operating. Beats the
-  // leasing pipeline because the pipeline often stays stale ("loi=done,
-  // leasing=claimed") on already-open campuses.
+  // 2. Open / Ready to open — opened_at signals school is/will be operating.
+  // Beats the leasing pipeline because pipeline often stays stale on open sites.
   if (input.openedAt) {
     const opened = new Date(input.openedAt);
     if (!Number.isNaN(opened.getTime())) {
-      return opened <= (input.now ?? new Date()) ? 'open' : 'ready';
+      return opened <= (input.now ?? new Date()) ? 'open' : 'ready_to_open';
     }
   }
 
-  // Committed — lease executed (binding contract)
-  if (input.leasing === 'done') return 'committed';
+  // 3. Build-out — lease executed (binding contract). No opened_at yet.
+  if (input.leasing === 'done') return 'build_out';
 
-  // Engaged — any other active leasing/loi state means REBL is working on this site
-  // (LOI signed counts here — it's progress but not yet binding)
-  if (input.leasing) return 'engaged';
-  if (input.loi) return 'engaged';
+  // 4. Ready to commit — lease terms ready to sign + diligence (LOI) done.
+  if (input.loi === 'done' && input.leasing === 'ready') return 'ready_to_commit';
 
-  return 'scored';
+  // 5. Diligence — LOI signed, working out lease and DD.
+  if (input.loi === 'done') return 'diligence';
+
+  // 6. Prospect — everything else (pre-LOI activity collapses here).
+  return 'prospect';
 }
