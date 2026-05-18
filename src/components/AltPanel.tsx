@@ -443,8 +443,8 @@ export function AltPanel() {
 
             const showDualRows =
               (stage === "build_out" || stage === "ready_to_commit" || stage === "diligence") &&
-              (fastCap != null || maxCap != null) &&
-              (fastCap !== maxCap || fastDate !== maxDate);
+              (fastCap != null && maxCap != null) &&
+              fastCap !== maxCap;
 
             const rows: React.ReactNode[] = [];
 

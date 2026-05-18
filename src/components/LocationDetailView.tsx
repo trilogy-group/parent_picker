@@ -703,34 +703,19 @@ export default function LocationDetailView({
               </div>
             ) : (
               /* Not voted */
-              <div className="bg-blue-50 rounded-xl p-5">
-                <p className="text-[10px] font-semibold tracking-widest text-blue-600 mb-2">VOTE</p>
-                <p className="text-[15px] leading-snug text-gray-900">
-                  Picture your kid here.
-                  {location.votes > 0
-                    ? <> {location.votes} {location.votes === 1 ? "family is" : "families are"} in. At {LAUNCH_THRESHOLD}, Alpha moves forward and begins lease negotiation.</>
-                    : <> At {LAUNCH_THRESHOLD} families, Alpha moves forward and begins lease negotiation.</>
-                  }
-                </p>
-                {location.notHereVotes > 0 && (
-                  <p className="text-sm text-amber-600 mt-1">
-                    {location.notHereVotes} concern{location.notHereVotes !== 1 ? "s" : ""}
-                  </p>
-                )}
-                <div className="flex gap-3 mt-4">
-                  <button
-                    onClick={handleVoteIn}
-                    className="flex-1 py-2.5 rounded-lg text-sm font-semibold transition-colors bg-blue-600 text-white hover:bg-blue-700"
-                  >
-                    I&apos;m good with this location
-                  </button>
-                  <button
-                    onClick={handleVoteNotHere}
-                    className="px-5 py-2.5 rounded-lg text-sm font-medium transition-colors border border-gray-300 text-gray-700 hover:bg-white"
-                  >
-                    Not for me
-                  </button>
-                </div>
+              <div className="flex gap-3">
+                <button
+                  onClick={handleVoteIn}
+                  className="flex-1 py-2.5 rounded-lg text-sm font-semibold transition-colors bg-blue-600 text-white hover:bg-blue-700"
+                >
+                  I&apos;m good with this location
+                </button>
+                <button
+                  onClick={handleVoteNotHere}
+                  className="px-5 py-2.5 rounded-lg text-sm font-medium transition-colors border border-gray-300 text-gray-700 hover:bg-white"
+                >
+                  Not for me
+                </button>
               </div>
             )}
           </div>
