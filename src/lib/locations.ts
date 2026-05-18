@@ -274,6 +274,8 @@ function mapRows(rows: Record<string, unknown>[]): Location[] {
       summerProgram: row.summer_program === null || row.summer_program === undefined
         ? null
         : Boolean(row.summer_program),
+      capacityOverride: row.capacity_override != null ? Number(row.capacity_override) : null,
+      targetOpenDateOverride: (row.target_open_date_override as string) || null,
       champions: [],
     };
     return applyDerived(location, row);
@@ -371,6 +373,13 @@ export async function getNearbyLocations(centerLat: number, centerLng: number, l
         rebl3SiteId: (row.property_source_key as string) || null,
         feedbackDeadline: (row.feedback_deadline as string) || null,
         isBridge: row.is_bridge === true,
+        openedAt: (row.opened_at as string) || null,
+        upgradeForLocationId: (row.upgrade_for_location_id as string) || null,
+        regulatoryRequired: row.regulatory_required == null ? null : Boolean(row.regulatory_required),
+        permitsRequired: row.permits_required == null ? null : Boolean(row.permits_required),
+        summerProgram: row.summer_program == null ? null : Boolean(row.summer_program),
+        capacityOverride: row.capacity_override != null ? Number(row.capacity_override) : null,
+        targetOpenDateOverride: (row.target_open_date_override as string) || null,
         champions: [],
       };
       return applyDerived(loc, row);
@@ -411,6 +420,13 @@ function mapBoundsRows(rows: Record<string, unknown>[]): Location[] {
       rebl3SiteId: (row.property_source_key as string) || null,
       feedbackDeadline: (row.feedback_deadline as string) || null,
       isBridge: row.is_bridge === true,
+      openedAt: (row.opened_at as string) || null,
+      upgradeForLocationId: (row.upgrade_for_location_id as string) || null,
+      regulatoryRequired: row.regulatory_required == null ? null : Boolean(row.regulatory_required),
+      permitsRequired: row.permits_required == null ? null : Boolean(row.permits_required),
+      summerProgram: row.summer_program == null ? null : Boolean(row.summer_program),
+      capacityOverride: row.capacity_override != null ? Number(row.capacity_override) : null,
+      targetOpenDateOverride: (row.target_open_date_override as string) || null,
       champions: [],
     };
     return applyDerived(loc, row);

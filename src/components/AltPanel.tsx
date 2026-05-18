@@ -381,13 +381,15 @@ export function AltPanel() {
 
           {/* Facts row — capacity / REBL score / opening date(s). For sites with
               both fast-open and max-cap DD blocks we show two rows: Phase 1 first,
-              full buildout below. Open campuses fall back to plain REBL capacity. */}
+              full buildout below. Open campuses fall back to plain REBL capacity.
+              pp_location_overrides take precedence (admin-curated fixes for stale
+              REBL data — delete the override row once REBL is corrected). */}
           {(() => {
-            const fastCap = loc.derived?.fastOpenCapacity ?? null;
-            const fastDate = loc.derived?.fastOpenDate ?? null;
+            const fastCap = loc.capacityOverride ?? loc.derived?.fastOpenCapacity ?? null;
+            const fastDate = loc.targetOpenDateOverride ?? loc.derived?.fastOpenDate ?? null;
             const maxCap = loc.derived?.maxCapCapacity ?? null;
             const maxDate = loc.derived?.maxCapDate ?? null;
-            const fallbackCap = loc.scores?.capacity ?? null;
+            const fallbackCap = loc.capacityOverride ?? loc.scores?.capacity ?? null;
             const score = loc.derived?.reblScore ?? null;
             const colorClass =
               loc.scores?.overallColor === "GREEN" ? "bg-emerald-500" :

@@ -81,6 +81,18 @@ Inviter→invitee email log. `inviter_id`, `invitee_email`, `created_at`.
 `location_id?`, `action`, `admin_email`, `recipient_emails[]`, `email_failed`, `created_at`.
 Actions: `approve`, `reject`, `notify_voters`, `help_request_sent`, etc.
 
+### 2.10a `pp_location_overrides` — admin overrides for stale upstream data
+Pp-owned overrides applied on top of REBL data via the view. Each row is
+intended to be temporary — delete it once REBL is corrected.
+| Column | Notes |
+|---|---|
+| `location_id` | PK → pp_locations (one row per site) |
+| `capacity` | overrides headline capacity (e.g. "current enrollment" for Open campuses where REBL `capacity` is building max) |
+| `target_open_date` | overrides projected open date (fills the gap until REBL DD `fast_open.proj_open_date` is populated) |
+| `reason` | free text — why we overrode, used as a delete-when condition |
+| `created_at`, `updated_at` | |
+View surfaces as `capacity_override` + `target_open_date_override`. App card prefers override > REBL DD > rebl3_sites.capacity.
+
 ### 2.10 `pp_site_champions` — redesign tables
 Lead + supporters for a site.
 | Column | Notes |

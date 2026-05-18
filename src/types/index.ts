@@ -40,6 +40,9 @@ export interface Location {
   regulatoryRequired?: boolean | null;
   permitsRequired?: boolean | null;
   summerProgram?: boolean | null;
+  // pp_location_overrides — temporary admin overrides until upstream data is fixed
+  capacityOverride?: number | null;
+  targetOpenDateOverride?: string | null;
   champions?: SiteChampion[];
   problems?: SiteProblem[];
   derived?: LocationDerived;
