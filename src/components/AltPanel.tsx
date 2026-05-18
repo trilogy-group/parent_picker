@@ -331,11 +331,17 @@ export function AltPanel() {
             {loc.derived?.stage && (
               <StageBadge stage={loc.derived.stage} inDiligence={loc.derived.inDiligence} />
             )}
-            {loc.regulatoryRequired === true && (
-              <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-violet-100 text-violet-700" title="Site requires regulatory approval">REGULATORY</span>
+            {loc.regulatoryApproved === true && (
+              <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700" title="Regulatory approval complete">REGULATORY ✓</span>
             )}
-            {loc.permitsRequired === true && (
-              <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-violet-100 text-violet-700" title="Site requires permits">PERMITS</span>
+            {loc.regulatoryApproved === false && (
+              <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-700" title="Regulatory approval in progress">REGULATORY · pending</span>
+            )}
+            {loc.permitsAcquired === true && (
+              <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700" title="Permits acquired">PERMITS ✓</span>
+            )}
+            {loc.permitsAcquired === false && (
+              <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-700" title="Permits in progress">PERMITS · pending</span>
             )}
             {loc.summerProgram === true && (
               <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-700" title="Summer program runs on this site">SUMMER</span>

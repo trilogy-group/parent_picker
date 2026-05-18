@@ -35,10 +35,11 @@ export interface Location {
   feedbackDeadline?: string | null;
   isBridge?: boolean;
   // Community Site card fields (2026-05-18 migration)
+  // For regulatory/permits: true = approved/acquired, false = in progress, null = unknown/N/A
   openedAt?: string | null;
   upgradeForLocationId?: string | null;
-  regulatoryRequired?: boolean | null;
-  permitsRequired?: boolean | null;
+  regulatoryApproved?: boolean | null;
+  permitsAcquired?: boolean | null;
   summerProgram?: boolean | null;
   // pp_location_overrides — temporary admin overrides until upstream data is fixed
   capacityOverride?: number | null;

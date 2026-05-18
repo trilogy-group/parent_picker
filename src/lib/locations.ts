@@ -265,12 +265,12 @@ function mapRows(rows: Record<string, unknown>[]): Location[] {
       isBridge: row.is_bridge === true,
       openedAt: (row.opened_at as string) || null,
       upgradeForLocationId: (row.upgrade_for_location_id as string) || null,
-      regulatoryRequired: row.regulatory_required === null || row.regulatory_required === undefined
+      regulatoryApproved: row.regulatory_approved === null || row.regulatory_approved === undefined
         ? null
-        : Boolean(row.regulatory_required),
-      permitsRequired: row.permits_required === null || row.permits_required === undefined
+        : Boolean(row.regulatory_approved),
+      permitsAcquired: row.permits_acquired === null || row.permits_acquired === undefined
         ? null
-        : Boolean(row.permits_required),
+        : Boolean(row.permits_acquired),
       summerProgram: row.summer_program === null || row.summer_program === undefined
         ? null
         : Boolean(row.summer_program),
@@ -377,8 +377,8 @@ export async function getNearbyLocations(centerLat: number, centerLng: number, l
         isBridge: row.is_bridge === true,
         openedAt: (row.opened_at as string) || null,
         upgradeForLocationId: (row.upgrade_for_location_id as string) || null,
-        regulatoryRequired: row.regulatory_required == null ? null : Boolean(row.regulatory_required),
-        permitsRequired: row.permits_required == null ? null : Boolean(row.permits_required),
+        regulatoryApproved: row.regulatory_approved == null ? null : Boolean(row.regulatory_approved),
+        permitsAcquired: row.permits_acquired == null ? null : Boolean(row.permits_acquired),
         summerProgram: row.summer_program == null ? null : Boolean(row.summer_program),
         capacityOverride: row.capacity_override != null ? Number(row.capacity_override) : null,
         targetOpenDateOverride: (row.target_open_date_override as string) || null,
@@ -426,8 +426,8 @@ function mapBoundsRows(rows: Record<string, unknown>[]): Location[] {
       isBridge: row.is_bridge === true,
       openedAt: (row.opened_at as string) || null,
       upgradeForLocationId: (row.upgrade_for_location_id as string) || null,
-      regulatoryRequired: row.regulatory_required == null ? null : Boolean(row.regulatory_required),
-      permitsRequired: row.permits_required == null ? null : Boolean(row.permits_required),
+      regulatoryApproved: row.regulatory_approved == null ? null : Boolean(row.regulatory_approved),
+      permitsAcquired: row.permits_acquired == null ? null : Boolean(row.permits_acquired),
       summerProgram: row.summer_program == null ? null : Boolean(row.summer_program),
       capacityOverride: row.capacity_override != null ? Number(row.capacity_override) : null,
       targetOpenDateOverride: (row.target_open_date_override as string) || null,
