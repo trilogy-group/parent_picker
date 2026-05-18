@@ -235,6 +235,14 @@ export default function LocationDetailView({
     building:     location.scores?.building?.color,
     cost:         location.scores?.price?.color,
   };
+  // When an override flips a dimension to GREEN, replace REBL's negative prose
+  // with a positive blurb so the text matches the color dot.
+  const greenProseByKey: Record<string, string> = {
+    neighborhood: "Neighborhood demographics support strong demand.",
+    zoning:       "Zoning is approved for school use.",
+    building:     "Building meets our requirements for an Alpha campus.",
+    cost:         "Pricing is in line with target underwriting.",
+  };
   const rebl3DataPatched = rebl3Data
     ? {
         ...rebl3Data,
@@ -242,7 +250,11 @@ export default function LocationDetailView({
           const ovr = dimensionOverrides[d.key];
           // Only override when our color disagrees with REBL's raw judgment.
           if (ovr && ovr !== d.judgment) {
-            return { ...d, judgment: ovr as typeof d.judgment };
+            const next = { ...d, judgment: ovr as typeof d.judgment };
+            if (ovr === "GREEN" && greenProseByKey[d.key]) {
+              next.prose = greenProseByKey[d.key];
+            }
+            return next;
           }
           return d;
         }),
