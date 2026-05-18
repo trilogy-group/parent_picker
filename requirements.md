@@ -1219,6 +1219,31 @@ By default Moved-On sites are hidden from the map; an admin toggle reveals them 
 
 ---
 
+## R-METRO-FIXED — Curated Metro Navigation
+
+### R-METRO-FIXED-001 — Cards come from a curated list, not from data
+Given the user is at nationwide zoom (`zoomLevel < 9`), the left panel shows one card per metro from `ACTIVE_METROS` in the order declared in `src/lib/active-metros.ts`. The cards do not reflect per-metro location counts.
+
+### R-METRO-FIXED-002 — Card click flies to the metro's declared zoom
+Given a user clicks a metro card, the map flies to that metro's `(lat, lng)` at its declared `defaultZoom`, and the left panel switches to the metro list view.
+
+### R-METRO-FIXED-003 — Map bubble layer mirrors the curated list
+Given the user is at nationwide zoom, the map shows one bubble per active metro at its `(lat, lng)`. Bubbles do not display a count. Clicking a bubble flies to that metro at its `defaultZoom`.
+
+### R-METRO-FIXED-004 — Initial view prefers profile address, then geo
+On first page load (no `?location=` deep link), the map auto-flies to the user's nearest active metro using saved profile coordinates if present, else browser geolocation. If no location resolves (or no metro is within range), the map stays at nationwide.
+
+### R-METRO-FIXED-005 — Auto-fly fires once per session
+The initial auto-fly runs at most once per page load. A geolocation callback that arrives after the user has manually navigated does not snap the camera back.
+
+### R-METRO-FIXED-006 — Panning out of a metro restores the cards
+Given a user pans the map center outside every active metro's radius, the panel header clears and the curated cards reappear (even at `zoomLevel >= 9`).
+
+### R-METRO-FIXED-007 — Off-list locations still render on the map
+Given a location exists whose nearest active metro is too far away (outside the metro's `radiusMiles`), the location dot still renders on the map. It has no card in the panel.
+
+---
+
 ## Out of Scope (v2 - Future)
 
 See `docs/brainlift-location-selection.md` for full strategic context.
