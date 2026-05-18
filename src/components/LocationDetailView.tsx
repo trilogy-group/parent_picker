@@ -227,8 +227,38 @@ export default function LocationDetailView({
       .finally(() => setRebl3Loading(false));
   }, [location.rebl3SiteId]);
 
+  // Overlay pp_location_overrides on top of REBL3 dimensions so the AI Scoring
+  // panel reflects admin-curated fixes. Falls through when no override exists.
+  const dimensionOverrides: Record<string, string | null | undefined> = {
+    neighborhood: location.scores?.neighborhood?.color,
+    zoning:       location.scores?.zoning?.color,
+    building:     location.scores?.building?.color,
+    cost:         location.scores?.price?.color,
+  };
+  const rebl3DataPatched = rebl3Data
+    ? {
+        ...rebl3Data,
+        dimensions: rebl3Data.dimensions.map(d => {
+          const ovr = dimensionOverrides[d.key];
+          // Only override when our color disagrees with REBL's raw judgment.
+          if (ovr && ovr !== d.judgment) {
+            return { ...d, judgment: ovr as typeof d.judgment };
+          }
+          return d;
+        }),
+      }
+    : null;
+
   const badge = statusBadge(location.scores?.overallColor);
-  const sizeLabel = sizeTierLabel(location.scores?.sizeClassification, location.scores?.capacity);
+  // Capacity priority: override (headline) > max_cap override > REBL DD fast_open > REBL capacity.
+  // Falls back to size_classification tier when no number is known.
+  const displayCapacity =
+    location.capacityOverride
+    ?? location.maxCapCapacityOverride
+    ?? location.derived?.maxCapCapacity
+    ?? location.derived?.fastOpenCapacity
+    ?? location.scores?.capacity;
+  const sizeLabel = sizeTierLabel(location.scores?.sizeClassification, displayCapacity);
   const remaining = Math.max(0, LAUNCH_THRESHOLD - location.votes);
 
   const inVoters = voters.filter((v) => v.voteType === "in");
@@ -545,7 +575,7 @@ export default function LocationDetailView({
             <>
               <div className="px-4 py-3 mt-5 pt-4 border-t border-stone-200">
                 <h3 className="text-xs font-bold uppercase tracking-wider text-stone-500 mb-2">Path to opening</h3>
-                <StageTimeline current={location.derived?.committedSubStage ?? "loi"} />
+                <StageTimeline current={location.derived?.stage ?? "diligence"} />
               </div>
               <div className="px-4 py-3">
                 <ProblemList
@@ -839,9 +869,9 @@ export default function LocationDetailView({
                         <div key={i} className="h-16 bg-gray-100 rounded-xl animate-pulse" />
                       ))}
                     </div>
-                  ) : rebl3Data ? (
+                  ) : rebl3DataPatched ? (
                     <div className="space-y-3">
-                      {rebl3Data.dimensions.map(dim => (
+                      {rebl3DataPatched.dimensions.map(dim => (
                         <DimensionCard
                           key={dim.key}
                           dimension={dim}

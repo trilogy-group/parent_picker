@@ -304,7 +304,6 @@ export function AltPanel() {
       stage === "ready_to_commit" ||
       stage === "build_out" ||
       stage === "ready_to_open";
-    const subStage = loc.derived?.committedSubStage ?? "loi";
     const openProblems = (problems ?? []).filter(p => p.status === "open" || p.status === "in_progress");
     const hasPivot = openProblems.some(p => p.pivotTrigger);
     const problemCount = openProblems.length;
@@ -513,10 +512,10 @@ export function AltPanel() {
             return <div className="mt-1 space-y-0.5">{rows}</div>;
           })()}
 
-          {/* Mini stage timeline — engaged or committed only */}
-          {showTimeline && (
+          {/* Mini stage timeline — pipeline stages only */}
+          {showTimeline && stage && (
             <div className="mt-2">
-              <StageTimeline current={subStage} compact />
+              <StageTimeline current={stage} compact />
             </div>
           )}
 
