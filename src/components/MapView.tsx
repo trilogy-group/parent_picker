@@ -4,7 +4,6 @@ import { useEffect, useRef, useCallback, useState, useMemo } from "react";
 import Map, { Source, Layer, NavigationControl, Popup, Marker } from "react-map-gl/mapbox";
 import { MapPin } from "lucide-react";
 import { HelpModal } from "./HelpModal";
-import { extractStreet } from "@/lib/address";
 import { useVotesStore } from "@/lib/votes";
 import { useShallow } from "zustand/react/shallow";
 import { useAuth } from "./AuthProvider";
@@ -661,43 +660,6 @@ export function MapView() {
             }}
           />
         </Source>
-      )}
-
-      {/* Selected location popup card on map */}
-      {selectedLocation && (
-        <Popup
-          latitude={selectedLocation.lat}
-          longitude={selectedLocation.lng}
-          anchor="bottom"
-          closeButton={false}
-          closeOnClick={false}
-          offset={[0, -16]}
-          maxWidth="none"
-        >
-          <div className="w-[280px] overflow-hidden rounded-lg shadow-lg bg-white">
-            {GOOGLE_MAPS_KEY && (
-              <img
-                src={`https://maps.googleapis.com/maps/api/streetview?size=560x200&location=${selectedLocation.lat},${selectedLocation.lng}&fov=90&pitch=0&source=outdoor&key=${GOOGLE_MAPS_KEY}`}
-                alt={selectedLocation.name}
-                className="w-full h-[100px] object-cover"
-                onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
-              />
-            )}
-            <div className="p-2.5">
-              <p className="text-sm font-semibold text-gray-900 truncate">{extractStreet(selectedLocation.address, selectedLocation.city)}</p>
-              <p className="text-xs text-gray-500">{selectedLocation.city}, {selectedLocation.state}</p>
-              <a
-                href={`https://www.google.com/maps/search/?api=1&query=${selectedLocation.lat},${selectedLocation.lng}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-1 mt-1.5 text-xs text-blue-600 hover:text-blue-700 font-medium"
-              >
-                <MapPin className="w-3 h-3" />
-                View on Google Maps
-              </a>
-            </div>
-          </div>
-        </Popup>
       )}
 
       {/* Box selection rectangle on map */}
