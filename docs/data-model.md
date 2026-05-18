@@ -24,16 +24,22 @@ The map-visible entity. Many fields are duplicated from `rebl3_sites` for legacy
 | `id` | uuid PK | |
 | `name`, `address`, `city`, `state`, `zip` | text | Mirror of REBL address; view prefers `rebl3_sites` values |
 | `lat`, `lng` | numeric | Same — view prefers REBL coords |
-| `region` | text | Metro grouping key (e.g. "Austin") |
+| `region` | text | Legacy grouping key. Metro mapping now uses lat/lng + radius via `src/lib/active-metros.ts` (`findActiveMetro`). |
 | `status` | text | `active` / `pending_review` / `rejected` / `archived` |
 | `source` | text | `moody` / `internal` / `parent_suggested` |
 | `proposed` | bool | true ⇔ site is in the parent-vote window (set by `pp_watch_loi_status` cron) |
+| `force_proposed` | bool NOT NULL default false | Admin override: bypass LOI/strategy gating in the promote cron. When true, step 1 promotes regardless of REBL state and steps 4/4b skip the demote path. Clear when a real LOI lands. Added 2026-05-18. |
 | `feedback_deadline` | timestamptz | Set by cron on promotion (NOW+14d) |
 | `is_bridge` | bool | Short-term/bridge site (e.g. hotel space) |
 | `released` | bool | Public-facing visibility flag for sites pre-promotion |
+| `opened_at` | timestamptz | School first-operating timestamp. Drives `open` stage when ≤ now, stays in `build_out` when in future. |
+| `upgrade_for_location_id` | uuid → pp_locations | Pointer from a candidate to the current open campus it replaces. Surfaces "↑ Upgrade for <street>" hint on cards and in POR linkified narrative. |
+| `regulatory_approved`, `permits_acquired`, `zoning_cleared` | bool/null | Build-out hurdle flags. Rendered as chips on the card (GREEN ✓ done / AMBER pending) when stage = `build_out`. NULL = unknown. |
+| `summer_program` | bool/null | Static site-level flag — does this site run a summer program? Surfaces a SUMMER chip on the card. |
 | `vote_count`, `not_here_count` | int | Denormalized counters maintained by triggers from `pp_votes` |
 | `rebl3_site_id` | text | Join key to `rebl3_sites.site_id` |
-| `brochure_url`, `notes`, `suggested_by` | | |
+| `brochure_url` | text | Public URL to the listing brochure PDF (uploaded to Supabase storage `proposed-photos` bucket) |
+| `notes`, `suggested_by` | | |
 | `created_at`, `updated_at` | timestamptz | |
 
 ### 2.2 `pp_votes` — one row per parent vote
@@ -83,15 +89,40 @@ Actions: `approve`, `reject`, `notify_voters`, `help_request_sent`, etc.
 
 ### 2.10a `pp_location_overrides` — admin overrides for stale upstream data
 Pp-owned overrides applied on top of REBL data via the view. Each row is
-intended to be temporary — delete it once REBL is corrected.
+intended to be temporary — delete it (or null the relevant column) once REBL
+is corrected.
+
+**Operational metadata overrides:**
 | Column | Notes |
 |---|---|
 | `location_id` | PK → pp_locations (one row per site) |
-| `capacity` | overrides headline capacity (e.g. "current enrollment" for Open campuses where REBL `capacity` is building max) |
-| `target_open_date` | overrides projected open date (fills the gap until REBL DD `fast_open.proj_open_date` is populated) |
-| `reason` | free text — why we overrode, used as a delete-when condition |
+| `capacity` | overrides Phase 1 / fast-open capacity (e.g. "current enrollment" for Open campuses where REBL `capacity` is building max) |
+| `target_open_date` | overrides Phase 1 projected open date (fills the gap until REBL DD `fast_open.proj_open_date` is populated) |
+| `max_cap_capacity` | overrides Full / max-cap capacity |
+| `max_cap_proj_open_date` | overrides Full-buildout projected open date |
+| `hidden_from_panel` | bool — when true, the view excludes this row entirely. Used to hide duplicate pp_locations rows that map to the same canonical site. |
+
+**Scoring overrides** (each null when REBL is authoritative; the view falls back to `pp_judgment_color(r.dim_*)` from `rebl3_sites`):
+| Column | Notes |
+|---|---|
+| `overall_color_override` | text (`GREEN` / `YELLOW` / `AMBER` / `RED`) — overrides the overall color dot |
+| `overall_score_override` | int — overrides the numeric REBL score |
+| `price_color_override` | text — overrides cost dimension color |
+| `zoning_color_override` | text — overrides zoning dimension color |
+| `neighborhood_color_override` | text — overrides neighborhood dimension color |
+| `building_color_override` | text — overrides building dimension color |
+
+**Audit:**
+| Column | Notes |
+|---|---|
+| `reason` | free text — why we overrode (often pipe-separated entries appended on each update). Used as a delete-when condition. |
 | `created_at`, `updated_at` | |
-View surfaces as `capacity_override` + `target_open_date_override`. App card prefers override > REBL DD > rebl3_sites.capacity.
+
+**View / app integration:**
+- Operational fields surface as `capacity_override`, `target_open_date_override`, `max_cap_capacity_override`, `max_cap_date_override` in `pp_locations_with_votes`.
+- Color overrides use `COALESCE(o.<dim>_color_override, pp_judgment_color(r.dim_<dim>))` inside the view so the override wins per dimension.
+- Card capacity priority: `capacityOverride > maxCapCapacityOverride > derived.fastOpenCapacity > derived.maxCapCapacity > scores.capacity`.
+- Detail-view "AI Scoring" panel: when an override flips a dimension to GREEN, the prose is swapped to a positive blurb (`Neighborhood demographics support strong demand.` / `Zoning is approved for school use.` / `Building meets our requirements for an Alpha campus.` / `Pricing is in line with target underwriting.`) so the text matches the dot.
 
 ### 2.10 `pp_site_champions` — redesign tables
 Lead + supporters for a site.
@@ -169,20 +200,25 @@ Key signals we currently consume:
 ## 4. Derived concepts (computed in app code, not in DB)
 
 ### 4.1 `getStage` — `src/lib/sites/stage.ts`
-Returns `scored | engaged | committed | moved_on` from leasing/loi/strategy.
+Returns `prospecting | diligence | build_out | open | moved_on` from leasing/loi/strategy + `pp_locations.opened_at`. Collapsed from the prior 6-stage model on 2026-05-18 (`ready_to_commit` folded into `diligence`, `ready_to_open` folded into `build_out`).
+
 Rules (priority order):
 1. `strategy = 'kill'` → moved_on
 2. `leasing = 'cut'` or `loi = 'cut'` → moved_on
 3. `leasing = 'done'` + `details.process_exception = true` → moved_on
-4. `leasing = 'done'` → committed (lease executed)
-5. any active `leasing` or `loi` → engaged
-6. else → scored
+4. `opened_at` ≤ now → **open**
+5. `opened_at` > now → **build_out** (calendar gap, school not yet operating)
+6. `leasing = 'done'` → build_out (lease executed)
+7. `loi = 'done'` → diligence (covers prior "ready to commit" — same activity, no behavior change for parents)
+8. else → **prospecting**
+
+UI render order on the Path-to-Opening timeline (cards + detail view): Prospecting → Diligence → Build-out → Open. `moved_on` is a side track and is not rendered in the timeline.
 
 ### 4.2 `getCategory` — `src/lib/sites/category.ts`
 Returns `parent | ai | short_term` from `is_bridge` + active champions.
 
 ### 4.3 `parseCommittedSubStage` / `parseMovedOnReason` — `src/lib/sites/parser.ts`
-Substages within `committed`: LOI → Lease → Zoning → Permits → Buildout → CO.
+Substages within the post-LOI pipeline (diligence + build_out): LOI → Lease → Zoning → Permits → Buildout → CO. Function name predates the 4-stage rename (originally "committed" was a single stage covering both); the substage taxonomy itself still applies.
 Moved-on reason: free-text humanized label.
 
 ---
@@ -501,4 +537,30 @@ ON CONFLICT (metro) DO UPDATE SET backup_plan = EXCLUDED.backup_plan;
 
 ---
 
-**File last regenerated from live schema**: 2026-05-18.
+**File last regenerated from live schema**: 2026-05-18 (force_proposed, scoring overrides, 4-stage taxonomy).
+
+---
+
+# 8. Notable crons
+
+### `pp_watch_loi_status` (jobid 10, every 30s)
+
+Drives parent-voting promotion/demotion. Patched 2026-05-18 to honor `pp_locations.force_proposed`:
+
+- **Step 1 — promote**: site has no `parents` row in `rebl3_status` AND **either** `force_proposed=true` (admin override, bypasses LOI/strategy/lease checks) **OR** LOI signed (`loi IN ('loi-signed','signed','done','completed')`) + strategy=start with `workflow_id` + lease not cut/done. Sets `proposed=true`, `feedback_deadline=NOW()+14 days`, posts webhook to `/api/webhooks/location-promoted`.
+- **Step 2 — insert parents row**: every proposed site gets a `rebl3_status[system=parents,status=collecting-feedback]` row mirroring vote counts (guarded by `EXISTS rebl3_sites` to skip upstream orphans).
+- **Step 3 — feedback-complete**: when `feedback_deadline < now()`, parents row flips to `status=feedback-complete`.
+- **Step 4 — demote**: `strategy=kill` OR `leasing IN ('cut','done')` triggers demote — **except** when `force_proposed=true` (admin override wins).
+- **Step 4b — orphan demote**: proposed rows whose upstream `rebl3_sites` row was deleted get demoted — except when `force_proposed=true`.
+- **Step 5 — cancel parents row**: when `proposed=false`, the parents row flips to `cancelled`.
+
+To force-promote a site manually:
+```sql
+UPDATE pp_locations SET force_proposed = true WHERE id = '<uuid>';
+-- Next cron tick (≤30s) sets proposed=true, feedback_deadline=NOW()+14d, inserts parents row, fires webhook.
+```
+To release the override (e.g. once a real LOI is signed):
+```sql
+UPDATE pp_locations SET force_proposed = false WHERE id = '<uuid>';
+-- Subsequent demote signals (lease=cut/done, strategy=kill) will now apply.
+```
