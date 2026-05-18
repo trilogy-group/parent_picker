@@ -12,7 +12,7 @@ export async function GET(
 
   const { data } = await supabase
     .from("pp_plan_of_record")
-    .select("metro, narrative_template_inputs, pivot_conditions, narrative_override, last_curated_at")
+    .select("metro, narrative_template_inputs, pivot_conditions, narrative_override, backup_plan, last_curated_at")
     .eq("metro", decodeURIComponent(metro))
     .maybeSingle();
 
@@ -23,6 +23,7 @@ export async function GET(
     narrativeTemplateInputs: data.narrative_template_inputs ?? {},
     pivotConditions: data.pivot_conditions ?? [],
     narrativeOverride: data.narrative_override,
+    backupPlan: data.backup_plan ?? null,
     lastCuratedAt: data.last_curated_at,
   };
   return NextResponse.json(plan);

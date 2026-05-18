@@ -314,7 +314,18 @@ export function AltPanel() {
         >
           {/* Status row */}
           <div className="flex items-center gap-2 flex-wrap mb-1.5">
-            {loc.derived?.stage && <StageBadge stage={loc.derived.stage} />}
+            {loc.derived?.stage && (
+              <StageBadge stage={loc.derived.stage} inDiligence={loc.derived.inDiligence} />
+            )}
+            {loc.regulatoryRequired === true && (
+              <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-violet-100 text-violet-700" title="Site requires regulatory approval">REGULATORY</span>
+            )}
+            {loc.permitsRequired === true && (
+              <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-violet-100 text-violet-700" title="Site requires permits">PERMITS</span>
+            )}
+            {loc.summerProgram === true && (
+              <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-700" title="Summer program runs on this site">SUMMER</span>
+            )}
             {planRole === "primary" && (
               <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-emerald-200 text-emerald-900">★ PRIMARY</span>
             )}
@@ -368,41 +379,95 @@ export function AltPanel() {
             <p className="text-xs text-stone-600 mt-0.5">{pipelineStatus}</p>
           )}
 
-          {/* Facts row — capacity / REBL score / opening date (committed only) */}
+          {/* Facts row — capacity / REBL score / opening date(s). For sites with
+              both fast-open and max-cap DD blocks we show two rows: Phase 1 first,
+              full buildout below. Open campuses fall back to plain REBL capacity. */}
           {(() => {
-            const capacity = loc.derived?.fastOpenCapacity ?? loc.scores?.capacity ?? null;
+            const fastCap = loc.derived?.fastOpenCapacity ?? null;
+            const fastDate = loc.derived?.fastOpenDate ?? null;
+            const maxCap = loc.derived?.maxCapCapacity ?? null;
+            const maxDate = loc.derived?.maxCapDate ?? null;
+            const fallbackCap = loc.scores?.capacity ?? null;
             const score = loc.derived?.reblScore ?? null;
-            const opening = stage === "committed" ? formatOpeningDate(loc.derived?.fastOpenDate) : null;
             const colorClass =
               loc.scores?.overallColor === "GREEN" ? "bg-emerald-500" :
               loc.scores?.overallColor === "YELLOW" ? "bg-yellow-500" :
               loc.scores?.overallColor === "AMBER" ? "bg-amber-500" :
               loc.scores?.overallColor === "RED" ? "bg-rose-500" : "bg-stone-300";
-            const facts: { key: string; node: React.ReactNode }[] = [];
-            if (capacity != null) facts.push({ key: "cap", node: <span>~{capacity} students</span> });
-            if (score != null) {
-              facts.push({
-                key: "score",
-                node: (
-                  <span className="inline-flex items-center gap-1">
-                    <span className={`inline-block w-2 h-2 rounded-full ${colorClass}`} />
-                    {score}
-                  </span>
-                ),
-              });
+
+            const showDualRows =
+              (stage === "committed" || stage === "engaged") &&
+              (fastCap != null || maxCap != null) &&
+              (fastCap !== maxCap || fastDate !== maxDate);
+
+            const rows: React.ReactNode[] = [];
+
+            if (showDualRows) {
+              if (fastCap != null || fastDate != null) {
+                rows.push(
+                  <div key="fast" className="flex flex-wrap items-center gap-x-2 text-xs text-stone-600">
+                    <span className="font-medium text-stone-500">Phase 1:</span>
+                    {fastCap != null && <span>~{fastCap} students</span>}
+                    {fastDate && <span>· opens {formatOpeningDate(fastDate)}</span>}
+                  </div>
+                );
+              }
+              if (maxCap != null || maxDate != null) {
+                rows.push(
+                  <div key="max" className="flex flex-wrap items-center gap-x-2 text-xs text-stone-600">
+                    <span className="font-medium text-stone-500">Full:</span>
+                    {maxCap != null && <span>~{maxCap} students</span>}
+                    {maxDate && <span>· opens {formatOpeningDate(maxDate)}</span>}
+                  </div>
+                );
+              }
+            } else {
+              const capacity = fastCap ?? maxCap ?? fallbackCap;
+              const opening =
+                stage === "committed" ? formatOpeningDate(fastDate ?? maxDate) :
+                stage === "ready" ? formatOpeningDate(loc.openedAt) :
+                null;
+              const facts: { key: string; node: React.ReactNode }[] = [];
+              if (capacity != null) facts.push({ key: "cap", node: <span>~{capacity} students</span> });
+              if (opening) facts.push({ key: "open", node: <span>Opens {opening}</span> });
+              if (facts.length > 0) {
+                rows.push(
+                  <div key="facts" className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-stone-600">
+                    {facts.map((f, i) => (
+                      <span key={f.key} className="inline-flex items-center gap-x-2">
+                        {i > 0 && <span aria-hidden="true">·</span>}
+                        {f.node}
+                      </span>
+                    ))}
+                  </div>
+                );
+              }
             }
-            if (opening) facts.push({ key: "open", node: <span>Opens {opening}</span> });
-            if (facts.length === 0) return null;
-            return (
-              <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-stone-600">
-                {facts.map((f, i) => (
-                  <span key={f.key} className="inline-flex items-center gap-x-2">
-                    {i > 0 && <span aria-hidden="true">·</span>}
-                    {f.node}
-                  </span>
-                ))}
-              </div>
-            );
+
+            // REBL score badge — independent of capacity layout
+            if (score != null) {
+              rows.push(
+                <div key="score" className="flex items-center gap-1 text-xs text-stone-600">
+                  <span className={`inline-block w-2 h-2 rounded-full ${colorClass}`} />
+                  REBL score {score}
+                </div>
+              );
+            }
+
+            // Upgrade-for hint
+            if (loc.upgradeForLocationId) {
+              const target = locations.find((l) => l.id === loc.upgradeForLocationId);
+              if (target) {
+                rows.push(
+                  <div key="upgrade" className="text-xs text-emerald-700">
+                    ↑ Upgrade for {extractStreet(target.address, target.city)}
+                  </div>
+                );
+              }
+            }
+
+            if (rows.length === 0) return null;
+            return <div className="mt-1 space-y-0.5">{rows}</div>;
           })()}
 
           {/* Mini stage timeline — engaged or committed only */}

@@ -15,10 +15,12 @@ export async function PUT(
     narrativeTemplateInputs,
     pivotConditions,
     narrativeOverride,
+    backupPlan,
   } = body as {
     narrativeTemplateInputs?: Record<string, unknown>;
     pivotConditions?: unknown[];
     narrativeOverride?: string | null;
+    backupPlan?: string | null;
   };
 
   const supabase = getSupabaseAdmin();
@@ -33,6 +35,7 @@ export async function PUT(
       narrative_template_inputs: narrativeTemplateInputs ?? {},
       pivot_conditions: pivotConditions ?? [],
       narrative_override: narrativeOverride ?? null,
+      backup_plan: backupPlan ?? null,
       last_curated_at: new Date().toISOString(),
       last_curated_by: auth.userId,
     });

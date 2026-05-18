@@ -20,7 +20,7 @@ export function PlanOfRecord({ plan, effectivePlan }: Props) {
     .filter((s): s is NonNullable<typeof s> => s != null);
 
   // Narrative: curated override > auto narrative built from primary/bridge/watch
-  const hasAnything = !!primary || !!bridge || watch.length > 0 || !!plan?.narrativeOverride;
+  const hasAnything = !!primary || !!bridge || watch.length > 0 || !!plan?.narrativeOverride || !!plan?.backupPlan;
   if (!hasAnything) return null; // hide entirely when nothing to say
 
   const bullets = plan?.narrativeOverride
@@ -54,6 +54,12 @@ export function PlanOfRecord({ plan, effectivePlan }: Props) {
               </li>
             ))}
           </ul>
+        </div>
+      )}
+      {plan?.backupPlan && (
+        <div className="mt-3 pt-3 border-t border-stone-200">
+          <h3 className="text-xs font-bold uppercase tracking-wider text-stone-500 mb-2">Backup plan</h3>
+          <p className="text-sm text-stone-700 leading-relaxed">{plan.backupPlan}</p>
         </div>
       )}
     </div>

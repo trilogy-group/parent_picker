@@ -34,6 +34,12 @@ export interface Location {
   rebl3SiteId?: string | null;
   feedbackDeadline?: string | null;
   isBridge?: boolean;
+  // Community Site card fields (2026-05-18 migration)
+  openedAt?: string | null;
+  upgradeForLocationId?: string | null;
+  regulatoryRequired?: boolean | null;
+  permitsRequired?: boolean | null;
+  summerProgram?: boolean | null;
   champions?: SiteChampion[];
   problems?: SiteProblem[];
   derived?: LocationDerived;
@@ -101,7 +107,7 @@ export interface AdminAction {
 
 // === Parent Feedback Redesign types ===
 
-export type SiteStage = 'scored' | 'engaged' | 'committed' | 'moved_on';
+export type SiteStage = 'scored' | 'engaged' | 'committed' | 'ready' | 'open' | 'moved_on';
 export type SiteCategory = 'parent' | 'ai' | 'short_term';
 export type CommittedSubStage = 'loi' | 'lease' | 'zoning' | 'permits' | 'buildout' | 'co';
 export type ProblemStatus = 'open' | 'in_progress' | 'resolved' | 'unresolvable';
@@ -182,6 +188,7 @@ export interface MetroPlan {
   };
   pivotConditions: PivotCondition[];
   narrativeOverride: string | null;
+  backupPlan: string | null;
   lastCuratedAt: string;
 }
 
@@ -199,5 +206,10 @@ export interface LocationDerived {
   // Due-diligence "fast open" capacity + projected open date (committed sites only)
   fastOpenCapacity?: number | null;
   fastOpenDate?: string | null;
+  // Due-diligence "max capacity" (full buildout)
+  maxCapCapacity?: number | null;
+  maxCapDate?: string | null;
+  // Derived: site is at LOI signed but no fast-open date yet → still in diligence
+  inDiligence?: boolean;
 }
 

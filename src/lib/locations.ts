@@ -210,7 +210,7 @@ function applyDerived(location: Location, row: Record<string, unknown>): Locatio
   const loi = (row.loi_status as string) ?? null;
   const strategy = (row.strategy_status as string) ?? null;
   const leasingDetails = (row.leasing_details as { process_exception?: boolean }) ?? undefined;
-  const stage = getStage({ leasing, loi, strategy, leasingDetails });
+  const stage = getStage({ leasing, loi, strategy, leasingDetails, openedAt: location.openedAt });
   const category = getCategory({ isBridge: location.isBridge, champions: location.champions ?? [] });
 
   let committedSubStage: CommittedSubStage | undefined;
@@ -221,6 +221,12 @@ function applyDerived(location: Location, row: Record<string, unknown>): Locatio
   const reblScore = row.overall_score != null ? Number(row.overall_score) : null;
   const fastOpenCapacity = row.dd_fast_open_capacity != null ? Number(row.dd_fast_open_capacity) : null;
   const fastOpenDate = row.dd_fast_open_proj_open_date != null ? String(row.dd_fast_open_proj_open_date) : null;
+  const maxCapCapacity = row.dd_max_cap_capacity != null ? Number(row.dd_max_cap_capacity) : null;
+  const maxCapDate = row.dd_max_cap_proj_open_date != null ? String(row.dd_max_cap_proj_open_date) : null;
+
+  // "In Diligence" — engaged, LOI signed (loi=done), but DD hasn't produced a
+  // projected open date yet. Surfaces as a sub-label on the LOI stage badge.
+  const inDiligence = stage === 'engaged' && loi === 'done' && fastOpenDate == null;
 
   location.derived = {
     stage,
@@ -231,6 +237,9 @@ function applyDerived(location: Location, row: Record<string, unknown>): Locatio
     reblScore,
     fastOpenCapacity,
     fastOpenDate,
+    maxCapCapacity,
+    maxCapDate,
+    inDiligence,
   };
   return location;
 }
@@ -254,6 +263,17 @@ function mapRows(rows: Record<string, unknown>[]): Location[] {
       rebl3SiteId: (row.property_source_key as string) || null,
       feedbackDeadline: (row.feedback_deadline as string) || null,
       isBridge: row.is_bridge === true,
+      openedAt: (row.opened_at as string) || null,
+      upgradeForLocationId: (row.upgrade_for_location_id as string) || null,
+      regulatoryRequired: row.regulatory_required === null || row.regulatory_required === undefined
+        ? null
+        : Boolean(row.regulatory_required),
+      permitsRequired: row.permits_required === null || row.permits_required === undefined
+        ? null
+        : Boolean(row.permits_required),
+      summerProgram: row.summer_program === null || row.summer_program === undefined
+        ? null
+        : Boolean(row.summer_program),
       champions: [],
     };
     return applyDerived(location, row);

@@ -85,4 +85,35 @@ describe('getStage', () => {
     expect(getStage({ leasing: 'ready', strategy: 'start' })).toBe('engaged');
     expect(getStage({ strategy: 'start' })).toBe('scored');
   });
+
+  describe('opened_at (Open / Ready stages)', () => {
+    const now = new Date('2026-05-18T00:00:00Z');
+
+    it('returns open when opened_at is in the past', () => {
+      expect(getStage({ openedAt: '2024-08-12', now })).toBe('open');
+      expect(getStage({ openedAt: '2025-08-12T00:00:00Z', now })).toBe('open');
+    });
+
+    it('returns ready when opened_at is in the future', () => {
+      expect(getStage({ openedAt: '2027-08-12', now })).toBe('ready');
+    });
+
+    it('returns open when opened_at equals now (boundary)', () => {
+      expect(getStage({ openedAt: '2026-05-18T00:00:00Z', now })).toBe('open');
+    });
+
+    it('open/ready supersedes a stale leasing/loi pipeline (e.g. 353 Hiatt has loi=done)', () => {
+      expect(getStage({ openedAt: '2025-08-12', leasing: 'claimed', loi: 'done', now })).toBe('open');
+    });
+
+    it('moved_on still wins over open/ready', () => {
+      expect(getStage({ openedAt: '2024-08-12', strategy: 'kill', now })).toBe('moved_on');
+      expect(getStage({ openedAt: '2024-08-12', leasing: 'cut', now })).toBe('moved_on');
+    });
+
+    it('ignores invalid opened_at strings (falls back to pipeline)', () => {
+      expect(getStage({ openedAt: 'not-a-date', leasing: 'done', now })).toBe('committed');
+      expect(getStage({ openedAt: '', leasing: 'done', now })).toBe('committed');
+    });
+  });
 });

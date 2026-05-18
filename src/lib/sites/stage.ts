@@ -5,6 +5,11 @@ export interface StageInput {
   loi?: string | null;
   strategy?: string | null;
   leasingDetails?: { process_exception?: boolean; [k: string]: unknown };
+  // `opened_at` from pp_locations (timestamptz). When set, signals school is
+  // operating (Open) or about to (Ready) — supersedes the leasing/loi pipeline.
+  openedAt?: string | null;
+  // Override "now" for deterministic tests.
+  now?: Date;
 }
 
 // COMMITTED is reserved for the binding moment — lease signed. LOI signing is
@@ -24,6 +29,16 @@ export function getStage(input: StageInput): SiteStage {
   if (input.loi && MOVED_ON_LOI.has(input.loi)) return 'moved_on';
   if (input.leasing === 'done' && input.leasingDetails?.process_exception === true) {
     return 'moved_on';
+  }
+
+  // Open / Ready — opened_at signals school is/will be operating. Beats the
+  // leasing pipeline because the pipeline often stays stale ("loi=done,
+  // leasing=claimed") on already-open campuses.
+  if (input.openedAt) {
+    const opened = new Date(input.openedAt);
+    if (!Number.isNaN(opened.getTime())) {
+      return opened <= (input.now ?? new Date()) ? 'open' : 'ready';
+    }
   }
 
   // Committed — lease executed (binding contract)
