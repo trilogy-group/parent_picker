@@ -8,11 +8,11 @@ import { extractStreet } from "@/lib/address";
 import { useVotesStore } from "@/lib/votes";
 import { useShallow } from "zustand/react/shallow";
 import { useAuth } from "./AuthProvider";
-import { getInitialMapView, US_CENTER, US_ZOOM } from "@/lib/locations";
+import { US_CENTER, US_ZOOM } from "@/lib/locations";
 import { sortMostSupport, sortMostViable, sortMostViableWithPriority, makeSortNearest } from "@/lib/sort";
 import { fetchIsochrone } from "@/lib/isochrone";
 import { pointInIsochrone } from "@/lib/geo";
-import { ACTIVE_METROS } from "@/lib/active-metros";
+import { ACTIVE_METROS, findActiveMetro } from "@/lib/active-metros";
 import "mapbox-gl/dist/mapbox-gl.css";
 import type { MapMouseEvent } from "react-map-gl/mapbox";
 
@@ -267,11 +267,15 @@ export function MapView() {
     const hasDeepLink = typeof window !== "undefined" && new URLSearchParams(window.location.search).has("location");
     if (hasDeepLink || flyToTarget) { initialViewSetRef.current = true; return; }
 
-    const { center, zoom } = getInitialMapView(
-      initialViewLocation?.lat ?? null,
-      initialViewLocation?.lng ?? null,
-      ACTIVE_METROS
-    );
+    // Find the user's nearest active metro (profile > geo, captured upstream into initialViewLocation)
+    const matched = initialViewLocation
+      ? findActiveMetro(initialViewLocation.lat, initialViewLocation.lng)
+      : null;
+
+    const center = matched
+      ? { lat: matched.lat, lng: matched.lng }
+      : US_CENTER;
+    const zoom = matched ? matched.defaultZoom : US_ZOOM;
 
     setReferencePoint(center);
 
@@ -284,10 +288,6 @@ export function MapView() {
       duration: 1500,
     });
 
-    // If zooming to city level, fetch nearby locations and set bounds/center
-    // immediately (same pattern as flyToTarget handler). The old 100ms setTimeout
-    // read map.getBounds() mid-animation which returned near-US-wide garbage,
-    // and on mobile handleMoveEnd never fires to correct it.
     if (zoom >= 9) {
       const bounds = approxBounds(center, zoom);
       fetchNearbyForce(bounds);
@@ -295,8 +295,7 @@ export function MapView() {
       setMapCenter(center);
       setZoomLevel(zoom);
     } else {
-      // US-wide view: set bounds/center after a short delay so the map has
-      // initialized its viewport (no flyTo race here since we stay at US zoom)
+      // Nationwide view: read bounds once the map has rendered its viewport
       setTimeout(() => {
         const map = mapRef.current?.getMap();
         if (map) {
