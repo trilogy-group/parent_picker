@@ -11,12 +11,14 @@ export interface ActiveMetro {
 }
 
 /**
- * Hand-curated list of active metros used as the left-panel navigation cards
- * and the nationwide map bubble overlay.
+ * Full inventory of metros we want to support eventually. Order here =
+ * default display order. Edit this list to add/remove metros from the catalog.
  *
- * Order in this array = order on the page. Edit this file to add/remove metros.
+ * Whether a metro actually appears in the UI is controlled by
+ * `ENABLED_METRO_SLUGS` below. Disabling a metro keeps its config stashed for
+ * an easy revert.
  */
-export const ACTIVE_METROS: ActiveMetro[] = [
+export const ALL_METROS: ActiveMetro[] = [
   { slug: "austin",     displayName: "Austin",             state: "TX", lat: 30.2672, lng: -97.7431,  defaultZoom: 10, radiusMiles: 40 },
   { slug: "dfw",        displayName: "Dallas–Fort Worth", state: "TX", lat: 32.8205, lng: -96.8716,  defaultZoom: 9,  radiusMiles: 50 },
   { slug: "la",         displayName: "Los Angeles",        state: "CA", lat: 34.0522, lng: -118.2437, defaultZoom: 9,  radiusMiles: 50 },
@@ -37,6 +39,27 @@ export const ACTIVE_METROS: ActiveMetro[] = [
   { slug: "denver",     displayName: "Denver",             state: "CO", lat: 39.7392, lng: -104.9903, defaultZoom: 10, radiusMiles: 40 },
   { slug: "nashville",  displayName: "Nashville",          state: "TN", lat: 36.1627, lng: -86.7816,  defaultZoom: 10, radiusMiles: 30 },
 ];
+
+/**
+ * Temporary scope-down: only the South Florida metros are surfaced while we
+ * curate Plan-of-Record content. To re-enable a stashed metro, just add its
+ * slug back to this set.
+ */
+const ENABLED_METRO_SLUGS = new Set<string>([
+  "miami",
+  "miami-beach",
+  "palm-beach",
+  "boca",
+]);
+
+/**
+ * Hand-curated list of active metros used as the left-panel navigation cards
+ * and the nationwide map bubble overlay. Filtered from ALL_METROS by
+ * ENABLED_METRO_SLUGS so disabled metros stay in source for easy revert.
+ */
+export const ACTIVE_METROS: ActiveMetro[] = ALL_METROS.filter((m) =>
+  ENABLED_METRO_SLUGS.has(m.slug)
+);
 
 /**
  * Return the active metro that contains the given point, or null.
