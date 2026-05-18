@@ -5,16 +5,9 @@ export function statusBadge(overallColor: string | null | undefined) {
   return null;
 }
 
-// Round capacity to nearest 10, return "lo-hi students" range
-function capacityRange(capacity: number): string {
-  const lo = Math.floor(capacity / 10) * 10;
-  const hi = lo + 20;
-  return `${lo}-${hi} students`;
-}
-
 export function sizeTierLabel(sizeClassification: string | null | undefined, capacity?: number | null): string | null {
-  // Prefer capacity — gives a precise rounded range
-  if (capacity != null && capacity > 0) return capacityRange(capacity);
+  // Prefer the exact capacity number when known
+  if (capacity != null && capacity > 0) return `~${capacity} students`;
   // Fall back to size category
   if (!sizeClassification) return null;
   const tiers: Record<string, string> = {
