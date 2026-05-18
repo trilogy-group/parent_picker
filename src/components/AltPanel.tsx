@@ -176,14 +176,27 @@ export function AltPanel() {
   // map center is outside every active metro's radius (e.g., panned over Memphis).
   const showCityCards = zoomLevel < 9 || !activeMetro;
 
-  // Sort and filter locations in viewport
+  // Sort and filter locations.
+  // - Inside a metro: pool = everything within that metro (lat/lng radius),
+  //   so "Show all (N)" matches the funnel-stat total. Map viewport doesn't
+  //   shrink the count.
+  // - No active metro: pool = everything in current viewport (legacy behavior).
   const sortedLocations = useMemo(() => {
     const filtered = filteredLocations();
-    if (!mapBounds) return filtered;
-    const pool = filtered.filter(loc =>
-      loc.lat <= mapBounds.north && loc.lat >= mapBounds.south &&
-      loc.lng <= mapBounds.east && loc.lng >= mapBounds.west
-    );
+    let pool: typeof filtered;
+    if (activeMetro) {
+      pool = filtered.filter(loc => {
+        const m = findActiveMetro(loc.lat, loc.lng);
+        return m?.slug === activeMetro.slug;
+      });
+    } else if (mapBounds) {
+      pool = filtered.filter(loc =>
+        loc.lat <= mapBounds.north && loc.lat >= mapBounds.south &&
+        loc.lng <= mapBounds.east && loc.lng >= mapBounds.west
+      );
+    } else {
+      pool = filtered;
+    }
     let sortFn: (a: typeof pool[0], b: typeof pool[0]) => number;
     if (sortMode === 'nearest' && userLocation) {
       sortFn = makeSortNearest(userLocation.lat, userLocation.lng);
@@ -206,7 +219,7 @@ export function AltPanel() {
       seen.add(loc.id);
       return true;
     });
-  }, [filteredLocations, mapBounds, sortMode, viableSubPriority, userLocation, locations, altSizeFilter, viewAsParent, showDriveFilter, userIsochrone, showNoBlockers]);
+  }, [filteredLocations, activeMetro, mapBounds, sortMode, viableSubPriority, userLocation, locations, altSizeFilter, viewAsParent, showDriveFilter, userIsochrone, showNoBlockers]);
 
   // Apply admin search filter
   const searchFilteredLocations = useMemo(() => {
