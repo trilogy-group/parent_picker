@@ -181,9 +181,8 @@ export default function LocationDetailView({
       .catch(() => {});
   }, [location.id]);
 
-  // Fetch photos and brochure for proposed locations
+  // Fetch photos and brochure for any location that has them uploaded
   useEffect(() => {
-    if (!location.proposed) return;
     setPhotos([]);
     setBrochureUrl(null);
     setPhotoIndex(0);
@@ -197,7 +196,7 @@ export default function LocationDetailView({
         if (data.brochureUrl) setBrochureUrl(data.brochureUrl);
       })
       .catch(() => {});
-  }, [location.id, location.proposed]);
+  }, [location.id]);
 
   // Check if street view is available for this location
   useEffect(() => {
@@ -475,11 +474,6 @@ export default function LocationDetailView({
                 </button>
               );
             })()}
-            {location.proposed && (
-              <span className="absolute top-2 left-2 bg-blue-600 text-white text-[10px] font-bold tracking-wider px-2.5 py-1 rounded-full">
-                PROPOSED
-              </span>
-            )}
           </div>
         ) : null}
 
