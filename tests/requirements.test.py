@@ -4106,14 +4106,14 @@ def run_tests():
         print("\n## 41. Curated Metros (R-METRO-FIXED)")
         # ============================================================
 
-        @test("TC-22.1.1", "Curated metro cards render at nationwide zoom")
+        @test("TC-41.1.1", "Curated metro cards render at nationwide zoom")
         def _():
             no_geo_ctx = browser.new_context(viewport={"width": 1440, "height": 900})
             page = no_geo_ctx.new_page()
             page.goto(BASE_URL)
             page.wait_for_load_state("networkidle")
             page.wait_for_timeout(4000)
-            cards = page.locator("[data-testid='metro-card']")
+            cards = page.locator("[data-testid='desktop-panel'] [data-testid='metro-card']")
             count = cards.count()
             assert count >= 10, f"Expected >=10 curated metro cards, got {count}"
             # First card should be Austin (matches ACTIVE_METROS declared order)
@@ -4122,20 +4122,20 @@ def run_tests():
             no_geo_ctx.close()
         _()
 
-        @test("TC-22.1.2", "Card click flies to metro and hides the card list")
+        @test("TC-41.1.2", "Card click flies to metro and hides the card list")
         def _():
             no_geo_ctx = browser.new_context(viewport={"width": 1440, "height": 900})
             page = no_geo_ctx.new_page()
             page.goto(BASE_URL)
             page.wait_for_load_state("networkidle")
             page.wait_for_timeout(4000)
-            page.locator("[data-testid='metro-card'][data-metro-slug='nyc']").click()
+            page.locator("[data-testid='desktop-panel'] [data-testid='metro-card'][data-metro-slug='nyc']").click()
             # Cards should disappear after fly-in
-            page.locator("[data-testid='metro-card-list']").wait_for(state="hidden", timeout=10000)
+            page.locator("[data-testid='desktop-panel'] [data-testid='metro-card-list']").wait_for(state="hidden", timeout=10000)
             no_geo_ctx.close()
         _()
 
-        @test("TC-22.1.3", "Geolocation inside Austin auto-flies to Austin")
+        @test("TC-41.1.3", "Geolocation inside Austin auto-flies to Austin")
         def _():
             geo_ctx = browser.new_context(
                 viewport={"width": 1440, "height": 900},
@@ -4147,15 +4147,15 @@ def run_tests():
             page.wait_for_load_state("networkidle")
             # Card list should hide once the auto-fly completes
             try:
-                page.locator("[data-testid='metro-card-list']").wait_for(state="hidden", timeout=15000)
+                page.locator("[data-testid='desktop-panel'] [data-testid='metro-card-list']").wait_for(state="hidden", timeout=15000)
             except Exception:
                 pass
-            cards = page.locator("[data-testid='metro-card']").count()
+            cards = page.locator("[data-testid='desktop-panel'] [data-testid='metro-card']").count()
             assert cards == 0, f"Cards should hide after auto-fly to Austin, found {cards}"
             geo_ctx.close()
         _()
 
-        @test("TC-22.1.4", "Geolocation outside any active metro stays at nationwide")
+        @test("TC-41.1.4", "Geolocation outside any active metro stays at nationwide")
         def _():
             # Middle of Wyoming — outside every active metro radius
             geo_ctx = browser.new_context(
@@ -4167,12 +4167,12 @@ def run_tests():
             page.goto(BASE_URL)
             page.wait_for_load_state("networkidle")
             page.wait_for_timeout(5000)
-            cards = page.locator("[data-testid='metro-card']").count()
+            cards = page.locator("[data-testid='desktop-panel'] [data-testid='metro-card']").count()
             assert cards >= 10, f"Cards should remain visible for non-active-metro geo, got {cards}"
             geo_ctx.close()
         _()
 
-        @test("TC-22.1.5", "Back-to-metros button restores curated cards from metro view")
+        @test("TC-41.1.5", "Back-to-metros button restores curated cards from metro view")
         def _():
             no_geo_ctx = browser.new_context(viewport={"width": 1440, "height": 900})
             page = no_geo_ctx.new_page()
@@ -4180,13 +4180,13 @@ def run_tests():
             page.wait_for_load_state("networkidle")
             page.wait_for_timeout(4000)
             # Enter NYC metro
-            page.locator("[data-testid='metro-card'][data-metro-slug='nyc']").click()
-            page.locator("[data-testid='metro-card-list']").wait_for(state="hidden", timeout=10000)
+            page.locator("[data-testid='desktop-panel'] [data-testid='metro-card'][data-metro-slug='nyc']").click()
+            page.locator("[data-testid='desktop-panel'] [data-testid='metro-card-list']").wait_for(state="hidden", timeout=10000)
             # Click the back chevron in the header ("‹ · NEW YORK") — title-attribute selector is stable
-            page.locator("button[title='Back to all metros']").click()
+            page.locator("[data-testid='desktop-panel'] button[title='Back to all metros']").click()
             # Curated cards should reappear
-            page.locator("[data-testid='metro-card-list']").wait_for(state="visible", timeout=10000)
-            cards = page.locator("[data-testid='metro-card']").count()
+            page.locator("[data-testid='desktop-panel'] [data-testid='metro-card-list']").wait_for(state="visible", timeout=10000)
+            cards = page.locator("[data-testid='desktop-panel'] [data-testid='metro-card']").count()
             assert cards >= 10, f"Curated cards should reappear after back-to-metros, got {cards}"
             no_geo_ctx.close()
         _()
