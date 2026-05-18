@@ -235,9 +235,17 @@ export function AltPanel() {
   // by nearest-metro membership against `metroName` (50-mile radius per metros.ts).
   const metroLocations = useMemo(() => {
     if (!activeMetro) return [];
-    return filteredLocations().filter((loc) => {
+    const filtered = filteredLocations().filter((loc) => {
       const m = findActiveMetro(loc.lat, loc.lng);
       return m?.slug === activeMetro.slug;
+    });
+    // Defensive dedupe — upstream state can occasionally retain a stale copy
+    // after detail-view navigation; collapse by id to keep one card per site.
+    const seen = new Set<string>();
+    return filtered.filter((loc) => {
+      if (seen.has(loc.id)) return false;
+      seen.add(loc.id);
+      return true;
     });
   // filteredLocations is a stable store function; activeMetro & locations cover state deps
   // eslint-disable-next-line react-hooks/exhaustive-deps
