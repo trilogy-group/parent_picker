@@ -165,7 +165,7 @@ export default function LocationDetailView({
   // REBL3 dimension data
   const [rebl3Data, setRebl3Data] = useState<Rebl3ExternalSite | null>(null);
   const [rebl3Loading, setRebl3Loading] = useState(false);
-  const [rebl3Expanded, setRebl3Expanded] = useState(false);
+  const [rebl3Expanded, setRebl3Expanded] = useState(true);
 
   const { isAdmin } = useAuth();
   const userEmail = useVotesStore(s => s.userEmail);
@@ -559,6 +559,62 @@ export default function LocationDetailView({
             </a>
           )}
 
+          {/* AI scoring breakdown — expanded by default */}
+          {(rebl3Loading || rebl3Data || location.scores?.overallColor) && (
+            <div className="mt-5 border-t border-gray-200 pt-4">
+              <button
+                onClick={() => setRebl3Expanded(v => !v)}
+                className="w-full flex items-center justify-between text-left"
+              >
+                <span className="text-[10px] font-semibold tracking-widest text-gray-500">AI SCORING</span>
+                {rebl3Expanded ? (
+                  <ChevronUp className="w-4 h-4 text-gray-400" />
+                ) : (
+                  <ChevronDown className="w-4 h-4 text-gray-400" />
+                )}
+              </button>
+              {rebl3Expanded && (
+                <div className="mt-3">
+                  {rebl3Loading ? (
+                    <div className="space-y-3">
+                      {[1,2,3,4].map(i => (
+                        <div key={i} className="h-16 bg-gray-100 rounded-xl animate-pulse" />
+                      ))}
+                    </div>
+                  ) : rebl3DataPatched ? (
+                    <div className="space-y-3">
+                      {rebl3DataPatched.dimensions.map(dim => (
+                        <DimensionCard
+                          key={dim.key}
+                          dimension={dim}
+                          siteId={location.rebl3SiteId}
+                          userEmail={userEmail}
+                          isAuthenticated={isAuthenticated}
+                          onSignInNeeded={() => setShowSignIn(true)}
+                        />
+                      ))}
+                    </div>
+                  ) : location.scores?.overallColor ? (
+                    <div className="space-y-2">
+                      {([
+                        { label: "Neighborhood", color: location.scores.neighborhood?.color },
+                        { label: "Zoning", color: location.scores.zoning?.color },
+                        { label: "Building", color: location.scores.building?.color },
+                        { label: "Price", color: location.scores.price?.color },
+                      ] as const).filter(d => d.color).map(d => (
+                        <div key={d.label} className="flex items-center gap-2">
+                          <span className={`w-2.5 h-2.5 rounded-full ${colorDotClass(d.color!)}`} />
+                          <span className="text-sm text-gray-700">{d.label}</span>
+                          <span className={`text-xs ${colorTextClass(d.color!)}`}>{colorLabel(d.color!)}</span>
+                        </div>
+                      ))}
+                    </div>
+                  ) : null}
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Tier-specific bottom sections */}
           {(location.derived?.stage === "diligence" ||
             location.derived?.stage === "ready_to_commit" ||
@@ -838,62 +894,6 @@ export default function LocationDetailView({
               )}
             </div>
           </div>
-
-          {/* AI scoring breakdown — collapsed by default */}
-          {(rebl3Loading || rebl3Data || location.scores?.overallColor) && (
-            <div className="mt-6 border-t border-gray-200 pt-4">
-              <button
-                onClick={() => setRebl3Expanded(v => !v)}
-                className="w-full flex items-center justify-between text-left"
-              >
-                <span className="text-[10px] font-semibold tracking-widest text-gray-500">AI SCORING</span>
-                {rebl3Expanded ? (
-                  <ChevronUp className="w-4 h-4 text-gray-400" />
-                ) : (
-                  <ChevronDown className="w-4 h-4 text-gray-400" />
-                )}
-              </button>
-              {rebl3Expanded && (
-                <div className="mt-3">
-                  {rebl3Loading ? (
-                    <div className="space-y-3">
-                      {[1,2,3,4].map(i => (
-                        <div key={i} className="h-16 bg-gray-100 rounded-xl animate-pulse" />
-                      ))}
-                    </div>
-                  ) : rebl3DataPatched ? (
-                    <div className="space-y-3">
-                      {rebl3DataPatched.dimensions.map(dim => (
-                        <DimensionCard
-                          key={dim.key}
-                          dimension={dim}
-                          siteId={location.rebl3SiteId}
-                          userEmail={userEmail}
-                          isAuthenticated={isAuthenticated}
-                          onSignInNeeded={() => setShowSignIn(true)}
-                        />
-                      ))}
-                    </div>
-                  ) : location.scores?.overallColor ? (
-                    <div className="space-y-2">
-                      {([
-                        { label: "Neighborhood", color: location.scores.neighborhood?.color },
-                        { label: "Zoning", color: location.scores.zoning?.color },
-                        { label: "Building", color: location.scores.building?.color },
-                        { label: "Price", color: location.scores.price?.color },
-                      ] as const).filter(d => d.color).map(d => (
-                        <div key={d.label} className="flex items-center gap-2">
-                          <span className={`w-2.5 h-2.5 rounded-full ${colorDotClass(d.color!)}`} />
-                          <span className="text-sm text-gray-700">{d.label}</span>
-                          <span className={`text-xs ${colorTextClass(d.color!)}`}>{colorLabel(d.color!)}</span>
-                        </div>
-                      ))}
-                    </div>
-                  ) : null}
-                </div>
-              )}
-            </div>
-          )}
 
         </div>
       </div>
