@@ -10,10 +10,10 @@ import type { Location } from "@/types";
  */
 export function formatPipelineStatus(loc: Location): string | null {
   const stage = loc.derived?.stage;
-  // Open / Ready-to-open campuses don't show pipeline status — the school is
-  // operating (or about to), and the REBL leasing/loi values are often stale
-  // for these sites (e.g. 353 Hiatt has loi=done/leasing=claimed but is Open).
-  if (stage === "open" || stage === "ready_to_open") return null;
+  // Open campuses don't show pipeline status — the school is operating, and
+  // REBL leasing/loi values are often stale for these sites (e.g. 353 Hiatt
+  // has loi=done/leasing=claimed but is Open).
+  if (stage === "open") return null;
 
   const leasing = loc.derived?.leasingStatus ?? null;
   const loi = loc.derived?.loiStatus ?? null;

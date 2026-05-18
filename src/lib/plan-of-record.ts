@@ -72,8 +72,8 @@ export function useMetroProblems(metro: string | null): Map<string, SiteProblem[
 /** Derive a default plan from the data when no admin curation exists. */
 export function autoDerivePlan(metroLocations: Location[]): EffectivePlan {
   // "Primary" auto-picks: the single AI site furthest down the pipeline.
-  // Build-out / Ready-to-open / Open are stronger signals than Diligence.
-  const PRIMARY_STAGES = new Set(["build_out", "ready_to_open", "open"]);
+  // Build-out and Open are stronger signals than Diligence.
+  const PRIMARY_STAGES = new Set(["build_out", "open"]);
   const primaryCandidates = metroLocations.filter(
     l => l.derived?.category === "ai" && PRIMARY_STAGES.has(l.derived.stage)
   );
@@ -119,16 +119,14 @@ export function getPlanRole(
   return null;
 }
 
-/** Stage rank for sort: open > ready_to_open > build_out > ready_to_commit > diligence > prospect > moved_on. */
+/** Stage rank for sort: open > build_out > diligence > prospecting > moved_on. */
 function stageRank(stage?: string): number {
   switch (stage) {
-    case "open":             return 0;
-    case "ready_to_open":    return 1;
-    case "build_out":        return 2;
-    case "ready_to_commit":  return 3;
-    case "diligence":        return 4;
-    case "prospect":         return 5;
-    default:                 return 6; // moved_on / undefined
+    case "open":        return 0;
+    case "build_out":   return 1;
+    case "diligence":   return 2;
+    case "prospecting": return 3;
+    default:            return 4; // moved_on / undefined
   }
 }
 

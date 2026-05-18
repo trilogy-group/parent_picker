@@ -7,9 +7,9 @@ const COLOR_RANK: Record<string, number> = { GREEN: 0, YELLOW: 1, AMBER: 2, RED:
 // then active parent votes, then pipeline sites, then prospects.
 function pipelineRank(loc: Location): number {
   const stage = loc.derived?.stage;
-  if (stage === "open" || stage === "ready_to_open") return 0;
+  if (stage === "open") return 0;
   if (loc.proposed) return 1;
-  if (stage === "build_out" || stage === "ready_to_commit" || stage === "diligence") return 2;
+  if (stage === "build_out" || stage === "diligence") return 2;
   return 3;
 }
 

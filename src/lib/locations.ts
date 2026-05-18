@@ -220,7 +220,7 @@ function applyDerived(location: Location, row: Record<string, unknown>): Locatio
   const category = getCategory({ isBridge: location.isBridge, champions: location.champions ?? [] });
 
   let committedSubStage: CommittedSubStage | undefined;
-  if (stage === "diligence" || stage === "ready_to_commit" || stage === "build_out") {
+  if (stage === "diligence" || stage === "build_out") {
     committedSubStage = parseCommittedSubStage({ leasing, loi });
   }
 

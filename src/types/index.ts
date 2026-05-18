@@ -114,20 +114,16 @@ export interface AdminAction {
 
 // === Parent Feedback Redesign types ===
 
-// Site stages map the real-estate pipeline parents see:
-//   prospect          → not yet pursued (or pre-LOI activity)
-//   diligence         → LOI signed, working out lease terms + diligence
-//   ready_to_commit   → lease terms ready to sign, diligence done
-//   build_out         → lease signed, school under construction
-//   ready_to_open     → construction done, awaiting first day
-//   open              → school operating
-//   moved_on          → killed / cut / process-exception
+// Site stages map the real-estate pipeline parents see (4-stage taxonomy):
+//   prospecting → pre-LOI activity, evaluating fit
+//   diligence   → LOI signed, working out lease terms (incl. lease-ready)
+//   build_out   → lease signed, school under construction / awaiting first day
+//   open        → school operating
+//   moved_on    → killed / cut / process-exception (side track)
 export type SiteStage =
-  | 'prospect'
+  | 'prospecting'
   | 'diligence'
-  | 'ready_to_commit'
   | 'build_out'
-  | 'ready_to_open'
   | 'open'
   | 'moved_on';
 export type SiteCategory = 'parent' | 'ai' | 'short_term';

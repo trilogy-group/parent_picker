@@ -332,7 +332,7 @@ export const useVotesStore = create<VotesState>((set, get) => ({
                 ...l,
                 champions,
                 derived: {
-                  stage: l.derived?.stage ?? 'prospect',
+                  stage: l.derived?.stage ?? 'prospecting',
                   category: getCategory({ isBridge: l.isBridge, champions }),
                   committedSubStage: l.derived?.committedSubStage,
                   movedOnReason: l.derived?.movedOnReason,
@@ -661,9 +661,7 @@ export const useVotesStore = create<VotesState>((set, get) => ({
     const isPromoted = (loc: Location) =>
       !!loc.feedbackDeadline ||
       loc.derived?.stage === "diligence" ||
-      loc.derived?.stage === "ready_to_commit" ||
       loc.derived?.stage === "build_out" ||
-      loc.derived?.stage === "ready_to_open" ||
       loc.derived?.stage === "open";
 
     // Deep-linked / selected location always passes through filters

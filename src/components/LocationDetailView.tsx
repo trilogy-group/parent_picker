@@ -624,9 +624,7 @@ export default function LocationDetailView({
 
           {/* Tier-specific bottom sections */}
           {(location.derived?.stage === "diligence" ||
-            location.derived?.stage === "ready_to_commit" ||
-            location.derived?.stage === "build_out" ||
-            location.derived?.stage === "ready_to_open") && (
+            location.derived?.stage === "build_out") && (
             <>
               <div className="px-4 py-3 mt-5 pt-4 border-t border-stone-200">
                 <h3 className="text-xs font-bold uppercase tracking-wider text-stone-500 mb-2">Path to opening</h3>

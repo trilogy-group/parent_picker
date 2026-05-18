@@ -1,18 +1,17 @@
 import type { SiteStage } from "@/types";
 
-// Pipeline visible on the detail card. Prospect sits before the pipeline
-// (pre-commitment) and Moved On is a different track, so neither appears.
+// 4-stage parent-visible pipeline. Moved On is a side track and doesn't
+// appear in the timeline.
 const STAGES: { key: SiteStage; label: string }[] = [
-  { key: "diligence",       label: "Diligence" },
-  { key: "ready_to_commit", label: "Ready to commit" },
-  { key: "build_out",       label: "Build-out" },
-  { key: "ready_to_open",   label: "Ready to open" },
-  { key: "open",            label: "Open" },
+  { key: "prospecting", label: "Prospecting" },
+  { key: "diligence",   label: "Diligence" },
+  { key: "build_out",   label: "Build-out" },
+  { key: "open",        label: "Open" },
 ];
 
 interface Props {
   current: SiteStage;
-  /** Compact: bars only, no labels — used inside cards. */
+  /** Compact: bars only, no labels. */
   compact?: boolean;
 }
 

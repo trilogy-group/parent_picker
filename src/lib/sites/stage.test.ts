@@ -2,16 +2,16 @@ import { describe, it, expect } from 'vitest';
 import { getStage } from './stage';
 
 describe('getStage', () => {
-  it('returns prospect when no data', () => {
-    expect(getStage({})).toBe('prospect');
+  it('returns prospecting when no data', () => {
+    expect(getStage({})).toBe('prospecting');
   });
 
-  it('returns prospect for pre-LOI activity (loi not done)', () => {
-    expect(getStage({ loi: 'claimed' })).toBe('prospect');
-    expect(getStage({ loi: 'submitted' })).toBe('prospect');
-    expect(getStage({ loi: 'in_progress' })).toBe('prospect');
-    expect(getStage({ leasing: 'turn_1' })).toBe('prospect');
-    expect(getStage({ leasing: 'turn_2', loi: 'submitted' })).toBe('prospect');
+  it('returns prospecting for pre-LOI activity (loi not done)', () => {
+    expect(getStage({ loi: 'claimed' })).toBe('prospecting');
+    expect(getStage({ loi: 'submitted' })).toBe('prospecting');
+    expect(getStage({ loi: 'in_progress' })).toBe('prospecting');
+    expect(getStage({ leasing: 'turn_1' })).toBe('prospecting');
+    expect(getStage({ leasing: 'turn_2', loi: 'submitted' })).toBe('prospecting');
   });
 
   it('returns diligence when LOI is done and leasing is still working', () => {
@@ -21,8 +21,8 @@ describe('getStage', () => {
     expect(getStage({ loi: 'done' })).toBe('diligence');
   });
 
-  it('returns ready_to_commit when LOI is done and lease is ready to sign', () => {
-    expect(getStage({ loi: 'done', leasing: 'ready' })).toBe('ready_to_commit');
+  it('returns diligence when LOI is done and lease is ready to sign (formerly ready_to_commit)', () => {
+    expect(getStage({ loi: 'done', leasing: 'ready' })).toBe('diligence');
   });
 
   it('returns build_out when lease is executed (leasing=done)', () => {
@@ -54,11 +54,11 @@ describe('getStage', () => {
   });
 
   it('strategy=start does not promote stage by itself', () => {
-    expect(getStage({ strategy: 'start' })).toBe('prospect');
-    expect(getStage({ leasing: 'ready', strategy: 'start' })).toBe('prospect');
+    expect(getStage({ strategy: 'start' })).toBe('prospecting');
+    expect(getStage({ leasing: 'ready', strategy: 'start' })).toBe('prospecting');
   });
 
-  describe('opened_at (Open / Ready to Open stages)', () => {
+  describe('opened_at (Open / Build-out via calendar)', () => {
     const now = new Date('2026-05-18T00:00:00Z');
 
     it('returns open when opened_at is in the past', () => {
@@ -66,19 +66,19 @@ describe('getStage', () => {
       expect(getStage({ openedAt: '2025-08-12T00:00:00Z', now })).toBe('open');
     });
 
-    it('returns ready_to_open when opened_at is in the future', () => {
-      expect(getStage({ openedAt: '2027-08-12', now })).toBe('ready_to_open');
+    it('returns build_out when opened_at is in the future (formerly ready_to_open)', () => {
+      expect(getStage({ openedAt: '2027-08-12', now })).toBe('build_out');
     });
 
     it('returns open when opened_at equals now (boundary)', () => {
       expect(getStage({ openedAt: '2026-05-18T00:00:00Z', now })).toBe('open');
     });
 
-    it('open/ready_to_open supersedes a stale pipeline (353 Hiatt: loi=done, leasing=claimed)', () => {
+    it('open supersedes a stale pipeline (353 Hiatt: loi=done, leasing=claimed)', () => {
       expect(getStage({ openedAt: '2025-08-12', leasing: 'claimed', loi: 'done', now })).toBe('open');
     });
 
-    it('moved_on still wins over open/ready_to_open', () => {
+    it('moved_on still wins over open / future-dated build_out', () => {
       expect(getStage({ openedAt: '2024-08-12', strategy: 'kill', now })).toBe('moved_on');
       expect(getStage({ openedAt: '2024-08-12', leasing: 'cut', now })).toBe('moved_on');
     });

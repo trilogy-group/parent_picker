@@ -213,7 +213,7 @@ export function MapView() {
           suggested: loc.suggested || false,
           selected: loc.id === selectedLocationId,
           category: loc.derived?.category ?? "ai",
-          stage: loc.derived?.stage ?? "prospect",
+          stage: loc.derived?.stage ?? "prospecting",
         },
       })),
     };
@@ -606,7 +606,7 @@ export function MapView() {
                 // Category-driven color for in-pipeline / parent-championed sites
                 ["==", ["get", "category"], "parent"], "#10b981",
                 ["==", ["get", "category"], "short_term"], "#f59e0b",
-                ["!=", ["get", "stage"], "prospect"], "#3b82f6",
+                ["!=", ["get", "stage"], "prospecting"], "#3b82f6",
                 // Otherwise: score-based color (preserves RED/AMBER signal for prospects)
                 ["match", ["get", "overallColor"],
                   "GREEN", "#22c55e",
@@ -620,9 +620,7 @@ export function MapView() {
                 "case",
                 ["get", "selected"], 14,
                 ["==", ["get", "stage"], "open"], 14,
-                ["==", ["get", "stage"], "ready_to_open"], 12,
                 ["==", ["get", "stage"], "build_out"], 12,
-                ["==", ["get", "stage"], "ready_to_commit"], 10,
                 ["==", ["get", "stage"], "diligence"], 9,
                 6,
               ],

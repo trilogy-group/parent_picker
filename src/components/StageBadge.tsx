@@ -3,13 +3,11 @@ import type { SiteStage } from "@/types";
 // Stage colors avoid green/yellow/amber — those are reserved for the
 // regulatory / zoning / permits hurdle chips (done = green, pending = yellow).
 const STAGE_STYLES: Record<SiteStage, { label: string; className: string }> = {
-  prospect:         { label: "PROSPECT",         className: "bg-blue-100 text-blue-700" },
-  diligence:        { label: "DILIGENCE",        className: "bg-orange-100 text-orange-700" },
-  ready_to_commit:  { label: "READY TO COMMIT",  className: "bg-violet-100 text-violet-700" },
-  build_out:        { label: "BUILD-OUT",        className: "bg-indigo-100 text-indigo-700" },
-  ready_to_open:    { label: "READY TO OPEN",    className: "bg-fuchsia-100 text-fuchsia-700" },
-  open:             { label: "OPEN",             className: "bg-indigo-600 text-white" },
-  moved_on:         { label: "MOVED ON",         className: "bg-stone-100 text-stone-500" },
+  prospecting: { label: "PROSPECTING", className: "bg-blue-100 text-blue-700" },
+  diligence:   { label: "DILIGENCE",   className: "bg-orange-100 text-orange-700" },
+  build_out:   { label: "BUILD-OUT",   className: "bg-indigo-100 text-indigo-700" },
+  open:        { label: "OPEN",        className: "bg-indigo-600 text-white" },
+  moved_on:    { label: "MOVED ON",    className: "bg-stone-100 text-stone-500" },
 };
 
 interface Props {

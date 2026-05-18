@@ -270,10 +270,9 @@ export function AltPanel() {
       .filter(l =>
         // Force-promoted prospects (parent voting active, no LOI yet) surface here
         // so they get a card instead of disappearing into the prospects count.
-        (!!l.feedbackDeadline && l.derived?.stage === "prospect") ||
+        (!!l.feedbackDeadline && l.derived?.stage === "prospecting") ||
         (l.derived?.category === "ai" && (
           l.derived?.stage === "diligence" ||
-          l.derived?.stage === "ready_to_commit" ||
           l.derived?.stage === "build_out"
         ))
       )
@@ -283,7 +282,7 @@ export function AltPanel() {
   // Open + Ready-to-open campuses get their own section at the top.
   const openCampuses = useMemo(
     () => metroLocations
-      .filter(l => l.derived?.stage === "open" || l.derived?.stage === "ready_to_open")
+      .filter(l => l.derived?.stage === "open")
       .sort((a, b) => {
         // Open first, then Ready-to-open; within each, earliest opened first
         const aOpen = a.derived?.stage === "open" ? 0 : 1;
@@ -310,7 +309,7 @@ export function AltPanel() {
   );
 
   const prospectsCount = useMemo(
-    () => metroLocations.filter(l => l.derived?.stage === "prospect" && !l.feedbackDeadline).length,
+    () => metroLocations.filter(l => l.derived?.stage === "prospecting" && !l.feedbackDeadline).length,
     [metroLocations]
   );
 
@@ -327,11 +326,7 @@ export function AltPanel() {
     const voters = locationVoters.get(loc.id) || [];
     const leadChampion = loc.champions?.find(c => c.role === "lead" && !c.releasedAt);
     const stage = loc.derived?.stage;
-    const showTimeline =
-      stage === "diligence" ||
-      stage === "ready_to_commit" ||
-      stage === "build_out" ||
-      stage === "ready_to_open";
+    const showTimeline = !!stage && stage !== "moved_on";
     const openProblems = (problems ?? []).filter(p => p.status === "open" || p.status === "in_progress");
     const hasPivot = openProblems.some(p => p.pivotTrigger);
     const problemCount = openProblems.length;
@@ -447,7 +442,7 @@ export function AltPanel() {
               loc.scores?.overallColor === "RED" ? "bg-rose-500" : "bg-stone-300";
 
             const showDualRows =
-              (stage === "build_out" || stage === "ready_to_commit" || stage === "diligence") &&
+              (stage === "build_out" || stage === "diligence") &&
               (fastCap != null && maxCap != null) &&
               fastCap !== maxCap;
 
@@ -474,10 +469,12 @@ export function AltPanel() {
               }
             } else {
               const capacity = fastCap ?? maxCap ?? fallbackCap;
+              // build_out covers everything from lease-signed up through awaiting
+              // first day. If we have an opened_at (future), it wins for display.
               const opening =
-                stage === "build_out" ? formatOpeningDate(fastDate ?? maxDate) :
-                stage === "ready_to_open" ? formatOpeningDate(loc.openedAt) :
-                null;
+                stage === "build_out"
+                  ? formatOpeningDate(loc.openedAt ?? fastDate ?? maxDate)
+                  : null;
               const facts: { key: string; node: React.ReactNode }[] = [];
               if (capacity != null) facts.push({ key: "cap", node: <span>~{capacity} students</span> });
               if (opening) facts.push({ key: "open", node: <span>Opens {opening}</span> });
@@ -523,7 +520,7 @@ export function AltPanel() {
 
           {showTimeline && stage && (
             <div className="mt-2">
-              <StageTimeline current={stage} compact />
+              <StageTimeline current={stage} />
             </div>
           )}
 
@@ -959,7 +956,7 @@ export function AltPanel() {
           {metroName && !showCityCards && (
             <div className="mx-5 mt-4 mb-5 pt-4 border-t border-stone-200 text-xs text-stone-500">
               <div>
-                From {prospectsCount} prospect{prospectsCount === 1 ? "" : "s"}, {aiActive.length + parentSites.length} in diligence/committed, {buildOutCount} in build-out and {openCampuses.length} open.
+                From {prospectsCount} prospect{prospectsCount === 1 ? "" : "s"}, {aiActive.length + parentSites.length} in diligence, {buildOutCount} in build-out and {openCampuses.length} open.
                 {movedOnSites.length > 0 && (
                   <button
                     onClick={() => setShowMovedOn(s => !s)}

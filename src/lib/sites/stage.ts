@@ -6,20 +6,21 @@ export interface StageInput {
   strategy?: string | null;
   leasingDetails?: { process_exception?: boolean; [k: string]: unknown };
   // `opened_at` from pp_locations (timestamptz). When set, signals school is
-  // operating (Open) or about to (Ready to open) — supersedes the pipeline.
+  // operating (Open) or about to (still in build-out with a known target).
   openedAt?: string | null;
   // Override "now" for deterministic tests.
   now?: Date;
 }
 
-// Stage taxonomy (parent-visible pipeline):
-//   prospect          → not yet pursued (or pre-LOI activity)
-//   diligence         → LOI signed (loi='done'), working out lease terms
-//   ready_to_commit   → lease terms ready to sign (leasing='ready') + LOI done
-//   build_out         → lease signed (leasing='done'), school under construction
-//   ready_to_open     → construction done, opened_at in the future
-//   open              → opened_at <= now
-//   moved_on          → killed / cut / process-exception
+// Stage taxonomy (parent-visible pipeline) — 4 active stages + moved_on:
+//   prospecting → pre-LOI activity, evaluating fit
+//   diligence   → LOI signed, working out lease terms (incl. lease-ready)
+//   build_out   → lease signed, school under construction / awaiting first day
+//   open        → school operating
+//   moved_on    → killed / cut / process-exception
+//
+// Collapsed from prior 6-stage model: `ready_to_commit` folds into diligence
+// (still pre-signature), `ready_to_open` folds into build_out (still pre-open).
 
 const MOVED_ON_LEASING = new Set(['cut']);
 const MOVED_ON_LOI = new Set(['cut']);
@@ -33,24 +34,24 @@ export function getStage(input: StageInput): SiteStage {
     return 'moved_on';
   }
 
-  // 2. Open / Ready to open — opened_at signals school is/will be operating.
-  // Beats the leasing pipeline because pipeline often stays stale on open sites.
+  // 2. Open / Build-out (with opened_at) — opened_at signals school is/will be
+  // operating. Beats the leasing pipeline because pipeline often stays stale
+  // on open sites. Future opened_at stays in build_out (collapsed from former
+  // 'ready_to_open' — same actors, calendar gap until doors open).
   if (input.openedAt) {
     const opened = new Date(input.openedAt);
     if (!Number.isNaN(opened.getTime())) {
-      return opened <= (input.now ?? new Date()) ? 'open' : 'ready_to_open';
+      return opened <= (input.now ?? new Date()) ? 'open' : 'build_out';
     }
   }
 
-  // 3. Build-out — lease executed (binding contract). No opened_at yet.
+  // 3. Build-out — lease executed (binding contract).
   if (input.leasing === 'done') return 'build_out';
 
-  // 4. Ready to commit — lease terms ready to sign + diligence (LOI) done.
-  if (input.loi === 'done' && input.leasing === 'ready') return 'ready_to_commit';
-
-  // 5. Diligence — LOI signed, working out lease and DD.
+  // 4. Diligence — LOI signed; includes lease-ready (formerly its own
+  // 'ready_to_commit' stage — same activity, no behavior change for parents).
   if (input.loi === 'done') return 'diligence';
 
-  // 6. Prospect — everything else (pre-LOI activity collapses here).
-  return 'prospect';
+  // 5. Prospecting — everything else (pre-LOI activity collapses here).
+  return 'prospecting';
 }
