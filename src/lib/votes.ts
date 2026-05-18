@@ -654,13 +654,16 @@ export const useVotesStore = create<VotesState>((set, get) => ({
     const { locations, scoreFilters, isAdmin, viewAsParent, showUnscored, releasedFilter, selectedLocationId } = get();
     const effectiveAdmin = isAdmin && !viewAsParent;
 
-    // Sites in the active REBL pipeline (engaged or committed) always pass through
-    // filters — they're real deals, not candidates, regardless of size/score buckets.
+    // Sites in the active REBL pipeline (engaged or committed) and Open/Ready
+    // campuses always pass through filters — they're real deals, not candidates,
+    // regardless of size/score buckets.
     // Falls back to the legacy feedback_deadline check for any pre-derivation rows.
     const isPromoted = (loc: Location) =>
       !!loc.feedbackDeadline ||
       loc.derived?.stage === "engaged" ||
-      loc.derived?.stage === "committed";
+      loc.derived?.stage === "committed" ||
+      loc.derived?.stage === "ready" ||
+      loc.derived?.stage === "open";
 
     // Deep-linked / selected location always passes through filters
     const ensureSelected = (result: typeof locations) => {
