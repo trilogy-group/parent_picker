@@ -43,6 +43,8 @@ export interface Location {
   // pp_location_overrides — temporary admin overrides until upstream data is fixed
   capacityOverride?: number | null;
   targetOpenDateOverride?: string | null;
+  maxCapCapacityOverride?: number | null;
+  maxCapDateOverride?: string | null;
   champions?: SiteChampion[];
   problems?: SiteProblem[];
   derived?: LocationDerived;

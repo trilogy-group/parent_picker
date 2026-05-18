@@ -401,8 +401,8 @@ export function AltPanel() {
           {(() => {
             const fastCap = loc.capacityOverride ?? loc.derived?.fastOpenCapacity ?? null;
             const fastDate = loc.targetOpenDateOverride ?? loc.derived?.fastOpenDate ?? null;
-            const maxCap = loc.derived?.maxCapCapacity ?? null;
-            const maxDate = loc.derived?.maxCapDate ?? null;
+            const maxCap = loc.maxCapCapacityOverride ?? loc.derived?.maxCapCapacity ?? null;
+            const maxDate = loc.maxCapDateOverride ?? loc.derived?.maxCapDate ?? null;
             const fallbackCap = loc.capacityOverride ?? loc.scores?.capacity ?? null;
             const score = loc.derived?.reblScore ?? null;
             const colorClass =

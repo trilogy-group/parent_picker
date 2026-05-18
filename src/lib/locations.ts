@@ -276,6 +276,8 @@ function mapRows(rows: Record<string, unknown>[]): Location[] {
         : Boolean(row.summer_program),
       capacityOverride: row.capacity_override != null ? Number(row.capacity_override) : null,
       targetOpenDateOverride: (row.target_open_date_override as string) || null,
+      maxCapCapacityOverride: row.max_cap_capacity_override != null ? Number(row.max_cap_capacity_override) : null,
+      maxCapDateOverride: (row.max_cap_date_override as string) || null,
       champions: [],
     };
     return applyDerived(location, row);
@@ -380,6 +382,8 @@ export async function getNearbyLocations(centerLat: number, centerLng: number, l
         summerProgram: row.summer_program == null ? null : Boolean(row.summer_program),
         capacityOverride: row.capacity_override != null ? Number(row.capacity_override) : null,
         targetOpenDateOverride: (row.target_open_date_override as string) || null,
+        maxCapCapacityOverride: row.max_cap_capacity_override != null ? Number(row.max_cap_capacity_override) : null,
+        maxCapDateOverride: (row.max_cap_date_override as string) || null,
         champions: [],
       };
       return applyDerived(loc, row);
@@ -427,6 +431,8 @@ function mapBoundsRows(rows: Record<string, unknown>[]): Location[] {
       summerProgram: row.summer_program == null ? null : Boolean(row.summer_program),
       capacityOverride: row.capacity_override != null ? Number(row.capacity_override) : null,
       targetOpenDateOverride: (row.target_open_date_override as string) || null,
+      maxCapCapacityOverride: row.max_cap_capacity_override != null ? Number(row.max_cap_capacity_override) : null,
+      maxCapDateOverride: (row.max_cap_date_override as string) || null,
       champions: [],
     };
     return applyDerived(loc, row);

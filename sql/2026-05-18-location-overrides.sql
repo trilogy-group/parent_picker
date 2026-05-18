@@ -12,12 +12,14 @@
 -- `target_open_date_override`. The app prefers override > REBL DD > rebl3_sites.
 
 CREATE TABLE IF NOT EXISTS pp_location_overrides (
-  location_id      uuid PRIMARY KEY REFERENCES pp_locations(id) ON DELETE CASCADE,
-  capacity         integer,
-  target_open_date date,
-  reason           text,  -- why we overrode (so we know when to delete)
-  created_at       timestamptz NOT NULL DEFAULT now(),
-  updated_at       timestamptz NOT NULL DEFAULT now()
+  location_id            uuid PRIMARY KEY REFERENCES pp_locations(id) ON DELETE CASCADE,
+  capacity               integer,  -- headline / Phase 1
+  target_open_date       date,     -- headline / Phase 1
+  max_cap_capacity       integer,  -- full buildout
+  max_cap_proj_open_date date,     -- full buildout
+  reason                 text,     -- why we overrode (so we know when to delete)
+  created_at             timestamptz NOT NULL DEFAULT now(),
+  updated_at             timestamptz NOT NULL DEFAULT now()
 );
 
 ALTER TABLE pp_location_overrides ENABLE ROW LEVEL SECURITY;
@@ -68,6 +70,8 @@ SELECT l.id,
     l.summer_program,
     o.capacity AS capacity_override,
     o.target_open_date AS target_open_date_override,
+    o.max_cap_capacity AS max_cap_capacity_override,
+    o.max_cap_proj_open_date AS max_cap_date_override,
     leasing.status AS leasing_status,
     leasing.details AS leasing_details,
     loi.status AS loi_status,
@@ -132,6 +136,8 @@ RETURNS TABLE(
   summer_program boolean,
   capacity_override integer,
   target_open_date_override date,
+  max_cap_capacity_override integer,
+  max_cap_date_override date,
   leasing_status text, leasing_details jsonb, loi_status text, strategy_status text,
   dd_fast_open_capacity integer, dd_fast_open_proj_open_date date,
   dd_max_cap_capacity integer, dd_max_cap_proj_open_date date
@@ -171,6 +177,8 @@ BEGIN
     l.summer_program,
     o.capacity,
     o.target_open_date,
+    o.max_cap_capacity,
+    o.max_cap_proj_open_date,
     leasing.status::text,
     leasing.details,
     loi.status::text,
@@ -225,6 +233,8 @@ RETURNS TABLE(
   summer_program boolean,
   capacity_override integer,
   target_open_date_override date,
+  max_cap_capacity_override integer,
+  max_cap_date_override date,
   leasing_status text, leasing_details jsonb, loi_status text, strategy_status text,
   dd_fast_open_capacity integer, dd_fast_open_proj_open_date date,
   dd_max_cap_capacity integer, dd_max_cap_proj_open_date date
@@ -263,6 +273,8 @@ BEGIN
     l.summer_program,
     o.capacity,
     o.target_open_date,
+    o.max_cap_capacity,
+    o.max_cap_proj_open_date,
     leasing.status::text,
     leasing.details,
     loi.status::text,
@@ -307,17 +319,20 @@ WHERE rebl3_site_id = '353-hiatt-dr-palm-beach-gardens-fl'
 ON CONFLICT (location_id) DO UPDATE
   SET capacity = EXCLUDED.capacity, reason = EXCLUDED.reason, updated_at = now();
 
--- 10350 Riverside: target open Aug 2026 (until REBL DD populates fast_open.proj_open_date)
-INSERT INTO pp_location_overrides (location_id, target_open_date, reason)
-SELECT id, '2026-08-12'::date, 'Spec target; REBL DD fast_open.proj_open_date not yet populated'
+-- 10350 Riverside: spec target Aug 2026 Phase 1, full buildout to 150 students Jan 2027
+INSERT INTO pp_location_overrides (location_id, target_open_date, max_cap_capacity, max_cap_proj_open_date, reason)
+SELECT id, '2026-08-12'::date, 150, '2027-01-27'::date,
+       'Spec target; REBL DD missing fast_open and max_cap data'
 FROM pp_locations
 WHERE rebl3_site_id = '10350-riverside-dr-palm-beach-gardens-fl'
 ON CONFLICT (location_id) DO UPDATE
   SET target_open_date = EXCLUDED.target_open_date,
-      reason = COALESCE(pp_location_overrides.reason, EXCLUDED.reason),
+      max_cap_capacity = EXCLUDED.max_cap_capacity,
+      max_cap_proj_open_date = EXCLUDED.max_cap_proj_open_date,
+      reason = EXCLUDED.reason,
       updated_at = now();
 
--- Palm Beach Plan of Record
+-- Palm Beach Plan of Record (summer moves to Riverside; regulatory licensing approved)
 INSERT INTO pp_plan_of_record (metro, narrative_override) VALUES
-  ('Palm Beach', E'Upgrading from 353 Hiatt to 10350 Riverside by August 2026.\nRiverside roughly doubles capacity (~68 students Phase 1, ~72 full) and we''ll continue running the summer program at the current site.\nLease signed; build-out underway. Regulatory approval pending.')
+  ('Palm Beach', E'Upgrading from 353 Hiatt to 10350 Riverside by August 2026.\nRiverside opens with ~68 students in Phase 1 (August 2026) and scales to 150 students at full buildout (January 2027). The summer program will run at Riverside.\nLease signed, build-out underway, regulatory licensing approved.')
 ON CONFLICT (metro) DO UPDATE SET narrative_override = EXCLUDED.narrative_override, last_curated_at = now();
