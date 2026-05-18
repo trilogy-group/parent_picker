@@ -339,13 +339,13 @@ export function AltPanel() {
           <div className="flex items-center gap-2 flex-wrap mb-1.5">
             {loc.derived?.stage && <StageBadge stage={loc.derived.stage} />}
             {loc.summerProgram === true && (
-              <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-700" title="Summer program runs on this site">SUMMER</span>
+              <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-sky-100 text-sky-700" title="Summer program runs on this site">SUMMER</span>
             )}
             {planRole === "primary" && (
-              <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-emerald-200 text-emerald-900">★ PRIMARY</span>
+              <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-rose-200 text-rose-900">★ PRIMARY</span>
             )}
             {planRole === "bridge" && (
-              <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-amber-200 text-amber-900">★ BRIDGE</span>
+              <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-cyan-200 text-cyan-900">★ BRIDGE</span>
             )}
             {planRole === "watch" && (
               <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-stone-200 text-stone-800">★ WATCH</span>
@@ -386,36 +386,27 @@ export function AltPanel() {
             )}
           </div>
 
-          {/* Build-out details row — regulatory/zoning/permits hurdle chips.
-              For build-out + ready-to-open: always render the 3 chips (null
-              defaults to "pending"). For other stages: only render when value
-              is explicit (true=done, false=pending). */}
-          {(() => {
-            const buildoutLike =
-              loc.derived?.stage === "build_out" || loc.derived?.stage === "ready_to_open";
+          {/* Build-out hurdle chips — only shown when stage === build_out.
+              All 3 chips always render in that case (null → "pending"). */}
+          {stage === "build_out" && (() => {
             const renderChip = (
               label: string,
               value: boolean | null | undefined,
               titleDone: string,
               titlePending: string
             ) => {
-              const v = value ?? (buildoutLike ? false : null);
-              if (v === null) return null;
-              return v ? (
+              const done = value === true;
+              return done ? (
                 <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700" title={titleDone}>{label} ✓</span>
               ) : (
                 <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-700" title={titlePending}>{label} · pending</span>
               );
             };
-            const chips = [
-              renderChip("REGULATORY", loc.regulatoryApproved, "Regulatory approval complete", "Regulatory approval in progress"),
-              renderChip("ZONING",     loc.zoningCleared,      "Zoning cleared",                "Zoning in progress"),
-              renderChip("PERMITS",    loc.permitsAcquired,    "Permits acquired",              "Permits in progress"),
-            ].filter(Boolean);
-            if (chips.length === 0) return null;
             return (
               <div className="flex items-center gap-2 flex-wrap mb-1.5">
-                {chips}
+                {renderChip("REGULATORY", loc.regulatoryApproved, "Regulatory approval complete", "Regulatory approval in progress")}
+                {renderChip("ZONING",     loc.zoningCleared,      "Zoning cleared",                "Zoning in progress")}
+                {renderChip("PERMITS",    loc.permitsAcquired,    "Permits acquired",              "Permits in progress")}
               </div>
             );
           })()}
