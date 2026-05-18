@@ -247,6 +247,20 @@ export function AltPanel() {
       .sort((a, b) => comparePlanOrder(a, b, effectivePlan, userId)),
     [metroLocations, effectivePlan, userId]
   );
+  // Open + Ready campuses get their own section at the top — they're the spec's
+  // first stage and don't fit the parent/ai/short-term category split.
+  const openCampuses = useMemo(
+    () => metroLocations
+      .filter(l => l.derived?.stage === "open" || l.derived?.stage === "ready")
+      .sort((a, b) => {
+        // Open first, then Ready; within each, earliest opened first
+        const aOpen = a.derived?.stage === "open" ? 0 : 1;
+        const bOpen = b.derived?.stage === "open" ? 0 : 1;
+        if (aOpen !== bOpen) return aOpen - bOpen;
+        return (a.openedAt ?? "").localeCompare(b.openedAt ?? "");
+      }),
+    [metroLocations]
+  );
   const shortTermSites = useMemo(
     () => metroLocations
       .filter(l => l.derived?.category === "short_term")
@@ -634,6 +648,25 @@ export function AltPanel() {
           {metroName && !showCityCards && (
             <div className="border-b border-stone-200 pb-3">
               <PlanOfRecord metro={metroName} plan={curatedPlan} effectivePlan={effectivePlan} />
+              {openCampuses.length > 0 && (
+                <div className="mx-4 mb-3 p-3 bg-white border border-emerald-600 border-l-4 rounded">
+                  <div className="mb-2">
+                    <div className="text-xs font-bold uppercase tracking-wider text-emerald-700">
+                      OPEN &middot; {openCampuses.length}
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    {openCampuses.map((l) => (
+                      <RichCategoryCard
+                        key={l.id}
+                        loc={l}
+                        planRole={getPlanRole(l.id, effectivePlan)}
+                        problems={problemsBySite.get(l.id)}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
               <CategorySection
                 category="parent"
                 locations={parentSites}
@@ -914,7 +947,7 @@ export function AltPanel() {
           {metroName && !showCityCards && (
             <div className="mx-5 mt-4 mb-5 pt-4 border-t border-stone-200 text-xs text-stone-500">
               <div>
-                From {metroLocations.length} scored, {aiActive.length + parentSites.length} engaged and {committedCount} committed.
+                From {metroLocations.length} scored, {aiActive.length + parentSites.length} engaged, {committedCount} committed and {openCampuses.length} open.
                 {movedOnSites.length > 0 && (
                   <button
                     onClick={() => setShowMovedOn(s => !s)}
