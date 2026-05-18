@@ -91,6 +91,9 @@ export function mergePlan(
   if (!curated) return auto;
   const ci = curated.narrativeTemplateInputs;
   const hasCurated =
+    !!curated.narrativeOverride ||
+    !!curated.backupPlan ||
+    (curated.pivotConditions?.length ?? 0) > 0 ||
     !!ci.primaryLongTermSiteId ||
     !!ci.bridgeSiteId ||
     (ci.watchSiteIds?.length ?? 0) > 0;
