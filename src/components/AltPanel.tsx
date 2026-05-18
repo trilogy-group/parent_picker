@@ -267,11 +267,16 @@ export function AltPanel() {
   );
   const aiActive = useMemo(
     () => metroLocations
-      .filter(l => l.derived?.category === "ai" && (
-        l.derived?.stage === "diligence" ||
-        l.derived?.stage === "ready_to_commit" ||
-        l.derived?.stage === "build_out"
-      ))
+      .filter(l =>
+        // Force-promoted prospects (parent voting active, no LOI yet) surface here
+        // so they get a card instead of disappearing into the prospects count.
+        (!!l.feedbackDeadline && l.derived?.stage === "prospect") ||
+        (l.derived?.category === "ai" && (
+          l.derived?.stage === "diligence" ||
+          l.derived?.stage === "ready_to_commit" ||
+          l.derived?.stage === "build_out"
+        ))
+      )
       .sort((a, b) => comparePlanOrder(a, b, effectivePlan, userId)),
     [metroLocations, effectivePlan, userId]
   );
@@ -305,7 +310,7 @@ export function AltPanel() {
   );
 
   const prospectsCount = useMemo(
-    () => metroLocations.filter(l => l.derived?.stage === "prospect").length,
+    () => metroLocations.filter(l => l.derived?.stage === "prospect" && !l.feedbackDeadline).length,
     [metroLocations]
   );
 
