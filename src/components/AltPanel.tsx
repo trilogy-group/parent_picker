@@ -9,7 +9,7 @@ import { AltLocationCard } from "./AltLocationCard";
 import LocationDetailView from "./LocationDetailView";
 import { ProfilePopover } from "./ProfilePopover";
 import { getDistanceMiles } from "@/lib/locations";
-import { findNearestMetro } from "@/lib/metros";
+import { ACTIVE_METROS, findActiveMetro } from "@/lib/active-metros";
 import { sortMostSupport, sortMostViable, sortMostViableWithPriority, makeSortNearest } from "@/lib/sort";
 import type { Location } from "@/types";
 import { Eye, ChevronDown, Search, X, ChevronLeft, MapPin } from "lucide-react";
@@ -39,7 +39,7 @@ export function AltPanel() {
     voteIn, voteNotHere, removeVote, updateVoteComment, votedLocationIds, votedNotHereIds,
     mapBounds, sortMode, setSortMode,
     locationVoters, loadLocationVoters, zoomLevel,
-    citySummaries, setFlyToTarget, userLocation, setZoomLevel, mapCenter,
+    setFlyToTarget, userLocation, setZoomLevel, mapCenter,
     viewAsParent, setViewAsParent,
     showTopOnly, setShowTopOnly,
     altSizeFilter, setAltSizeFilter,
@@ -67,7 +67,6 @@ export function AltPanel() {
     locationVoters: s.locationVoters,
     loadLocationVoters: s.loadLocationVoters,
     zoomLevel: s.zoomLevel,
-    citySummaries: s.citySummaries,
     setFlyToTarget: s.setFlyToTarget,
     setZoomLevel: s.setZoomLevel,
     mapCenter: s.mapCenter,
@@ -159,24 +158,19 @@ export function AltPanel() {
     }
   }, [selectedLocationId, loadLocationVoters]);
 
-  // Determine metro name from map center (not from location counts, which skew toward high-volume metros)
-  const METRO_DISPLAY: Record<string, string> = {
-    "Phoenix": "Scottsdale",
-  };
-
-  const metroName = useMemo(() => {
+  const activeMetro = useMemo(() => {
     if (zoomLevel < 9 || !mapCenter) return null;
-    const metro = findNearestMetro(mapCenter.lat, mapCenter.lng);
-    if (!metro) return null;
-    return METRO_DISPLAY[metro.name] || metro.name;
+    return findActiveMetro(mapCenter.lat, mapCenter.lng);
   }, [zoomLevel, mapCenter]);
 
-  // City summaries sorted by location count (for zoomed-out view)
-  const sortedCities = useMemo(() => {
-    return [...citySummaries].sort((a, b) => b.locationCount - a.locationCount);
-  }, [citySummaries]);
+  const metroName = activeMetro?.displayName ?? null;
 
-  const showCityCards = zoomLevel < 9;
+  // Curated metros render directly — order = declared order in active-metros.ts
+  const metroCards = ACTIVE_METROS;
+
+  // Show curated cards when fully zoomed out OR when zoomed in past 9 but the
+  // map center is outside every active metro's radius (e.g., panned over Memphis).
+  const showCityCards = zoomLevel < 9 || !activeMetro;
 
   // Sort and filter locations in viewport
   const sortedLocations = useMemo(() => {
@@ -224,15 +218,14 @@ export function AltPanel() {
   // into one site doesn't make the others vanish from the highlights list. Filter
   // by nearest-metro membership against `metroName` (50-mile radius per metros.ts).
   const metroLocations = useMemo(() => {
-    if (!metroName) return [];
-    return filteredLocations().filter(loc => {
-      const m = findNearestMetro(loc.lat, loc.lng);
-      if (!m) return false;
-      return (METRO_DISPLAY[m.name] || m.name) === metroName;
+    if (!activeMetro) return [];
+    return filteredLocations().filter((loc) => {
+      const m = findActiveMetro(loc.lat, loc.lng);
+      return m?.slug === activeMetro.slug;
     });
-  // METRO_DISPLAY is a stable inline object; metroName & filteredLocations cover the deps
+  // filteredLocations is a stable store function; activeMetro & locations cover state deps
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filteredLocations, metroName, locations]);
+  }, [filteredLocations, activeMetro, locations]);
 
   // Plan of Record (curated) + auto-derived defaults, merged into one effective plan
   const curatedPlan = useMetroPlan(metroName);
@@ -553,25 +546,19 @@ export function AltPanel() {
       </div>
 
       {showCityCards ? (
-        /* Zoomed-out: city summary cards */
-        <div className="px-4 py-2 space-y-2">
-          {sortedCities.map((city) => (
+        /* Zoomed-out: curated active-metro cards */
+        <div className="px-4 py-2 space-y-2" data-testid="metro-card-list">
+          {metroCards.map((metro) => (
             <button
-              key={`${city.city}-${city.state}`}
-              onClick={() => setFlyToTarget({ lat: city.lat, lng: city.lng, zoom: 9 })}
+              key={metro.slug}
+              data-testid="metro-card"
+              data-metro-slug={metro.slug}
+              onClick={() => setFlyToTarget({ lat: metro.lat, lng: metro.lng, zoom: metro.defaultZoom })}
               className="w-full p-4 bg-white rounded-xl border border-gray-200 text-left hover:border-blue-300 transition-colors"
             >
-              <p className="font-semibold text-gray-900">{city.city}, {city.state}</p>
-              <p className="text-sm text-gray-500">
-                {city.locationCount} {city.locationCount === 1 ? 'location' : 'locations'}
-              </p>
+              <p className="font-semibold text-gray-900">{metro.displayName}</p>
             </button>
           ))}
-          {sortedCities.length === 0 && (
-            <p className="text-center text-sm text-gray-400 py-8">
-              Loading cities&hellip;
-            </p>
-          )}
         </div>
       ) : (
         /* Zoomed-in: location cards with sort pills */
