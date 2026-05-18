@@ -9,6 +9,12 @@ import type { Location } from "@/types";
  * surfaced by `applyDerived()` in `src/lib/locations.ts`.
  */
 export function formatPipelineStatus(loc: Location): string | null {
+  const stage = loc.derived?.stage;
+  // Open / Ready-to-open campuses don't show pipeline status — the school is
+  // operating (or about to), and the REBL leasing/loi values are often stale
+  // for these sites (e.g. 353 Hiatt has loi=done/leasing=claimed but is Open).
+  if (stage === "open" || stage === "ready_to_open") return null;
+
   const leasing = loc.derived?.leasingStatus ?? null;
   const loi = loc.derived?.loiStatus ?? null;
 
