@@ -75,13 +75,18 @@ function DeepLinkHandler() {
 }
 
 export function HomeContent({ variant = "legacy" }: { variant?: "legacy" | "redesign" } = {}) {
-  const { setReferencePoint, setIsAdmin } = useVotesStore();
+  const { setReferencePoint, setIsAdmin, setRedesignVariant } = useVotesStore();
   const { isAdmin } = useAuth();
 
   // Sync isAdmin from AuthProvider into Zustand store
   useEffect(() => {
     setIsAdmin(isAdmin);
   }, [isAdmin, setIsAdmin]);
+
+  // Sync variant prop into Zustand store so data-layer can branch (e.g., champions fetch)
+  useEffect(() => {
+    setRedesignVariant(variant === "redesign");
+  }, [variant, setRedesignVariant]);
 
   useEffect(() => {
     setReferencePoint(AUSTIN_CENTER);

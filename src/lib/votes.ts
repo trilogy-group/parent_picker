@@ -50,6 +50,9 @@ interface VotesState {
   userId: string | null;
   userEmail: string | null;
 
+  // UI variant flag (legacy vs redesign) — drives data-layer branches
+  isRedesignVariant: boolean;
+
   // Admin vs non-admin filter state
   isAdmin: boolean;
   viewAsParent: boolean;           // Admin toggle: preview parent experience
@@ -93,6 +96,7 @@ interface VotesState {
   setUserEmail: (email: string | null) => void;
   setZoomLevel: (zoom: number) => void;
   setIsAdmin: (isAdmin: boolean) => void;
+  setRedesignVariant: (v: boolean) => void;
   setViewAsParent: (viewAsParent: boolean) => void;
   setShowRedLocations: (show: boolean) => void;
   setShowUnscored: (show: boolean) => void;
@@ -154,6 +158,7 @@ export const useVotesStore = create<VotesState>((set, get) => ({
   isLoading: true,
   userId: null,
   userEmail: null,
+  isRedesignVariant: false,
   isAdmin: false,
   viewAsParent: false,
   showRedLocations: false,
@@ -223,6 +228,8 @@ export const useVotesStore = create<VotesState>((set, get) => ({
 
   setIsAdmin: (isAdmin) => set({ isAdmin }),
 
+  setRedesignVariant: (v) => set({ isRedesignVariant: v }),
+
   setViewAsParent: (viewAsParent) => set({ viewAsParent, lastFetchBounds: null }),
 
   setShowRedLocations: (showRedLocations) => set({ showRedLocations }),
@@ -276,7 +283,7 @@ export const useVotesStore = create<VotesState>((set, get) => ({
     }
     const effectiveAdmin = isAdmin && !viewAsParent;
     const releasedOnly = !effectiveAdmin ? true : releasedFilter === "released" ? true : releasedFilter === "unreleased" ? false : undefined;
-    const fetched = await getLocationsInBounds(bounds, releasedOnly);
+    const fetched = await getLocationsInBounds(bounds, releasedOnly, { withRedesignFields: get().isRedesignVariant });
     // Preserve the deep-linked / selected location if it wasn't in the fetch results
     if (selectedLocationId && !fetched.some((l) => l.id === selectedLocationId)) {
       const kept = prev.find((l) => l.id === selectedLocationId);
@@ -289,7 +296,7 @@ export const useVotesStore = create<VotesState>((set, get) => ({
     const { isAdmin, viewAsParent, releasedFilter, selectedLocationId, locations: prev } = get();
     const effectiveAdmin = isAdmin && !viewAsParent;
     const releasedOnly = !effectiveAdmin ? true : releasedFilter === "released" ? true : releasedFilter === "unreleased" ? false : undefined;
-    const fetched = await getLocationsInBounds(bounds, releasedOnly);
+    const fetched = await getLocationsInBounds(bounds, releasedOnly, { withRedesignFields: get().isRedesignVariant });
     // Preserve the deep-linked / selected location if it wasn't in the fetch results
     if (selectedLocationId && !fetched.some((l) => l.id === selectedLocationId)) {
       const kept = prev.find((l) => l.id === selectedLocationId);

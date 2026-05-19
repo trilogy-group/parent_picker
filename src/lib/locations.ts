@@ -232,7 +232,7 @@ export async function getCitySummaries(releasedOnly?: boolean, excludeRed?: bool
   }
 }
 
-export async function getLocations(): Promise<Location[]> {
+export async function getLocations(opts?: { withRedesignFields?: boolean }): Promise<Location[]> {
   // If Supabase is not configured, return mock data
   if (!isSupabaseConfigured || !supabase) {
     console.log("Supabase not configured, using mock data");
@@ -265,7 +265,7 @@ export async function getLocations(): Promise<Location[]> {
     }
 
     const locations = mapRows(allRows);
-    await attachChampions(locations);
+    if (opts?.withRedesignFields) await attachChampions(locations);
     return locations;
   } catch (error) {
     console.error("Failed to fetch locations:", error);
@@ -411,7 +411,7 @@ async function attachChampions(locations: Location[]): Promise<void> {
 }
 
 
-export async function getNearbyLocations(centerLat: number, centerLng: number, limit: number = 500, releasedOnly?: boolean): Promise<Location[]> {
+export async function getNearbyLocations(centerLat: number, centerLng: number, limit: number = 500, releasedOnly?: boolean, opts?: { withRedesignFields?: boolean }): Promise<Location[]> {
   if (!isSupabaseConfigured || !supabase) {
     // Mock fallback: filter by released if needed
     const locs = releasedOnly ? mockLocations.filter(l => l.released === true) : mockLocations;
@@ -461,7 +461,7 @@ export async function getNearbyLocations(centerLat: number, centerLng: number, l
       };
       return applyDerived(loc, row);
     });
-    await attachChampions(locations);
+    if (opts?.withRedesignFields) await attachChampions(locations);
     return locations;
   } catch (error) {
     console.error("Failed to fetch nearby locations:", error);
@@ -513,7 +513,7 @@ function mapBoundsRows(rows: Record<string, unknown>[]): Location[] {
   });
 }
 
-export async function getLocationsInBounds(bounds: Bounds, releasedOnly?: boolean): Promise<Location[]> {
+export async function getLocationsInBounds(bounds: Bounds, releasedOnly?: boolean, opts?: { withRedesignFields?: boolean }): Promise<Location[]> {
   if (!isSupabaseConfigured || !supabase) {
     const locs = releasedOnly ? mockLocations.filter(l => l.released === true) : mockLocations;
     return locs.filter(l =>
@@ -550,7 +550,7 @@ export async function getLocationsInBounds(bounds: Bounds, releasedOnly?: boolea
     }
 
     const locations = mapBoundsRows(allRows);
-    await attachChampions(locations);
+    if (opts?.withRedesignFields) await attachChampions(locations);
     return locations;
   } catch (error) {
     console.error("Failed to fetch locations in bounds:", error);
