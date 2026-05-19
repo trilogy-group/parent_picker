@@ -8,6 +8,8 @@ import { useAuth } from "@/components/AuthProvider";
 import { AltPanelRedesign } from "@/components/AltPanelRedesign";
 import { AltPanelLegacy } from "@/components/AltPanelLegacy";
 import { AUSTIN_CENTER } from "@/lib/locations";
+import { supabase } from "@/lib/supabase";
+import { getActiveMetroBySlug } from "@/lib/active-metros";
 
 function DeepLinkHandler() {
   const searchParams = useSearchParams();
@@ -74,6 +76,85 @@ function DeepLinkHandler() {
   return null;
 }
 
+function AlphaTokenHandler() {
+  const { setFlyToTarget } = useVotesStore();
+  const ranRef = useRef(false);
+
+  useEffect(() => {
+    if (ranRef.current) return;
+    if (typeof window === 'undefined') return;
+
+    const params = new URLSearchParams(window.location.search);
+    const token = params.get('token');
+    if (!token) return;
+
+    // JWTs are 200+ chars in practice; bail on anything implausibly short to
+    // avoid clashing with stray `?token=` params from other systems.
+    if (token.length < 100) return;
+
+    ranRef.current = true;
+
+    (async () => {
+      let res: Response;
+      try {
+        res = await fetch('/api/auth/alpha-sso', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ token }),
+        });
+      } catch (err) {
+        console.error('[alpha-sso] network error:', err);
+        stripTokenFromUrl();
+        return;
+      }
+
+      // Always strip the token so a page refresh doesn't retry.
+      stripTokenFromUrl();
+
+      if (!res.ok) {
+        console.error('[alpha-sso] server returned', res.status);
+        return;
+      }
+
+      let json: { token_hash?: string; metroSlug?: string | null };
+      try {
+        json = await res.json();
+      } catch {
+        return;
+      }
+
+      const { token_hash, metroSlug } = json;
+      if (!token_hash || !supabase) return;
+
+      // NOTE: Supabase docs use 'email' for magiclink token verification.
+      // If the installed @supabase/supabase-js version disagrees, swap to 'magiclink'.
+      const { error } = await supabase.auth.verifyOtp({
+        token_hash,
+        type: 'email',
+      });
+      if (error) {
+        console.error('[alpha-sso] verifyOtp failed:', error.message);
+        return;
+      }
+
+      if (metroSlug) {
+        const metro = getActiveMetroBySlug(metroSlug);
+        if (metro) {
+          setFlyToTarget({ lat: metro.lat, lng: metro.lng, zoom: metro.defaultZoom });
+        }
+      }
+    })();
+  }, [setFlyToTarget]);
+
+  return null;
+}
+
+function stripTokenFromUrl() {
+  const url = new URL(window.location.href);
+  url.searchParams.delete('token');
+  window.history.replaceState({}, '', url.toString());
+}
+
 export function HomeContent({ variant = "legacy" }: { variant?: "legacy" | "redesign" } = {}) {
   const { loadCitySummaries, setReferencePoint, setIsAdmin, setRedesignVariant, releasedFilter, showUnscored, viewAsParent } = useVotesStore();
   const { isAdmin } = useAuth();
@@ -99,6 +180,7 @@ export function HomeContent({ variant = "legacy" }: { variant?: "legacy" | "rede
   return (
     <div className="relative h-screen w-screen overflow-hidden">
       <Suspense><DeepLinkHandler /></Suspense>
+      <AlphaTokenHandler />
       {/* Full-screen Map — hidden on mobile */}
       <div className="absolute inset-0 hidden lg:block">
         <Map variant={variant} />
