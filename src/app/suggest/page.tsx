@@ -381,16 +381,18 @@ function SuggestPageInner() {
                 onFilesChange={(files) => setAttachmentUrls(files.map((f) => ({ name: f.name, url: f.url })))}
               />
 
-              <label className="flex items-start gap-2 text-sm text-stone-700 pt-2">
-                <input
-                  type="checkbox"
-                  checked={championAck}
-                  onChange={(e) => setChampionAck(e.target.checked)}
-                  className="mt-0.5"
-                  data-testid="champion-affirm-checkbox"
-                />
-                <span>By submitting, I&apos;m saying I&apos;ll help drive this site forward. I understand I&apos;ll be looped in on every problem and decision, and I can hand off the role later if needed.</span>
-              </label>
+              {fromRedesign && (
+                <label className="flex items-start gap-2 text-sm text-stone-700 pt-2">
+                  <input
+                    type="checkbox"
+                    checked={championAck}
+                    onChange={(e) => setChampionAck(e.target.checked)}
+                    className="mt-0.5"
+                    data-testid="champion-affirm-checkbox"
+                  />
+                  <span>By submitting, I&apos;m saying I&apos;ll help drive this site forward. I understand I&apos;ll be looped in on every problem and decision, and I can hand off the role later if needed.</span>
+                </label>
+              )}
 
               {/* Submit */}
               <div className="flex items-center justify-between pt-4 border-t">
@@ -399,7 +401,7 @@ function SuggestPageInner() {
                   <Link href={backHref}>
                     <Button variant="outline" type="button">Cancel</Button>
                   </Link>
-                  <Button type="submit" disabled={isSubmitting || !championAck} className="bg-blue-600 hover:bg-blue-700">
+                  <Button type="submit" disabled={isSubmitting || (fromRedesign && !championAck)} className="bg-blue-600 hover:bg-blue-700">
                     {isSubmitting ? "Submitting..." : "Submit Location"}
                   </Button>
                 </div>
