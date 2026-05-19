@@ -76,17 +76,15 @@ function DeepLinkHandler() {
 
 export function HomeContent({ variant = "legacy" }: { variant?: "legacy" | "redesign" } = {}) {
   const { setReferencePoint, setIsAdmin, setRedesignVariant } = useVotesStore();
+  // Sync variant -> store synchronously so any fetch fired during initial mount reads the correct flag.
+  // Safe: HomeContent doesn't subscribe to isRedesignVariant, so this does not trigger re-renders.
+  setRedesignVariant(variant === "redesign");
   const { isAdmin } = useAuth();
 
   // Sync isAdmin from AuthProvider into Zustand store
   useEffect(() => {
     setIsAdmin(isAdmin);
   }, [isAdmin, setIsAdmin]);
-
-  // Sync variant prop into Zustand store so data-layer can branch (e.g., champions fetch)
-  useEffect(() => {
-    setRedesignVariant(variant === "redesign");
-  }, [variant, setRedesignVariant]);
 
   useEffect(() => {
     setReferencePoint(AUSTIN_CENTER);
