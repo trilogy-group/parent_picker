@@ -2,11 +2,11 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Wire up JWT-based auto-sign-in so parents arriving from `community.alpha.school?token=eyJ...` land signed-in on the correct Miami metro view, per Guy Harel's integration guide.
+**Goal:** Wire up token-based auto-sign-in so parents arriving from `community.alpha.school?token=eyJ...` land signed-in on the correct Miami metro view. After Guy's security audit (revised 2026-05-19 PM), Alpha owns token verification — we exchange the token at their endpoint and get structured user info back.
 
-**Architecture:** Client-side token detection in `HomeContent` → `POST /api/auth/alpha-sso` → server verifies the Alpha JWT via JWKS, fill-blanks upserts `pp_profiles`, calls `supabase.auth.admin.generateLink` to issue a magic-link `token_hash`, returns it. Client exchanges via `supabase.auth.verifyOtp` (localStorage session), then flies the map to the resolved metro and strips `?token=` from the URL.
+**Architecture:** Client-side token detection in `HomeContent` → `POST /api/auth/alpha-sso` → our server calls Alpha's `/users/get-real-estate-info` exchange endpoint → fill-blanks upserts `pp_profiles` → `supabase.auth.admin.generateLink` for a magic-link `token_hash`. Client exchanges via `supabase.auth.verifyOtp` (localStorage session), then flies the map to the resolved metro and strips `?token=` from the URL.
 
-**Tech Stack:** Next.js 15 App Router, TypeScript, `jose` for JWT verification, `@supabase/supabase-js` v2.94 admin SDK, Vitest for unit tests.
+**Tech Stack:** Next.js 15 App Router, TypeScript, `fetch` (no JWT lib needed — Alpha decodes), `@supabase/supabase-js` v2.94 admin SDK, Vitest for unit tests.
 
 **Spec:** `docs/superpowers/specs/2026-05-19-alpha-community-sso-design.md`
 
@@ -15,8 +15,8 @@
 ## File map
 
 **Create**
-- `src/lib/verify-alpha-token.ts` — JWT verifier with lazy JWKS init
-- `src/lib/verify-alpha-token.test.ts` — Vitest unit tests
+- `src/lib/exchange-alpha-token.ts` — Wrapper around Alpha's exchange endpoint
+- `src/lib/exchange-alpha-token.test.ts` — Vitest unit tests
 - `src/lib/alpha-community.ts` — `community → ActiveMetro` resolver
 - `src/lib/alpha-community.test.ts` — Vitest unit tests
 - `src/app/api/auth/alpha-sso/route.ts` — POST handler (token → token_hash exchange)
@@ -24,59 +24,46 @@
 
 **Modify**
 - `src/components/HomeContent.tsx` — add `AlphaTokenHandler` sibling to `DeepLinkHandler`
-- `.env.local` — add `ALPHA_JWKS_URL` (developer machine; Vercel set out-of-band)
-- `package.json` — add `jose` dep
+- `.env.local` — add `ALPHA_FUNCTIONS_URL` (developer machine; Vercel set out-of-band)
 
 ---
 
-## Task 1: Install `jose` + add env var
+## Task 1: Add env var
 
 **Files:**
-- Modify: `package.json` (via npm)
 - Modify: `.env.local`
 
-- [ ] **Step 1: Install `jose`**
+No new npm deps — Guy's revised flow uses plain `fetch`.
 
-```bash
-npm install jose
-```
-
-Expected output: `added 1 package` or similar; no peer-dep warnings.
-
-- [ ] **Step 2: Add `ALPHA_JWKS_URL` to local env**
+- [ ] **Step 1: Add `ALPHA_FUNCTIONS_URL` to local env**
 
 Add this line to `.env.local`:
 
 ```
-ALPHA_JWKS_URL=https://mstzpwibigesyzugwzcu.supabase.co/functions/v1/users/jwks.json
+ALPHA_FUNCTIONS_URL=https://mstzpwibigesyzugwzcu.supabase.co/functions/v1
 ```
 
-- [ ] **Step 3: Verify JWKS endpoint is reachable**
+- [ ] **Step 2: Verify the exchange endpoint shape (sanity check)**
 
 ```bash
-curl -s https://mstzpwibigesyzugwzcu.supabase.co/functions/v1/users/jwks.json | head -c 200
+curl -s -X POST https://mstzpwibigesyzugwzcu.supabase.co/functions/v1/users/get-real-estate-info \
+  -H 'Content-Type: application/json' \
+  -d '{"token":"not-a-real-token"}'
 ```
 
-Expected: JSON output starting with `{"keys":[...` (Alpha-side may not be live until 2026-05-20 morning; if it 404s now, that's expected — we still develop with the URL configured).
+Expected (once Alpha is live): a JSON 401 like `{"error":"invalid_token","message":"..."}`. If it returns 404 or some other non-JSON, Alpha-side may not be deployed yet — that's fine, we still develop with the env configured.
 
-- [ ] **Step 4: Commit**
+- [ ] **Step 3: Reminder — add `ALPHA_FUNCTIONS_URL` to Vercel before merging**
+
+Manually after merge (CLI step, not part of any commit):
 
 ```bash
-git add package.json package-lock.json
-git commit -m "deps: add jose for Alpha JWT verification"
+echo "https://mstzpwibigesyzugwzcu.supabase.co/functions/v1" | vercel env add ALPHA_FUNCTIONS_URL production
+echo "https://mstzpwibigesyzugwzcu.supabase.co/functions/v1" | vercel env add ALPHA_FUNCTIONS_URL preview
+echo "https://mstzpwibigesyzugwzcu.supabase.co/functions/v1" | vercel env add ALPHA_FUNCTIONS_URL development
 ```
 
-(Do not commit `.env.local` — it's gitignored.)
-
-- [ ] **Step 5: Reminder — add `ALPHA_JWKS_URL` to Vercel before merging**
-
-Manually after merge (CLI step, not part of the commit):
-
-```bash
-echo "https://mstzpwibigesyzugwzcu.supabase.co/functions/v1/users/jwks.json" | vercel env add ALPHA_JWKS_URL production
-echo "https://mstzpwibigesyzugwzcu.supabase.co/functions/v1/users/jwks.json" | vercel env add ALPHA_JWKS_URL preview
-echo "https://mstzpwibigesyzugwzcu.supabase.co/functions/v1/users/jwks.json" | vercel env add ALPHA_JWKS_URL development
-```
+No commit for this task — `.env.local` is gitignored. Move on to Task 2.
 
 ---
 
@@ -90,13 +77,16 @@ echo "https://mstzpwibigesyzugwzcu.supabase.co/functions/v1/users/jwks.json" | v
 `sql/2026-05-19-alpha-sso.sql`:
 
 ```sql
--- Alpha Community SSO: capture which Alpha community/cohort the parent belongs to.
--- Filled (blanks-only) by /api/auth/alpha-sso on token verification.
+-- Alpha Community SSO: capture which Alpha community/cohort the parent belongs to,
+-- plus their Alpha-side user id for future cross-referencing.
+-- Filled (blanks-only) by /api/auth/alpha-sso on token exchange.
 alter table pp_profiles
+  add column if not exists alpha_user_profile_id text,
   add column if not exists alpha_community text,
   add column if not exists alpha_enrollment_status text;
 
--- alpha_enrollment_status is one of: 'enrolled', 'committed', or null (per Alpha JWT contract).
+-- alpha_enrollment_status is one of: 'enrolled', 'committed', or null
+-- (per Alpha's get-real-estate-info response contract).
 ```
 
 - [ ] **Step 2: Apply the migration to Supabase**
@@ -116,100 +106,120 @@ mcp__supabase__execute_sql:
 select column_name, data_type
 from information_schema.columns
 where table_name = 'pp_profiles'
-  and column_name in ('alpha_community', 'alpha_enrollment_status');
+  and column_name in ('alpha_user_profile_id', 'alpha_community', 'alpha_enrollment_status');
 ```
 
-Expected: two rows returned, both `text`.
+Expected: three rows returned, all `text`.
 
 - [ ] **Step 4: Commit**
 
 ```bash
 git add sql/2026-05-19-alpha-sso.sql
-git commit -m "db: add alpha_community + alpha_enrollment_status to pp_profiles"
+git commit -m "db: add alpha_user_profile_id + alpha_community + alpha_enrollment_status to pp_profiles"
 ```
 
 ---
 
-## Task 3: JWT verifier (TDD)
+## Task 3: Token exchange client (TDD)
 
 **Files:**
-- Create: `src/lib/verify-alpha-token.ts`
-- Create: `src/lib/verify-alpha-token.test.ts`
+- Create: `src/lib/exchange-alpha-token.ts`
+- Create: `src/lib/exchange-alpha-token.test.ts`
 
 - [ ] **Step 1: Write the failing tests**
 
-`src/lib/verify-alpha-token.test.ts`:
+`src/lib/exchange-alpha-token.test.ts`:
 
 ```ts
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { exchangeAlphaToken } from './exchange-alpha-token';
 
-vi.mock('jose', () => ({
-  createRemoteJWKSet: vi.fn(() => 'fake-jwks-instance'),
-  jwtVerify: vi.fn(),
-}));
-
-import { createRemoteJWKSet, jwtVerify } from 'jose';
-import { verifyAlphaToken, _resetJwksCacheForTests } from './verify-alpha-token';
-
-describe('verifyAlphaToken', () => {
+describe('exchangeAlphaToken', () => {
   beforeEach(() => {
-    _resetJwksCacheForTests();
-    vi.clearAllMocks();
-    process.env.ALPHA_JWKS_URL = 'https://example.com/jwks.json';
+    process.env.ALPHA_FUNCTIONS_URL = 'https://alpha.example.com/functions/v1';
+    vi.stubGlobal('fetch', vi.fn());
   });
 
   afterEach(() => {
-    delete process.env.ALPHA_JWKS_URL;
+    delete process.env.ALPHA_FUNCTIONS_URL;
+    vi.unstubAllGlobals();
   });
 
-  it('throws a clear error when ALPHA_JWKS_URL is missing', async () => {
-    delete process.env.ALPHA_JWKS_URL;
-    await expect(verifyAlphaToken('any-token')).rejects.toThrow('ALPHA_JWKS_URL not configured');
+  it('throws a clear error when ALPHA_FUNCTIONS_URL is missing', async () => {
+    delete process.env.ALPHA_FUNCTIONS_URL;
+    await expect(exchangeAlphaToken('tok')).rejects.toThrow(
+      'ALPHA_FUNCTIONS_URL not configured'
+    );
   });
 
-  it('calls jwtVerify with ES256 and the correct audience', async () => {
-    vi.mocked(jwtVerify).mockResolvedValue({
-      payload: { sub: 'u1', email: 'a@b.com', community: 'Miami' },
-    } as never);
-
-    await verifyAlphaToken('some-token');
-
-    expect(jwtVerify).toHaveBeenCalledWith('some-token', 'fake-jwks-instance', {
-      algorithms: ['ES256'],
-      audience: 'real-estate.alpha.school',
-    });
-  });
-
-  it('returns the decoded payload as AlphaUserClaims', async () => {
-    const claims = {
-      sub: 'u1',
-      aud: 'real-estate.alpha.school',
+  it('POSTs the token to /users/get-real-estate-info', async () => {
+    const mockFetch = vi.mocked(fetch);
+    mockFetch.mockResolvedValue(new Response(JSON.stringify({
+      user_profile_id: 'u_1',
       email: 'a@b.com',
-      community: 'Miami Beach',
-      lat: 25.8,
-      lon: -80.14,
-      zip: null,
-      city: null,
+      name: 'Jane Smith',
+      community: 'Miami',
+      lat: 25.76, lon: -80.19, city: 'Miami', zip: '33101',
       enrollment_status: 'enrolled',
+    }), { status: 200, headers: { 'Content-Type': 'application/json' } }));
+
+    await exchangeAlphaToken('the-token');
+
+    expect(mockFetch).toHaveBeenCalledWith(
+      'https://alpha.example.com/functions/v1/users/get-real-estate-info',
+      expect.objectContaining({
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token: 'the-token' }),
+      })
+    );
+  });
+
+  it('returns the parsed AlphaUserInfo on 200', async () => {
+    const info = {
+      user_profile_id: 'u_1',
+      email: 'a@b.com',
+      name: 'Jane Smith',
+      community: 'Miami Beach',
+      lat: 25.79, lon: -80.13, city: 'Miami Beach', zip: '33139',
+      enrollment_status: 'committed',
     };
-    vi.mocked(jwtVerify).mockResolvedValue({ payload: claims } as never);
+    vi.mocked(fetch).mockResolvedValue(new Response(JSON.stringify(info), {
+      status: 200, headers: { 'Content-Type': 'application/json' },
+    }));
 
-    const result = await verifyAlphaToken('some-token');
-    expect(result).toEqual(claims);
+    const result = await exchangeAlphaToken('tok');
+    expect(result).toEqual(info);
   });
 
-  it('memoizes the JWKS instance across calls', async () => {
-    vi.mocked(jwtVerify).mockResolvedValue({ payload: { sub: 'u1' } } as never);
+  it('throws an error whose message contains the Alpha error code on 401', async () => {
+    vi.mocked(fetch).mockResolvedValue(new Response(JSON.stringify({
+      error: 'token_expired',
+      message: 'Token has expired',
+    }), { status: 401, headers: { 'Content-Type': 'application/json' } }));
 
-    await verifyAlphaToken('t1');
-    await verifyAlphaToken('t2');
-
-    expect(createRemoteJWKSet).toHaveBeenCalledTimes(1);
+    await expect(exchangeAlphaToken('expired-token')).rejects.toThrow(/token_expired/);
   });
 
-  it('propagates jose verification errors', async () => {
-    vi.mocked(jwtVerify).mockRejectedValue(new Error('signature verification failed'));
-    await expect(verifyAlphaToken('bad-token')).rejects.toThrow('signature verification failed');
+  it('distinguishes invalid_signature from token_expired', async () => {
+    vi.mocked(fetch).mockResolvedValue(new Response(JSON.stringify({
+      error: 'invalid_signature',
+      message: '...',
+    }), { status: 401, headers: { 'Content-Type': 'application/json' } }));
+
+    await expect(exchangeAlphaToken('tampered')).rejects.toThrow(/invalid_signature/);
+  });
+
+  it('includes the HTTP status in the error message when no error code is returned', async () => {
+    vi.mocked(fetch).mockResolvedValue(new Response('Server error', { status: 500 }));
+
+    await expect(exchangeAlphaToken('tok')).rejects.toThrow(/500/);
+  });
+
+  it('propagates network failures', async () => {
+    vi.mocked(fetch).mockRejectedValue(new Error('ECONNREFUSED'));
+
+    await expect(exchangeAlphaToken('tok')).rejects.toThrow('ECONNREFUSED');
   });
 });
 ```
@@ -217,66 +227,81 @@ describe('verifyAlphaToken', () => {
 - [ ] **Step 2: Run tests, verify they fail**
 
 ```bash
-npm run test:unit -- verify-alpha-token
+npm run test:unit -- exchange-alpha-token
 ```
 
-Expected: tests fail with "Cannot find module './verify-alpha-token'" or similar.
+Expected: tests fail with "Cannot find module './exchange-alpha-token'" or similar.
 
 - [ ] **Step 3: Write the implementation**
 
-`src/lib/verify-alpha-token.ts`:
+`src/lib/exchange-alpha-token.ts`:
 
 ```ts
-import { createRemoteJWKSet, jwtVerify } from 'jose';
-
-export interface AlphaUserClaims {
-  sub: string;
-  aud: string;
+export interface AlphaUserInfo {
+  user_profile_id: string;
   email: string;
+  name: string;
+  community: string;
   lat: number | null;
   lon: number | null;
-  zip: string | null;
   city: string | null;
-  community: string;
+  zip: string | null;
   enrollment_status: 'enrolled' | 'committed' | null;
 }
 
-type JwksInstance = ReturnType<typeof createRemoteJWKSet>;
-
-let _jwks: JwksInstance | null = null;
-
-function getJwks(): JwksInstance {
-  if (_jwks) return _jwks;
-  const url = process.env.ALPHA_JWKS_URL;
-  if (!url) {
-    throw new Error('ALPHA_JWKS_URL not configured');
+/**
+ * Exchange an Alpha-issued JWT for structured user info.
+ *
+ * Per Guy Harel's revised integration (post security audit, 2026-05-19), we do
+ * NOT decode the JWT ourselves — Alpha's `/users/get-real-estate-info` endpoint
+ * verifies the signature, expiry, audience, and claims, then returns the
+ * caller's profile fields.
+ *
+ * Token TTL is 1 hour. Persist the returned info on our side; do not re-call
+ * this on every request.
+ *
+ * Throws an Error on any non-200. The error message includes Alpha's error
+ * code when available (e.g. 'token_expired', 'invalid_signature') so callers
+ * can log and distinguish failure modes.
+ */
+export async function exchangeAlphaToken(token: string): Promise<AlphaUserInfo> {
+  const base = process.env.ALPHA_FUNCTIONS_URL;
+  if (!base) {
+    throw new Error('ALPHA_FUNCTIONS_URL not configured');
   }
-  _jwks = createRemoteJWKSet(new URL(url));
-  return _jwks;
-}
 
-export async function verifyAlphaToken(token: string): Promise<AlphaUserClaims> {
-  const { payload } = await jwtVerify(token, getJwks(), {
-    algorithms: ['ES256'],
-    audience: 'real-estate.alpha.school',
+  const res = await fetch(`${base}/users/get-real-estate-info`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ token }),
   });
-  return payload as unknown as AlphaUserClaims;
-}
 
-// Test helper — exported so unit tests can reset memoization between cases.
-// Never call from production code.
-export function _resetJwksCacheForTests(): void {
-  _jwks = null;
+  if (!res.ok) {
+    let code: string | null = null;
+    try {
+      const body = (await res.json()) as { error?: string };
+      if (typeof body.error === 'string') code = body.error;
+    } catch {
+      // Non-JSON error body — fall through to HTTP-status-only error.
+    }
+    throw new Error(
+      code
+        ? `Alpha token exchange failed: ${code} (HTTP ${res.status})`
+        : `Alpha token exchange failed: HTTP ${res.status}`
+    );
+  }
+
+  return (await res.json()) as AlphaUserInfo;
 }
 ```
 
 - [ ] **Step 4: Run tests, verify all pass**
 
 ```bash
-npm run test:unit -- verify-alpha-token
+npm run test:unit -- exchange-alpha-token
 ```
 
-Expected: 5 tests pass.
+Expected: 7 tests pass.
 
 - [ ] **Step 5: TypeScript check**
 
@@ -289,8 +314,8 @@ Expected: no errors.
 - [ ] **Step 6: Commit**
 
 ```bash
-git add src/lib/verify-alpha-token.ts src/lib/verify-alpha-token.test.ts
-git commit -m "feat: verifyAlphaToken with lazy JWKS init + tests"
+git add src/lib/exchange-alpha-token.ts src/lib/exchange-alpha-token.test.ts
+git commit -m "feat: exchangeAlphaToken — POST to Alpha get-real-estate-info + tests"
 ```
 
 ---
@@ -372,7 +397,7 @@ Expected: fail with "Cannot find module './alpha-community'".
 import { ACTIVE_METROS, findActiveMetro, type ActiveMetro } from './active-metros';
 
 /**
- * Map an Alpha JWT `community` claim (free-form string) to one of our ActiveMetro
+ * Map an Alpha `community` value (free-form string) to one of our ActiveMetro
  * entries. Defensive: substring match (case- and whitespace-insensitive) against
  * the four Miami-area community names; falls back to nearest-active-metro by
  * lat/lon when the string is unknown.
@@ -433,7 +458,7 @@ No unit tests for this route — it's orchestration of admin SDK calls. Verified
 
 ```ts
 import { NextRequest, NextResponse } from 'next/server';
-import { verifyAlphaToken, type AlphaUserClaims } from '@/lib/verify-alpha-token';
+import { exchangeAlphaToken, type AlphaUserInfo } from '@/lib/exchange-alpha-token';
 import { resolveCommunityToMetro } from '@/lib/alpha-community';
 import { getSupabaseAdmin } from '@/lib/supabase-admin';
 
@@ -452,13 +477,17 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'invalid_body' }, { status: 400 });
   }
 
-  // --- Verify Alpha JWT ---
-  let claims: AlphaUserClaims;
+  // --- Exchange the Alpha token for user info ---
+  let info: AlphaUserInfo;
   try {
-    claims = await verifyAlphaToken(token);
+    info = await exchangeAlphaToken(token);
   } catch (err) {
-    console.error('[alpha-sso] token verification failed:', (err as Error).message);
-    return NextResponse.json({ error: 'invalid_token' }, { status: 401 });
+    const msg = (err as Error).message;
+    console.error('[alpha-sso] token exchange failed:', msg);
+    // Distinguish token_expired so the client can show a "please re-click the
+    // CTA" message later if useful. For now both surface as 401.
+    const responseCode = msg.includes('token_expired') ? 'token_expired' : 'invalid_token';
+    return NextResponse.json({ error: responseCode }, { status: 401 });
   }
 
   const admin = getSupabaseAdmin();
@@ -475,7 +504,7 @@ export async function POST(req: NextRequest) {
     const { data: profileRow } = await admin
       .from('pp_profiles')
       .select('id')
-      .eq('email', claims.email)
+      .eq('email', info.email)
       .maybeSingle();
 
     if (profileRow?.id) {
@@ -483,7 +512,7 @@ export async function POST(req: NextRequest) {
     } else {
       // No profile row — try to create the auth user.
       const { data: created, error: createErr } = await admin.auth.admin.createUser({
-        email: claims.email,
+        email: info.email,
         email_confirm: true,
       });
 
@@ -494,7 +523,7 @@ export async function POST(req: NextRequest) {
         // or legacy account). Fall back to listing auth users.
         const { data: list } = await admin.auth.admin.listUsers({ page: 1, perPage: 1000 });
         const existing = list?.users.find(
-          (u) => u.email?.toLowerCase() === claims.email.toLowerCase()
+          (u) => u.email?.toLowerCase() === info.email.toLowerCase()
         );
         if (!existing) throw createErr;
         userId = existing.id;
@@ -506,22 +535,26 @@ export async function POST(req: NextRequest) {
     // --- Fill-blanks upsert on pp_profiles ---
     const { data: existing } = await admin
       .from('pp_profiles')
-      .select('display_name, home_lat, home_lng, home_address, alpha_community, alpha_enrollment_status')
+      .select(
+        'display_name, home_lat, home_lng, home_address, ' +
+        'alpha_user_profile_id, alpha_community, alpha_enrollment_status'
+      )
       .eq('id', userId)
       .maybeSingle();
 
-    const emailPrefix = claims.email.split('@')[0];
-    const composedAddress = [claims.city, claims.zip].filter(Boolean).join(' ').trim() || null;
+    const emailPrefix = info.email.split('@')[0];
+    const composedAddress = [info.city, info.zip].filter(Boolean).join(' ').trim() || null;
 
     const filled = {
       id: userId,
-      email: claims.email,
-      display_name: existing?.display_name ?? emailPrefix,
-      home_lat: existing?.home_lat ?? claims.lat,
-      home_lng: existing?.home_lng ?? claims.lon,
+      email: info.email,
+      display_name: existing?.display_name ?? (info.name?.trim() || emailPrefix),
+      home_lat: existing?.home_lat ?? info.lat,
+      home_lng: existing?.home_lng ?? info.lon,
       home_address: existing?.home_address ?? composedAddress,
-      alpha_community: existing?.alpha_community ?? claims.community,
-      alpha_enrollment_status: existing?.alpha_enrollment_status ?? claims.enrollment_status,
+      alpha_user_profile_id: existing?.alpha_user_profile_id ?? info.user_profile_id,
+      alpha_community: existing?.alpha_community ?? info.community,
+      alpha_enrollment_status: existing?.alpha_enrollment_status ?? info.enrollment_status,
     };
 
     const { error: upsertErr } = await admin
@@ -533,17 +566,17 @@ export async function POST(req: NextRequest) {
     // --- Generate magic link for client-side session handshake ---
     const { data: linkData, error: linkErr } = await admin.auth.admin.generateLink({
       type: 'magiclink',
-      email: claims.email,
+      email: info.email,
     });
     if (linkErr || !linkData?.properties?.hashed_token) {
       throw linkErr ?? new Error('generateLink returned no hashed_token');
     }
 
     // --- Resolve metro ---
-    const metro = resolveCommunityToMetro(claims.community, claims.lat, claims.lon);
+    const metro = resolveCommunityToMetro(info.community, info.lat, info.lon);
 
     return NextResponse.json({
-      email: claims.email,
+      email: info.email,
       token_hash: linkData.properties.hashed_token,
       metroSlug: metro?.slug ?? null,
     });
@@ -565,19 +598,19 @@ Expected: no errors. If TS complains about `linkData.properties.hashed_token`, c
 - [ ] **Step 3: Lint check**
 
 ```bash
-npm run lint -- --max-warnings 100 src/app/api/auth
+npm run lint
 ```
 
 Expected: 0 new errors.
 
-- [ ] **Step 4: Smoke test the route returns 400 on missing body**
+- [ ] **Step 4: Smoke test the route**
 
 Start dev server in another shell (`npm run dev`), then:
 
 ```bash
 curl -s -X POST http://localhost:3000/api/auth/alpha-sso \
   -H 'Content-Type: application/json' \
-  -d '{}' | head -c 200
+  -d '{}'
 ```
 
 Expected: `{"error":"missing_token"}` with HTTP 400.
@@ -585,16 +618,16 @@ Expected: `{"error":"missing_token"}` with HTTP 400.
 ```bash
 curl -s -X POST http://localhost:3000/api/auth/alpha-sso \
   -H 'Content-Type: application/json' \
-  -d '{"token":"not-a-real-jwt"}' | head -c 200
+  -d '{"token":"definitely-not-a-real-token-but-long-enough-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}'
 ```
 
-Expected: `{"error":"invalid_token"}` with HTTP 401.
+Expected: `{"error":"invalid_token"}` with HTTP 401, and the dev server logs `[alpha-sso] token exchange failed: Alpha token exchange failed: ...`.
 
 - [ ] **Step 5: Commit**
 
 ```bash
 git add src/app/api/auth/alpha-sso/route.ts
-git commit -m "feat: /api/auth/alpha-sso route (JWT → magic-link bridge)"
+git commit -m "feat: /api/auth/alpha-sso route (token exchange → magic link)"
 ```
 
 ---
@@ -606,7 +639,7 @@ git commit -m "feat: /api/auth/alpha-sso route (JWT → magic-link bridge)"
 
 - [ ] **Step 1: Add the imports and handler component**
 
-Edit `src/components/HomeContent.tsx`. Add to the existing imports at the top:
+Edit `src/components/HomeContent.tsx`. Add to the existing imports at the top of the file:
 
 ```ts
 import { supabase } from "@/lib/supabase";
@@ -744,34 +777,51 @@ git commit -m "feat: AlphaTokenHandler — auto sign-in from Alpha Community tok
 
 **Files:** none (verification only)
 
-Before this task, Alpha-side must be live (target: 2026-05-20 morning per Guy). If Alpha is not live yet, mark Step 1 blocked and continue with Step 2 only.
+Before this task, Alpha-side must be live (target: 2026-05-20 morning per Guy). If Alpha is not live yet, mark Step 1 blocked and continue with Step 3 only (graceful-failure path).
 
 - [ ] **Step 1: End-to-end with a real token**
 
-Once Alpha is live tomorrow morning, request a test JWT from Guy (or sign in on `community.alpha.school` with a Miami account and copy the "Real Estate" button's URL).
+Once Alpha is live tomorrow morning, request a test token from Guy (or sign in on `community.alpha.school` with a Miami account and copy the "Real Estate" button's URL).
 
-Visit `http://localhost:3000/?token=<JWT>` and confirm:
+Visit `http://localhost:3000/?token=<TOKEN>` and confirm:
 
 1. URL bar updates to `http://localhost:3000/` (no `?token=`).
 2. Sign-in indicator in the panel header shows the Alpha user's email.
 3. Map flies to the correct metro (Miami / Miami Beach / Palm Beach / Boca Raton).
 4. Reloading the page keeps the user signed in (localStorage session persists).
 5. Voting on a location records the vote under the Alpha user's identity.
-6. Sign out → back to anon, no Alpha claims leaked.
-7. Verify in Supabase: `select email, alpha_community, alpha_enrollment_status, home_lat, home_lng from pp_profiles where email = '<test email>';` — fields populated.
+6. Sign out → back to anon, no Alpha info leaked.
+7. Verify in Supabase:
+
+```
+mcp__supabase__execute_sql:
+select email, display_name, alpha_user_profile_id, alpha_community,
+       alpha_enrollment_status, home_lat, home_lng
+from pp_profiles where email = '<test email>';
+```
+
+All fields should be populated. `display_name` should be the user's full `name` from Alpha (not the email prefix).
 
 - [ ] **Step 2: Verify fill-blanks behavior**
 
-Pick a test user who already has `display_name = 'Existing Name'` in `pp_profiles` (or create one manually). Re-run SSO with their Alpha token. Verify `display_name` is preserved (NOT overwritten with email prefix). New columns (`alpha_community`, `alpha_enrollment_status`) ARE filled.
+Pick a test user who already has `display_name = 'Existing Name'` in `pp_profiles` (or set one manually via the profile page first). Re-run SSO with their Alpha token. Verify `display_name` is preserved (NOT overwritten with Alpha's `name`). New columns (`alpha_user_profile_id`, `alpha_community`, `alpha_enrollment_status`) ARE filled if they were null.
 
 - [ ] **Step 3: Verify graceful failure**
 
-Visit `/?token=garbage-not-a-jwt`. Confirm:
+Visit `/?token=garbage-not-a-real-token-but-long-enough-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa`. Confirm:
+
 1. Browser console shows `[alpha-sso] server returned 401`.
 2. URL bar updates to `/` (token stripped).
 3. App renders normal anon UI with no error toast.
+4. Server log shows `[alpha-sso] token exchange failed: Alpha token exchange failed: invalid_token (HTTP 401)` (or similar with Alpha's actual error code).
 
-- [ ] **Step 4: Final commit (if any tweaks needed)**
+- [ ] **Step 4: Verify expired-token path (if accessible)**
+
+If Guy provides a token with a past expiry, confirm:
+1. Server log shows `token_expired` in the error message.
+2. Client receives `{"error":"token_expired"}` with HTTP 401.
+
+- [ ] **Step 5: Final commit (if any tweaks needed)**
 
 If verification surfaces bugs, fix them in their own commit. Otherwise, no commit needed for this task.
 
@@ -779,10 +829,10 @@ If verification surfaces bugs, fix them in their own commit. Otherwise, no commi
 
 ## Task 8: Ship
 
-- [ ] **Step 1: Confirm Vercel has `ALPHA_JWKS_URL` set**
+- [ ] **Step 1: Confirm Vercel has `ALPHA_FUNCTIONS_URL` set**
 
 ```bash
-vercel env ls | grep ALPHA_JWKS_URL
+vercel env ls | grep ALPHA_FUNCTIONS_URL
 ```
 
 Expected: three rows (production, preview, development).
@@ -802,7 +852,7 @@ After Vercel reports a successful deploy:
 ```bash
 curl -s -X POST https://real-estate.alpha.school/api/auth/alpha-sso \
   -H 'Content-Type: application/json' \
-  -d '{}' | head -c 200
+  -d '{}'
 ```
 
 Expected: `{"error":"missing_token"}` — confirms the route is mounted and reachable.
@@ -819,9 +869,9 @@ Email Guy confirming the integration is live, and ask for:
 
 After all tasks complete, the following must be true:
 
-- `npm run test:unit` passes (existing 21 tests + 5 new + 10 new = 36+ tests, 0 failures).
+- `npm run test:unit` passes (existing 21 tests + 7 new exchange tests + 10 new resolver tests = 38+ tests, 0 failures).
 - `npx tsc --noEmit` is clean.
-- `npm run lint` reports 0 errors.
+- `npm run lint` reports 0 new errors.
 - `npm run build` succeeds.
 - `/api/auth/alpha-sso` returns 400/401/200 as documented.
 - End-to-end sign-in via a real Alpha token lands the user signed-in on the correct metro view.

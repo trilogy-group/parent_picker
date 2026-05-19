@@ -11,21 +11,43 @@ When a parent on `community.alpha.school` clicks through to `real-estate.alpha.s
 
 ## Contract (provided by Alpha)
 
-JWT signed ES256, verified via JWKS at `https://mstzpwibigesyzugwzcu.supabase.co/functions/v1/users/jwks.json`. Audience: `real-estate.alpha.school`. Claims:
+**Revised 2026-05-19 PM** after Guy ran a security audit. We **do not decode the JWT ourselves** — we exchange it with Alpha for structured user info.
+
+**Exchange endpoint:**
+
+```
+POST https://mstzpwibigesyzugwzcu.supabase.co/functions/v1/users/get-real-estate-info
+Body: { "token": "<the token from the URL>" }
+```
+
+**Success (200):**
 
 ```ts
-interface AlphaUserClaims {
-  sub: string;
-  aud: string;          // 'real-estate.alpha.school'
+interface AlphaUserInfo {
+  user_profile_id: string;
   email: string;
+  name: string;
+  community: string;
   lat: number | null;
   lon: number | null;
-  zip: string | null;
   city: string | null;
-  community: string;
+  zip: string | null;
   enrollment_status: 'enrolled' | 'committed' | null;
 }
 ```
+
+**Error (401):** `{ error: "<code>", message: "<human-readable>" }` with one of these codes:
+
+| Code                 | Meaning                                                |
+|----------------------|--------------------------------------------------------|
+| `token_expired`      | Token TTL (1h) elapsed; user should re-click the CTA   |
+| `invalid_signature`  | Token tampered or signed by a different key            |
+| `invalid_key`        | Token `kid` doesn't match the server's signing key     |
+| `invalid_audience`   | Token minted for a different service                   |
+| `invalid_claims`     | Token missing required fields                          |
+| `invalid_token`      | Malformed (not a valid JWT)                            |
+
+**Token TTL:** 1 hour. Persist user info to `pp_profiles` after first exchange — don't re-hit the exchange endpoint on every request.
 
 Token arrives as `?token=eyJ...` on any URL. Format of the `community` string is not specified by Alpha — we resolve defensively (see "Community resolution" below).
 
@@ -33,17 +55,16 @@ Token arrives as `?token=eyJ...` on any URL. Format of the `community` string is
 
 Five units of work. Each isolates one concern.
 
-### 1. `src/lib/verify-alpha-token.ts`
+### 1. `src/lib/exchange-alpha-token.ts`
 
-Thin JWT verifier per Guy's integration guide.
+Thin wrapper around Alpha's exchange endpoint.
 
-- Exports `verifyAlphaToken(token: string): Promise<AlphaUserClaims>`.
-- Uses `jose` (`createRemoteJWKSet`, `jwtVerify`).
-- Asserts `algorithms: ['ES256']`, `audience: 'real-estate.alpha.school'`.
-- Throws on invalid signature / expired / wrong audience / unreachable JWKS — callers must wrap in try/catch.
-- **Lazy JWKS init**: do NOT construct `new URL(process.env.ALPHA_JWKS_URL!)` at module load (would crash the route if env is missing). Instead, build the `createRemoteJWKSet` instance on first call to `verifyAlphaToken`, throw a clear `Error('ALPHA_JWKS_URL not configured')` if the env var is missing, and memoize the instance for subsequent calls.
-
-No state beyond the memoized JWKS instance and what `createRemoteJWKSet` caches internally (default 10-min cache with key-rotation tolerance).
+- Exports `exchangeAlphaToken(token: string): Promise<AlphaUserInfo>`.
+- POSTs `{ token }` to `${ALPHA_FUNCTIONS_URL}/users/get-real-estate-info`.
+- On non-200: throws `Error` whose `message` includes Alpha's error `code` (e.g. `'token_expired'`) and HTTP status — callers wrap in try/catch and log the code so we can distinguish "user's token expired" from "something is broken".
+- On network failure: re-throws the underlying error.
+- Throws a clear `Error('ALPHA_FUNCTIONS_URL not configured')` if the env var is missing.
+- No state, no caching — the route handler is the persistence layer.
 
 ### 2. `src/lib/alpha-community.ts`
 
@@ -71,32 +92,34 @@ Unit-tested with the four expected community strings (plus odd casings, whitespa
 
 ### 3. `src/app/api/auth/alpha-sso/route.ts`
 
-POST endpoint. Verifies the token server-side, upserts the profile, and bridges to a Supabase magic link.
+POST endpoint. Exchanges the Alpha token for user info, upserts the profile, and bridges to a Supabase magic link.
 
 **Request body:** `{ token: string }`
 **Response (200):** `{ email: string; token_hash: string; metroSlug: string | null }`
-**Response (401):** `{ error: 'invalid_token' }` — body unverified or claims rejected.
+**Response (401):** `{ error: 'invalid_token' | 'token_expired' }` — Alpha's exchange endpoint rejected the token.
 **Response (500):** `{ error: 'sso_failed' }` — admin SDK or DB error.
 
 Logic:
 
-1. `verifyAlphaToken(token)` — throws → 401.
-2. `supabaseAdmin.auth.admin.listUsers` to find existing auth user by email, or `admin.createUser({email, email_confirm: true})` to provision. Capture `user.id`.
-3. `pp_profiles` **fill-blanks upsert** keyed on `id`:
+1. `exchangeAlphaToken(token)` — throws → 401 with the Alpha error code (preserve `token_expired` vs other codes so the client can show a "please re-click the button on community.alpha.school" message if useful later).
+2. Look up existing `pp_profiles` row by `email`. If found, use its `id` as `userId` (fast path for return visits).
+3. Else: `supabaseAdmin.auth.admin.createUser({ email, email_confirm: true })` to provision a new auth user. If that fails with "already registered" (orphan auth user without a profile), fall back to `admin.auth.admin.listUsers` and filter by email.
+4. `pp_profiles` **fill-blanks upsert** keyed on `id`:
    - Always insert (`id`, `email`) if row absent.
    - For existing row, update only columns currently NULL:
-     - `display_name` ← email prefix (`email.split('@')[0]`)
-     - `home_lat` ← `claims.lat` (if non-null)
-     - `home_lng` ← `claims.lon` (if non-null)
-     - `home_address` ← compose from `city + state-or-zip` if both non-null (best-effort, no geocoding)
-     - `alpha_community` ← `claims.community`
-     - `alpha_enrollment_status` ← `claims.enrollment_status`
-   - Implementation: one row read followed by one row update using JavaScript `??` on each field (`existing.home_lat ?? claims.lat`), so we write all columns at once and only fill what's currently null. Single round-trip, easy to read.
-4. `supabaseAdmin.auth.admin.generateLink({ type: 'magiclink', email })` — extract `properties.hashed_token`.
-5. `resolveCommunityToMetro(community, lat, lon)` → `metroSlug` (or null).
-6. Return `{ email, token_hash, metroSlug }`.
+     - `display_name` ← `info.name` ?? `email.split('@')[0]`
+     - `home_lat` ← `info.lat`
+     - `home_lng` ← `info.lon`
+     - `home_address` ← compose from `city + zip` if either non-null
+     - `alpha_user_profile_id` ← `info.user_profile_id`
+     - `alpha_community` ← `info.community`
+     - `alpha_enrollment_status` ← `info.enrollment_status`
+   - Implementation: one row read followed by one row update using JavaScript `??` on each field (`existing.home_lat ?? info.lat`), so we write all columns at once and only fill what's currently null. Single round-trip, easy to read.
+5. `supabaseAdmin.auth.admin.generateLink({ type: 'magiclink', email })` — extract `properties.hashed_token`.
+6. `resolveCommunityToMetro(community, lat, lon)` → `metroSlug` (or null).
+7. Return `{ email, token_hash, metroSlug }`.
 
-Never logs raw JWT or hashed_token. Logs structured errors only.
+Never logs the raw token or `hashed_token`. Logs structured errors only.
 
 ### 4. `src/components/HomeContent.tsx` — `AlphaTokenHandler`
 
@@ -164,11 +187,12 @@ Runs on every route that mounts `HomeContent` — currently `/` (legacy), `/rede
 
 ```sql
 alter table pp_profiles
+  add column if not exists alpha_user_profile_id text,
   add column if not exists alpha_community text,
   add column if not exists alpha_enrollment_status text;
 ```
 
-No index needed at v1 volumes. Add an index later if admin queries filter on these columns.
+No index needed at v1 volumes. Add an index on `alpha_user_profile_id` later if admin queries need cross-referencing back to Alpha.
 
 ## Data flow
 
@@ -178,8 +202,9 @@ community.alpha.school
 real-estate.alpha.school/?token=eyJ...
     ↓  (HomeContent mounts; AlphaTokenHandler detects ?token=)
 POST /api/auth/alpha-sso { token }
-    ↓  (server)
-verifyAlphaToken(token)                ← ES256 + audience + expiry, JWKS-verified
+    ↓  (our server)
+exchangeAlphaToken(token)              ← POST to Alpha's /users/get-real-estate-info
+    ↓ returns AlphaUserInfo
 upsert auth.users by email             ← admin.createUser if missing
 fill-blanks pp_profiles                ← update only NULL columns
 admin.generateLink({type:'magiclink', email})
@@ -194,51 +219,52 @@ setFlyToTarget(metro.lat, metro.lng, metro.defaultZoom)  ← if metroSlug
 
 ## Environment
 
-- `ALPHA_JWKS_URL` — `https://mstzpwibigesyzugwzcu.supabase.co/functions/v1/users/jwks.json`
+- `ALPHA_FUNCTIONS_URL` — `https://mstzpwibigesyzugwzcu.supabase.co/functions/v1`
 - Add to `.env.local` and Vercel (Production + Preview + Development scopes).
 
 Existing `SUPABASE_SERVICE_ROLE_KEY` is reused for the admin SDK; no new credentials.
 
 ## Security
 
-- Signature, audience, and expiry checked server-side by `jose`. Client never sees an unverified claim.
+- Token verification is performed by Alpha's exchange endpoint (signed under their control). We never see the JWT internals.
+- All exchanges happen server-side from our API route — the browser never calls Alpha's exchange endpoint directly, which keeps the integration agnostic of CORS on Alpha's side and avoids leaking the token through client logs.
 - `hashed_token` is single-use and short-lived (~1 hour by default for Supabase magic links). It's returned to the client only because we need to complete the localStorage session handshake there. The attack surface is equivalent to a magic link Alpha could have emailed the user directly.
-- We do NOT trust any field for authorization decisions. Claims only populate display/UX; authorization continues to come from the resulting Supabase session.
-- Raw JWT and `hashed_token` never logged.
+- We do NOT trust any field returned from Alpha for authorization decisions. The info only populates display/UX; authorization continues to come from the resulting Supabase session.
+- Raw token and `hashed_token` never logged.
 
 ## Error handling
 
-| Failure                                  | User sees           | Server logs               |
-|------------------------------------------|---------------------|---------------------------|
-| `?token=` missing                        | Normal anon UI      | Nothing                   |
-| JWT invalid / expired / wrong audience   | Normal anon UI      | `console.error` 401       |
-| JWKS endpoint unreachable                | Normal anon UI      | `console.error` 503       |
-| Admin SDK / DB error                     | Normal anon UI      | `console.error` 500       |
-| `verifyOtp` fails client-side            | Normal anon UI      | `console.error` (client)  |
-| `community` unknown + no `lat`/`lon`     | Sign-in succeeds, no fly-to | None (expected case) |
+| Failure                                              | User sees                  | Server logs                                  |
+|------------------------------------------------------|----------------------------|----------------------------------------------|
+| `?token=` missing                                    | Normal anon UI             | Nothing                                      |
+| Alpha returns 401 with any code (`token_expired`, `invalid_signature`, etc.) | Normal anon UI | `console.error` with the Alpha error code     |
+| Alpha endpoint unreachable / non-401 / non-200       | Normal anon UI             | `console.error` with HTTP status             |
+| Admin SDK / DB error                                 | Normal anon UI             | `console.error` 500                          |
+| `verifyOtp` fails client-side                        | Normal anon UI             | `console.error` (client)                     |
+| `community` unknown + no `lat`/`lon`                 | Sign-in succeeds, no fly-to | None (expected case)                         |
 
 In every error case, `?token=` is stripped from the URL so a refresh doesn't retry endlessly with a stale token.
 
 ## Testing
 
 **Unit (Vitest):**
-- `verifyAlphaToken` — valid token round-trip (with a locally-mounted JWKS mock), expired token, wrong audience, malformed token.
-- `resolveCommunityToMetro` — exact match for each of the 4 expected strings, mixed casing/whitespace, unknown community with lat/lon fallback, unknown community without coords (→ null), null/undefined community.
+- `exchangeAlphaToken` — happy path returns parsed `AlphaUserInfo`; 401 with `token_expired` raises an error whose message contains the code; 401 with other codes raises distinguishable errors; network failure surfaces underlying error; missing env var throws a clear configuration error.
+- `resolveCommunityToMetro` — exact match for each of the 4 expected strings, mixed casing/whitespace, substring match, unknown community with lat/lon fallback, unknown community without coords (→ null), null/undefined/empty community.
 
-**Manual end-to-end (after merge, before Alpha goes live):**
-- Visit `/?token=<test JWT from Guy>` → verify session established, profile populated, map flown to correct metro, URL bar shows `/` (no `?token=`).
-- Refresh the page → still signed in (localStorage persistence), no re-verification needed.
-- Sign out → drop back to anon, no Alpha claims leaked.
+**Manual end-to-end (after Alpha is live):**
+- Visit `/?token=<token from Guy or by joining a Miami campus on community.alpha.school>` → verify session established, profile populated, map flown to correct metro, URL bar shows `/` (no `?token=`).
+- Refresh the page → still signed in (localStorage persistence), no re-exchange needed.
+- Sign out → drop back to anon, no Alpha info leaked.
 - Existing profile with `display_name` already set → `display_name` preserved (fill-blanks check works).
-- Invalid token → silently anon, URL cleaned.
+- Invalid token / expired token → silently anon, URL cleaned, server log shows the Alpha error code.
 
-**Skipped at v1:** Playwright e2e for the SSO flow (depends on access to a test token signer). Add in a follow-up if Guy provides a way to mint test JWTs.
+**Skipped at v1:** Playwright e2e for the SSO flow (depends on test tokens from Alpha). Add in a follow-up if Guy provides a way to mint test tokens.
 
 ## Open questions / follow-ups
 
 - **Exact `community` string values from Alpha.** v1 handles this defensively (substring match + lat/lon fallback). After Guy confirms the strings (and once we see real tokens in logs), tighten the matcher to exact-equality if useful.
 - **Landing URL.** Recommend `/miami` to Guy when we ping for community strings — better UX than `/`.
-- **Test JWT for end-to-end verification.** Ask Guy for a test-signed token (or staging JWKS) we can hit before the integration flips live tomorrow morning.
+- **Test token for end-to-end verification.** Ask Guy for a token we can run through the exchange endpoint before going live tomorrow morning, or sign in on `community.alpha.school` ourselves once a Miami campus is joinable.
 
 ## Out of scope (v1)
 
