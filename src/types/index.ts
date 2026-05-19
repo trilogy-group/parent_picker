@@ -63,6 +63,15 @@ export interface VoterInfo {
   createdAt: string | null;
 }
 
+export interface CitySummary {
+  city: string;
+  state: string;
+  lat: number;
+  lng: number;
+  locationCount: number;
+  totalVotes: number;
+}
+
 export interface SuggestedLocation {
   address: string;
   city: string;

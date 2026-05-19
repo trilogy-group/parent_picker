@@ -1,4 +1,5 @@
 import { getDistanceMiles } from "./locations";
+import type { CitySummary } from "@/types";
 
 export interface Metro {
   name: string;
@@ -137,5 +138,60 @@ export function findNearestMetro(lat: number, lng: number): Metro | null {
   }
 
   return minDist <= MAX_METRO_DISTANCE_MILES ? nearest : null;
+}
+
+/**
+ * Cities within 50 miles of a known metro are merged.
+ * The bubble position is the location-weighted centroid of the actual cities.
+ */
+export function consolidateToMetros(cities: CitySummary[]): CitySummary[] {
+  const metroMap = new Map<string, {
+    metro: Metro;
+    totalLocs: number;
+    totalVotes: number;
+    weightedLat: number;
+    weightedLng: number;
+  }>();
+
+  const unmatched: CitySummary[] = [];
+
+  for (const city of cities) {
+    const nearest = findNearestMetro(city.lat, city.lng);
+    if (nearest) {
+      const key = `${nearest.name}|${nearest.state}`;
+      const existing = metroMap.get(key);
+      if (existing) {
+        existing.totalLocs += city.locationCount;
+        existing.totalVotes += city.totalVotes;
+        existing.weightedLat += city.lat * city.locationCount;
+        existing.weightedLng += city.lng * city.locationCount;
+      } else {
+        metroMap.set(key, {
+          metro: nearest,
+          totalLocs: city.locationCount,
+          totalVotes: city.totalVotes,
+          weightedLat: city.lat * city.locationCount,
+          weightedLng: city.lng * city.locationCount,
+        });
+      }
+    } else {
+      // City not near any known metro — keep as standalone bubble
+      unmatched.push(city);
+    }
+  }
+
+  const consolidated: CitySummary[] = [];
+  for (const [, entry] of metroMap) {
+    consolidated.push({
+      city: entry.metro.name,
+      state: entry.metro.state,
+      lat: entry.weightedLat / entry.totalLocs,
+      lng: entry.weightedLng / entry.totalLocs,
+      locationCount: entry.totalLocs,
+      totalVotes: entry.totalVotes,
+    });
+  }
+
+  return [...consolidated, ...unmatched];
 }
 

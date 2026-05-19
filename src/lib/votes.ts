@@ -1,11 +1,14 @@
 "use client";
 
 import { create } from "zustand";
-import { Location, VoterInfo, VoteType, SiteChampion } from "@/types";
+import { Location, VoterInfo, VoteType, SiteChampion, CitySummary } from "@/types";
 import { supabase, isSupabaseConfigured } from "./supabase";
-import { getLocationsInBounds } from "./locations";
+import { getLocationsInBounds, getCitySummaries } from "./locations";
 import { postRebl3FeedbackAllDimensions } from "./rebl3";
 import { getCategory } from "./sites";
+import { consolidateToMetros } from "./metros";
+
+let citySummarySeq = 0;
 
 interface MapBounds {
   north: number;
@@ -64,6 +67,7 @@ interface VotesState {
   showNoBlockers: boolean;                           // "No Blockers" filter — GREEN only
   userIsochrone: GeoJSON.FeatureCollection | null;   // Isochrone polygon from user's location
   showCandidatesPanel: boolean;                      // Collapse/expand the scored-candidates browser
+  citySummaries: CitySummary[];
 
   setLocations: (locations: Location[]) => void;
   toggleScoreFilter: (category: ScoreFilterCategory, value: string) => void;
@@ -106,6 +110,7 @@ interface VotesState {
   setShowCandidatesPanel: (show: boolean) => void;
   fetchNearby: (bounds: MapBounds) => Promise<void>;
   fetchNearbyForce: (bounds: MapBounds) => Promise<void>;
+  loadCitySummaries: () => Promise<void>;
   loadUserVotes: (userId: string) => Promise<void>;
   clearUserVotes: () => void;
   refreshChampions: (locationId: string) => Promise<void>;
@@ -165,6 +170,7 @@ export const useVotesStore = create<VotesState>((set, get) => ({
   showNoBlockers: false,
   userIsochrone: null,
   showCandidatesPanel: false,
+  citySummaries: [],
 
   toggleScoreFilter: (category, value) => {
     const filters = get().scoreFilters;
@@ -290,6 +296,19 @@ export const useVotesStore = create<VotesState>((set, get) => ({
       if (kept) fetched.push(kept);
     }
     set({ locations: fetched, lastFetchBounds: bounds });
+  },
+
+  loadCitySummaries: async () => {
+    const seq = ++citySummarySeq;
+    const { isAdmin, viewAsParent, releasedFilter, showUnscored } = get();
+    const effectiveAdmin = isAdmin && !viewAsParent;
+    const releasedOnly = !effectiveAdmin ? true : releasedFilter === "released" ? true : releasedFilter === "unreleased" ? false : undefined;
+    const excludeRed = false;
+    const excludeUnscored = !effectiveAdmin || !showUnscored;
+    const rawSummaries = await getCitySummaries(releasedOnly, excludeRed, excludeUnscored);
+    if (seq !== citySummarySeq) return;
+    const summaries = consolidateToMetros(rawSummaries);
+    set({ citySummaries: summaries, isLoading: false });
   },
 
   loadUserVotes: async (userId: string) => {

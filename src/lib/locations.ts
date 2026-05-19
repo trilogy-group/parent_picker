@@ -1,4 +1,4 @@
-import { Location, LocationScores, SiteChampion, CommittedSubStage } from "@/types";
+import { Location, LocationScores, SiteChampion, CommittedSubStage, CitySummary } from "@/types";
 import { supabase, isSupabaseConfigured } from "./supabase";
 import { sanitizeText } from "./validation";
 import { getStage, getCategory, parseCommittedSubStage } from "@/lib/sites";
@@ -163,6 +163,74 @@ export function findNearbyLocations(
   );
 }
 
+// Get initial map view based on user location and nearby cities
+export function getInitialMapView(
+  userLat: number | null,
+  userLng: number | null,
+  citySummaries: { lat: number; lng: number }[]
+): { center: { lat: number; lng: number }; zoom: number } {
+  // If no user location, show US-wide city bubbles view
+  if (userLat === null || userLng === null) {
+    return { center: US_CENTER, zoom: US_ZOOM };
+  }
+
+  // Check if any city with locations is within 100 miles of user
+  const hasNearby = citySummaries.some(
+    (c) => getDistanceMiles(userLat, userLng, c.lat, c.lng) <= 100
+  );
+  if (!hasNearby) {
+    return { center: US_CENTER, zoom: US_ZOOM };
+  }
+
+  return { center: { lat: userLat, lng: userLng }, zoom: 11 };
+}
+
+export async function getCitySummaries(releasedOnly?: boolean, excludeRed?: boolean, excludeUnscored?: boolean): Promise<CitySummary[]> {
+  if (!isSupabaseConfigured || !supabase) {
+    // Inline mock aggregator: group mockLocations by city+state
+    const byCity = new Map<string, CitySummary>();
+    for (const loc of mockLocations) {
+      const key = `${loc.city}|${loc.state}`;
+      const existing = byCity.get(key);
+      if (existing) {
+        existing.locationCount += 1;
+        existing.totalVotes += loc.votes;
+      } else {
+        byCity.set(key, {
+          city: loc.city,
+          state: loc.state,
+          lat: loc.lat,
+          lng: loc.lng,
+          locationCount: 1,
+          totalVotes: loc.votes,
+        });
+      }
+    }
+    return Array.from(byCity.values());
+  }
+  try {
+    const { data, error } = await supabase.rpc("get_location_cities", {
+      released_only: releasedOnly ?? false,
+      exclude_red: excludeRed ?? false,
+      exclude_unscored: excludeUnscored ?? false,
+    });
+    if (error) {
+      console.error("Error fetching city summaries:", error);
+      return [];
+    }
+    return (data || []).map((row: Record<string, unknown>) => ({
+      city: row.city as string,
+      state: row.state as string,
+      lat: Number(row.lat),
+      lng: Number(row.lng),
+      locationCount: Number(row.location_count),
+      totalVotes: Number(row.total_votes),
+    }));
+  } catch (error) {
+    console.error("Failed to fetch city summaries:", error);
+    return [];
+  }
+}
 
 export async function getLocations(): Promise<Location[]> {
   // If Supabase is not configured, return mock data
