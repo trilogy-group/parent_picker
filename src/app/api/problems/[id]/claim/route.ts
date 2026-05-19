@@ -81,7 +81,7 @@ export async function POST(
           .maybeSingle();
         const ownerName = profile?.display_name || user.email?.split("@")[0] || "A parent";
 
-        const detailsUrl = `https://real-estate.alpha.school/?location=${location.id}`;
+        const detailsUrl = `https://real-estate.alpha.school/redesign/?location=${location.id}`;
         const html = generateProblemClaimedHtml({
           problemTitle: problem.title,
           ownerName,

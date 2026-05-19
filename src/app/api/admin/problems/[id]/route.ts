@@ -101,7 +101,7 @@ export async function PATCH(
         for (const c of champions ?? []) recipientUserIds.add(c.user_id);
 
         if (location && recipientUserIds.size > 0) {
-          const detailsUrl = `https://real-estate.alpha.school/?location=${location.id}`;
+          const detailsUrl = `https://real-estate.alpha.school/redesign/?location=${location.id}`;
           const html = generateProblemResolvedHtml({
             problemTitle: problem.title,
             outcome: resolvedOutcome,
