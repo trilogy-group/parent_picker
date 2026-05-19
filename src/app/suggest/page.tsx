@@ -19,8 +19,9 @@ import { validateSuggestForm, hasErrors, sanitizeText, FormErrors } from "@/lib/
 function SuggestPageInner() {
   const searchParams = useSearchParams();
   const standalone = searchParams.get("standalone") === "true";
+  const fromRedesign = searchParams.get("from") === "redesign";
   const { addLocation, setSelectedLocation, userId } = useVotesStore();
-  const backHref = "/";
+  const backHref = fromRedesign ? "/redesign" : "/";
   const { user, isOfflineMode } = useAuth();
   const canSuggest = isOfflineMode || !!user;
 
@@ -106,7 +107,8 @@ function SuggestPageInner() {
         cleanState,
         fullNotes,
         coordinates,
-        userId ?? undefined
+        userId ?? undefined,
+        { createChampion: fromRedesign },
       );
       addLocation(newLocation);
       setSelectedLocation(newLocation.id);

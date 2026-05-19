@@ -627,7 +627,7 @@ export function AltPanelRedesign() {
       <div className="px-5 mb-4 space-y-3">
         {/* Suggest a location */}
         <a
-          href="/suggest"
+          href="/suggest?from=redesign"
           className="block bg-blue-50 rounded-xl p-4 hover:bg-blue-100/60 transition-colors"
         >
           <p className="text-sm font-semibold text-blue-600">Suggest a location &rarr;</p>
