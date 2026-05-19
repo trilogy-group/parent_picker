@@ -60,14 +60,24 @@ export async function POST(req: NextRequest) {
       if (created?.user) {
         userId = created.user.id;
       } else if (createErr) {
-        // Edge case: auth user exists but pp_profiles row didn't (trigger failure
-        // or legacy account). Fall back to listing auth users.
+        // Distinguish "user already exists" (recoverable — look them up) from
+        // any other createUser failure (rate limit, network, misconfig — bail loud).
+        const msg = createErr.message?.toLowerCase() ?? '';
+        const isDuplicate =
+          (createErr as { status?: number }).status === 422 ||
+          msg.includes('already registered') ||
+          msg.includes('already exists') ||
+          msg.includes('email_exists');
+
+        if (!isDuplicate) throw createErr;
+
+        // Orphan auth user without a pp_profiles row — list and filter to find them.
         const { data: list } = await admin.auth.admin.listUsers({ page: 1, perPage: 1000 });
-        const existing = list?.users.find(
+        const orphan = list?.users.find(
           (u) => u.email?.toLowerCase() === info.email.toLowerCase()
         );
-        if (!existing) throw createErr;
-        userId = existing.id;
+        if (!orphan) throw createErr;
+        userId = orphan.id;
       } else {
         throw new Error('createUser returned no user and no error');
       }
@@ -77,7 +87,7 @@ export async function POST(req: NextRequest) {
     const { data: existingRow } = await admin
       .from('pp_profiles')
       .select(
-        'display_name, home_lat, home_lng, home_address, ' +
+        'email, display_name, home_lat, home_lng, home_address, ' +
         'alpha_user_profile_id, alpha_community, alpha_enrollment_status'
       )
       .eq('id', userId)
@@ -85,6 +95,7 @@ export async function POST(req: NextRequest) {
 
     // Cast to a plain object so TS resolves column names correctly
     const existing = existingRow as {
+      email: string | null;
       display_name: string | null;
       home_lat: number | null;
       home_lng: number | null;
@@ -99,7 +110,7 @@ export async function POST(req: NextRequest) {
 
     const filled = {
       id: userId,
-      email: info.email,
+      email: existing?.email ?? info.email,
       display_name: existing?.display_name ?? (info.name?.trim() || emailPrefix),
       home_lat: existing?.home_lat ?? info.lat,
       home_lng: existing?.home_lng ?? info.lon,
