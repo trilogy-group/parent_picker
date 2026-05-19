@@ -14,12 +14,11 @@ export function resolveCommunityToMetro(
   lat: number | null,
   lon: number | null
 ): ActiveMetro | null {
-  if (community && community.trim()) {
-    const c = community.toLowerCase().trim();
-    if (c.includes('miami beach')) return findBySlug('miami-beach');
-    if (c.includes('boca')) return findBySlug('boca');
-    if (c.includes('palm beach')) return findBySlug('palm-beach');
-    if (c.includes('miami')) return findBySlug('miami');
+  const slug = communityToSlug(community);
+  if (slug) {
+    const metro = ACTIVE_METROS.find((m) => m.slug === slug);
+    if (metro) return metro;
+    // Slug matched but isn't currently in ACTIVE_METROS — fall through to geo.
   }
   if (lat != null && lon != null) {
     return findActiveMetro(lat, lon);
@@ -27,6 +26,12 @@ export function resolveCommunityToMetro(
   return null;
 }
 
-function findBySlug(slug: string): ActiveMetro | null {
-  return ACTIVE_METROS.find((m) => m.slug === slug) ?? null;
+function communityToSlug(community: string | null | undefined): string | null {
+  if (!community || !community.trim()) return null;
+  const c = community.toLowerCase().trim();
+  if (c.includes('miami beach')) return 'miami-beach';
+  if (c.includes('boca')) return 'boca';
+  if (c.includes('palm beach')) return 'palm-beach';
+  if (c.includes('miami')) return 'miami';
+  return null;
 }

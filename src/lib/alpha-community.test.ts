@@ -28,6 +28,23 @@ describe('resolveCommunityToMetro', () => {
     expect(resolveCommunityToMetro('Alpha Boca Raton Pre-K', null, null)?.slug).toBe('boca');
   });
 
+  it('falls through to lat/lon when the community matches a slug that is not currently in ACTIVE_METROS', async () => {
+    const activeMetrosModule = await import('./active-metros');
+    const original = [...activeMetrosModule.ACTIVE_METROS];
+    const idx = activeMetrosModule.ACTIVE_METROS.findIndex(m => m.slug === 'miami-beach');
+    if (idx >= 0) activeMetrosModule.ACTIVE_METROS.splice(idx, 1);
+
+    try {
+      // "Miami Beach" community + Miami downtown coords → falls through to miami slug via geo
+      expect(resolveCommunityToMetro('Miami Beach', 25.76, -80.19)?.slug).toBe('miami');
+      // "Miami Beach" community + no coords → returns null (no fallback available)
+      expect(resolveCommunityToMetro('Miami Beach', null, null)).toBeNull();
+    } finally {
+      activeMetrosModule.ACTIVE_METROS.length = 0;
+      activeMetrosModule.ACTIVE_METROS.push(...original);
+    }
+  });
+
   it('falls back to lat/lon when the community string is unknown', () => {
     // 25.76, -80.19 = downtown Miami → miami metro
     expect(resolveCommunityToMetro('Some Unknown Place', 25.76, -80.19)?.slug).toBe('miami');
