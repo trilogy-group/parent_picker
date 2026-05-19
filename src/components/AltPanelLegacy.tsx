@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useVotesStore } from "@/lib/votes";
 import { useShallow } from "zustand/react/shallow";
 import { useAuth } from "./AuthProvider";
-import { AltLocationCard } from "./AltLocationCard";
+import { AltLocationCardLegacy } from "./AltLocationCardLegacy";
 import LocationDetailView from "./LocationDetailView";
 import { ProfilePopover } from "./ProfilePopover";
 import { getDistanceMiles } from "@/lib/locations";
@@ -19,7 +19,7 @@ import { pointInIsochrone } from "@/lib/geo";
 
 const PAGE_SIZE = 25;
 
-export function AltPanel() {
+export function AltPanelLegacy() {
   const {
     locations, filteredLocations, selectedLocationId, setSelectedLocation,
     voteIn, voteNotHere, removeVote, updateVoteComment, votedLocationIds, votedNotHereIds,
@@ -651,7 +651,7 @@ export function AltPanel() {
           {/* Location cards */}
           <div className="px-5 pb-5 space-y-3">
             {visibleLocations.map((loc) => (
-              <AltLocationCard
+              <AltLocationCardLegacy
                 key={loc.id}
                 location={loc}
                 voters={locationVoters.get(loc.id) || []}

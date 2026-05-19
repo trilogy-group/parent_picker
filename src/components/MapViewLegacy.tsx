@@ -30,7 +30,7 @@ function approxBounds(center: { lat: number; lng: number }, zoom: number) {
   };
 }
 
-export function MapView() {
+export function MapViewLegacy() {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const mapRef = useRef<any>(null);
   const {

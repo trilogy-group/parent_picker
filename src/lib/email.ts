@@ -114,3 +114,44 @@ export function generateInviteHtml(inviterName: string): string {
     <p style="margin-top:20px;font-size:13px;color:#666;">Say "I'm in" on locations you like. Enough families, and it happens.</p>
   `;
 }
+
+export interface ProblemEmailLocationInfo {
+  name: string;
+  city: string;
+  state: string;
+}
+
+export function generateProblemClaimedHtml(args: {
+  problemTitle: string;
+  ownerName: string;
+  location: ProblemEmailLocationInfo;
+  detailsUrl: string;
+}): string {
+  return `
+    <h2>Someone stepped up</h2>
+    <p><strong>${escapeHtml(args.ownerName)}</strong> just claimed ownership of:</p>
+    <p style="font-size:18px;font-weight:600;margin-top:16px;">${escapeHtml(args.problemTitle)}</p>
+    <p>This is on <strong>${escapeHtml(args.location.name)}</strong> in ${escapeHtml(args.location.city)}, ${escapeHtml(args.location.state)}. We'll keep you posted on progress.</p>
+    <div style="margin-top:24px;">
+      <a href="${args.detailsUrl}" style="display:inline-block;padding:12px 24px;background:#2563eb;color:#ffffff;text-decoration:none;border-radius:8px;font-weight:bold;font-size:14px;">See progress</a>
+    </div>
+  `;
+}
+
+export function generateProblemResolvedHtml(args: {
+  problemTitle: string;
+  outcome: string;
+  location: ProblemEmailLocationInfo;
+  detailsUrl: string;
+}): string {
+  return `
+    <h2>Problem resolved</h2>
+    <p>The problem you were watching has been resolved:</p>
+    <p style="font-size:18px;font-weight:600;margin-top:16px;">${escapeHtml(args.problemTitle)}</p>
+    <p style="background:#f4f0e6;padding:12px;border-radius:4px;"><strong>Outcome:</strong> ${escapeHtml(args.outcome)}</p>
+    <p>This was on <strong>${escapeHtml(args.location.name)}</strong> in ${escapeHtml(args.location.city)}, ${escapeHtml(args.location.state)}.</p>
+    <div style="margin-top:24px;">
+      <a href="${args.detailsUrl}" style="display:inline-block;padding:12px 24px;background:#2563eb;color:#ffffff;text-decoration:none;border-radius:8px;font-weight:bold;font-size:14px;">See site</a>
+    </div>
+  `;
+}

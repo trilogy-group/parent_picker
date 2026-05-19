@@ -210,7 +210,78 @@ git push  # pushes to both
 
 **Key files modified:** `src/components/MapView.tsx`, `src/components/AltPanel.tsx`
 
-### Pending / Next steps
+### Workstream 15: Parent Feedback Redesign — DONE (branch: feature/parent-feedback-redesign)
+
+**Spec:** `docs/superpowers/specs/2026-05-04-parent-feedback-redesign-design.md`
+**Plan:** `docs/superpowers/plans/2026-05-04-parent-feedback-redesign.md`
+
+**What was built (V1, no REBL changes):**
+
+**1. Stage/Category derivation library** (TDD, 21 unit tests via Vitest):
+- `src/lib/sites/stage.ts` — `getStage()` maps `rebl3_status.leasing` + `loi` + `process_exception` to `scored | engaged | committed | moved_on`
+- `src/lib/sites/category.ts` — `getCategory()` maps `is_bridge` + active champions to `parent | ai | short_term`
+- `src/lib/sites/parser.ts` — `parseCommittedSubStage()` (LOI→Lease→Zoning→Permits→Buildout→CO) + `parseMovedOnReason()` with humanized labels
+
+**2. New DB tables (`sql/2026-05-04-parent-feedback-redesign.sql`):**
+- `pp_site_champions` (lead/supporter, partial unique on active lead per site)
+- `pp_site_problems` (open/in_progress/resolved/unresolvable, pivot_trigger flag)
+- `pp_problem_owners` (one active per problem)
+- `pp_problem_updates` (owner-only posts)
+- `pp_plan_of_record` (per-metro narrative + pivot conditions)
+- `pp_locations.is_bridge` column
+- View `pp_locations_with_votes` + RPCs `get_locations_in_bounds`/`get_nearby_locations` extended with `is_bridge`, `leasing_status`, `leasing_details`, `loi_status` via LATERAL joins to `rebl3_status`
+
+**3. Champions feature:**
+- `POST/DELETE /api/sites/[id]/champion` — claim (lead if vacant, else supporter; auto-promote longest-serving supporter on lead release)
+- `GET /api/locations/[id]/champions` — public read
+- `<ChampionButton>` in LocationDetailView (sign-in gated)
+- Zustand: `userId`, `refreshChampions(locationId)` re-derives category
+- `getLocations()` bulk-fetches champions and attaches to Locations
+- Suggest flow: affirmation checkbox + auto-create lead champion on submission
+
+**4. Problem board:**
+- Admin: `POST/GET /api/admin/problems`, `PATCH/DELETE /api/admin/problems/[id]`
+- Public: `GET /api/sites/[id]/problems`, `GET /api/problems?metro=&all=`
+- Ownership: `POST/DELETE /api/problems/[id]/claim` (flips status open↔in_progress)
+- Updates: `POST/GET /api/problems/[id]/updates` (owner-only POST)
+- Email: `generateProblemClaimedHtml`, `generateProblemResolvedHtml` (notifies champions on claim, owner+champions on resolve)
+- Admin Problems tab in `/admin` with new-problem form + resolve/delete actions
+- `<ProblemCard>` / `<ProblemList>` mounted in LocationDetailView for engaged + committed sites
+
+**5. Plan of Record:**
+- `GET /api/metro/[metro]/plan` (public) + `PUT /api/admin/metro/[metro]/plan` (admin upsert)
+- Admin Plans tab with metro picker, narrative override, pivot conditions JSON editor
+- `<PlanOfRecord>` component: auto-narrative builder ("Launching at <bridge> while we build out <primary>") + pivot conditions list
+
+**6. Panel redesign (non-destructive overlay on AltPanel):**
+- Plan of Record + 3 CategorySection blocks (Parent / AI / Short-term) + funnel-stat footer + recently-moved-on toggle, ALL gated to `metroName && !showCityCards`
+- Existing flat list, filters, sort pills, drive-time isochrone, proposed hero — UNTOUCHED
+- New: `<StageBadge>`, `<CategorySection>`
+
+**7. Detail view:**
+- Engaged → ProblemList only
+- Committed → `<StageTimeline>` (LOI→CO progress bar) + ProblemList
+- Moved On → `<MovedOnSection>` with parsed reason + pointer to Plan of Record
+
+**8. Map encoding (MapView):**
+- Color: parent emerald, short-term amber, engaged/committed AI blue, scored sites keep score-based color
+- Size: scored=6, engaged=9, committed=12 + thicker stroke (halo)
+- Moved-on hidden by default; selected deep-link still visible
+
+**Verification at branch tip:**
+- `npm run test:unit` 21/21 ✓
+- `npx tsc --noEmit` clean
+- `npm run lint` 0 errors (18 pre-existing warnings)
+- `npm run build` succeeds
+
+**Known gaps / follow-ups:**
+- E2E Playwright tests for redesign flows not added (deferred to a follow-up; existing 45-test suite untouched)
+- Admin pivot-conditions editor uses raw JSON (functional MVP)
+- The "Candidates" section is the existing flat list rendered below the highlights (no toggle UI yet)
+- For sites loaded via the bounds RPC path, leasing/loi data flows through correctly post the RPC update
+- Funnel-stat footer currently sums `aiActive.length + parentSites.length` — exclusive by category type, but if categories ever overlap this would double-count
+
+### Pending / Next steps (older workstream tail)
 - Complete remaining proposed location uploads (brochures in Google Drive)
 - Push and test LocationDetailView changes for proposed locations
 

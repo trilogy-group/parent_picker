@@ -7,8 +7,12 @@ import { extractStreet } from "@/lib/address";
 import { fetchRebl3Site, Rebl3ExternalSite, Rebl3Dimension, postRebl3Feedback, Rebl3DimensionKey } from "@/lib/rebl3";
 import { HelpModal } from "./HelpModal";
 import { SignInPrompt } from "./SignInPrompt";
+import { ChampionButton } from "./ChampionButton";
+import { ProblemList } from "./ProblemList";
+import { MovedOnSection } from "./MovedOnSection";
+import { StageTimeline } from "./StageTimeline";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
-import { ArrowLeft, ExternalLink, ChevronLeft, ChevronRight, FileText, Plus, Minus, X } from "lucide-react";
+import { ArrowLeft, ExternalLink, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, FileText, Plus, Minus, X } from "lucide-react";
 import { useAuth } from "./AuthProvider";
 import { useVotesStore } from "@/lib/votes";
 
@@ -161,6 +165,7 @@ export default function LocationDetailView({
   // REBL3 dimension data
   const [rebl3Data, setRebl3Data] = useState<Rebl3ExternalSite | null>(null);
   const [rebl3Loading, setRebl3Loading] = useState(false);
+  const [rebl3Expanded, setRebl3Expanded] = useState(true);
 
   const { isAdmin } = useAuth();
   const userEmail = useVotesStore(s => s.userEmail);
@@ -176,9 +181,8 @@ export default function LocationDetailView({
       .catch(() => {});
   }, [location.id]);
 
-  // Fetch photos and brochure for proposed locations
+  // Fetch photos and brochure for any location that has them uploaded
   useEffect(() => {
-    if (!location.proposed) return;
     setPhotos([]);
     setBrochureUrl(null);
     setPhotoIndex(0);
@@ -192,7 +196,7 @@ export default function LocationDetailView({
         if (data.brochureUrl) setBrochureUrl(data.brochureUrl);
       })
       .catch(() => {});
-  }, [location.id, location.proposed]);
+  }, [location.id]);
 
   // Check if street view is available for this location
   useEffect(() => {
@@ -223,17 +227,54 @@ export default function LocationDetailView({
       .finally(() => setRebl3Loading(false));
   }, [location.rebl3SiteId]);
 
+  // Overlay pp_location_overrides on top of REBL3 dimensions so the AI Scoring
+  // panel reflects admin-curated fixes. Falls through when no override exists.
+  const dimensionOverrides: Record<string, string | null | undefined> = {
+    neighborhood: location.scores?.neighborhood?.color,
+    zoning:       location.scores?.zoning?.color,
+    building:     location.scores?.building?.color,
+    cost:         location.scores?.price?.color,
+  };
+  // When an override flips a dimension to GREEN, replace REBL's negative prose
+  // with a positive blurb so the text matches the color dot.
+  const greenProseByKey: Record<string, string> = {
+    neighborhood: "Neighborhood demographics support strong demand.",
+    zoning:       "Zoning is approved for school use.",
+    building:     "Building meets our requirements for an Alpha campus.",
+    cost:         "Pricing is in line with target underwriting.",
+  };
+  const rebl3DataPatched = rebl3Data
+    ? {
+        ...rebl3Data,
+        dimensions: rebl3Data.dimensions.map(d => {
+          const ovr = dimensionOverrides[d.key];
+          // Only override when our color disagrees with REBL's raw judgment.
+          if (ovr && ovr !== d.judgment) {
+            const next = { ...d, judgment: ovr as typeof d.judgment };
+            if (ovr === "GREEN" && greenProseByKey[d.key]) {
+              next.prose = greenProseByKey[d.key];
+            }
+            return next;
+          }
+          return d;
+        }),
+      }
+    : null;
+
   const badge = statusBadge(location.scores?.overallColor);
-  const sizeLabel = sizeTierLabel(location.scores?.sizeClassification, location.scores?.capacity);
+  // Capacity priority: override (headline) > max_cap override > REBL DD fast_open > REBL capacity.
+  // Falls back to size_classification tier when no number is known.
+  const displayCapacity =
+    location.capacityOverride
+    ?? location.maxCapCapacityOverride
+    ?? location.derived?.maxCapCapacity
+    ?? location.derived?.fastOpenCapacity
+    ?? location.scores?.capacity;
+  const sizeLabel = sizeTierLabel(location.scores?.sizeClassification, displayCapacity);
   const remaining = Math.max(0, LAUNCH_THRESHOLD - location.votes);
 
   const inVoters = voters.filter((v) => v.voteType === "in");
   const concernVoters = voters.filter((v) => v.voteType === "not_here");
-
-  const deadlineExpired = !!location.feedbackDeadline && new Date(location.feedbackDeadline) < new Date();
-  const deadlineDateStr = location.feedbackDeadline
-    ? new Date(location.feedbackDeadline).toLocaleDateString("en-US", { month: "long", day: "numeric" })
-    : "";
 
   const handleVoteIn = () => {
     if (!isAuthenticated) { setShowSignIn(true); return; }
@@ -470,11 +511,6 @@ export default function LocationDetailView({
                 </button>
               );
             })()}
-            {location.proposed && (
-              <span className="absolute top-2 left-2 bg-blue-600 text-white text-[10px] font-bold tracking-wider px-2.5 py-1 rounded-full">
-                PROPOSED
-              </span>
-            )}
           </div>
         ) : null}
 
@@ -506,6 +542,14 @@ export default function LocationDetailView({
                 <span className="text-xs text-gray-400">{distanceMi.toFixed(1)} mi from you</span>
               </div>
             )}
+            <div className="mt-3">
+              <ChampionButton
+                location={location}
+                isAuthenticated={isAuthenticated}
+                session={session}
+                onSignInNeeded={() => setShowSignIn(true)}
+              />
+            </div>
           </div>
 
           {/* Brochure link for proposed locations */}
@@ -522,55 +566,90 @@ export default function LocationDetailView({
             </a>
           )}
 
-          {/* Dimension breakdown */}
-          {rebl3Loading ? (
-            <div className="mt-4 space-y-3">
-              {[1,2,3,4].map(i => (
-                <div key={i} className="h-16 bg-gray-100 rounded-xl animate-pulse" />
-              ))}
+          {/* AI scoring breakdown — expanded by default */}
+          {(rebl3Loading || rebl3Data || location.scores?.overallColor) && (
+            <div className="mt-5 border-t border-gray-200 pt-4">
+              <button
+                onClick={() => setRebl3Expanded(v => !v)}
+                className="w-full flex items-center justify-between text-left"
+              >
+                <span className="text-[10px] font-semibold tracking-widest text-gray-500">AI SCORING</span>
+                {rebl3Expanded ? (
+                  <ChevronUp className="w-4 h-4 text-gray-400" />
+                ) : (
+                  <ChevronDown className="w-4 h-4 text-gray-400" />
+                )}
+              </button>
+              {rebl3Expanded && (
+                <div className="mt-3">
+                  {rebl3Loading ? (
+                    <div className="space-y-3">
+                      {[1,2,3,4].map(i => (
+                        <div key={i} className="h-16 bg-gray-100 rounded-xl animate-pulse" />
+                      ))}
+                    </div>
+                  ) : rebl3DataPatched ? (
+                    <div className="space-y-3">
+                      {rebl3DataPatched.dimensions.map(dim => (
+                        <DimensionCard
+                          key={dim.key}
+                          dimension={dim}
+                          siteId={location.rebl3SiteId}
+                          userEmail={userEmail}
+                          isAuthenticated={isAuthenticated}
+                          onSignInNeeded={() => setShowSignIn(true)}
+                        />
+                      ))}
+                    </div>
+                  ) : location.scores?.overallColor ? (
+                    <div className="space-y-2">
+                      {([
+                        { label: "Neighborhood", color: location.scores.neighborhood?.color },
+                        { label: "Zoning", color: location.scores.zoning?.color },
+                        { label: "Building", color: location.scores.building?.color },
+                        { label: "Price", color: location.scores.price?.color },
+                      ] as const).filter(d => d.color).map(d => (
+                        <div key={d.label} className="flex items-center gap-2">
+                          <span className={`w-2.5 h-2.5 rounded-full ${colorDotClass(d.color!)}`} />
+                          <span className="text-sm text-gray-700">{d.label}</span>
+                          <span className={`text-xs ${colorTextClass(d.color!)}`}>{colorLabel(d.color!)}</span>
+                        </div>
+                      ))}
+                    </div>
+                  ) : null}
+                </div>
+              )}
             </div>
-          ) : rebl3Data ? (
-            <div className="mt-4 space-y-3">
-              {rebl3Data.dimensions.map(dim => (
-                <DimensionCard
-                  key={dim.key}
-                  dimension={dim}
-                  siteId={location.rebl3SiteId}
-                  userEmail={userEmail}
+          )}
+
+          {/* Tier-specific bottom sections */}
+          {(location.derived?.stage === "diligence" ||
+            location.derived?.stage === "build_out") && (
+            <>
+              <div className="px-4 py-3 mt-5 pt-4 border-t border-stone-200">
+                <h3 className="text-xs font-bold uppercase tracking-wider text-stone-500 mb-2">Path to opening</h3>
+                <StageTimeline current={location.derived.stage} />
+              </div>
+              <div className="px-4 py-3">
+                <ProblemList
+                  siteId={location.id}
                   isAuthenticated={isAuthenticated}
+                  session={session}
                   onSignInNeeded={() => setShowSignIn(true)}
                 />
-              ))}
+              </div>
+            </>
+          )}
+
+          {location.derived?.stage === "moved_on" && (
+            <div className="px-4 py-3 mt-5 pt-4 border-t border-stone-200">
+              <MovedOnSection location={location} />
             </div>
-          ) : location.scores?.overallColor ? (
-            <div className="mt-4 space-y-2">
-              {([
-                { label: "Neighborhood", color: location.scores.neighborhood?.color },
-                { label: "Zoning", color: location.scores.zoning?.color },
-                { label: "Building", color: location.scores.building?.color },
-                { label: "Price", color: location.scores.price?.color },
-              ] as const).filter(d => d.color).map(d => (
-                <div key={d.label} className="flex items-center gap-2">
-                  <span className={`w-2.5 h-2.5 rounded-full ${colorDotClass(d.color!)}`} />
-                  <span className="text-sm text-gray-700">{d.label}</span>
-                  <span className={`text-xs ${colorTextClass(d.color!)}`}>{colorLabel(d.color!)}</span>
-                </div>
-              ))}
-            </div>
-          ) : null}
+          )}
 
           {/* 4. Vote section */}
           <div className="mt-5">
-            {deadlineExpired ? (
-              <div className="bg-gray-50 border border-gray-200 rounded-xl p-5">
-                <p className="text-[10px] font-semibold tracking-widest text-gray-500 mb-2">VOTING CLOSED</p>
-                <p className="text-[15px] leading-snug text-gray-700">
-                  The feedback window closed on {deadlineDateStr}. Final tally: {location.votes} in
-                  {location.notHereVotes > 0 ? `, ${location.notHereVotes} concern${location.notHereVotes !== 1 ? "s" : ""}` : ""}.
-                </p>
-                <p className="text-sm text-gray-500 mt-2">You can still share information about this location below.</p>
-              </div>
-            ) : hasVotedIn ? (
+            {hasVotedIn ? (
               /* Already voted in */
               <div className="bg-blue-50 rounded-xl p-5">
                 <div className="flex items-center justify-between">
@@ -620,34 +699,19 @@ export default function LocationDetailView({
               </div>
             ) : (
               /* Not voted */
-              <div className="bg-blue-50 rounded-xl p-5">
-                <p className="text-[10px] font-semibold tracking-widest text-blue-600 mb-2">VOTE</p>
-                <p className="text-[15px] leading-snug text-gray-900">
-                  Picture your kid here.
-                  {location.votes > 0
-                    ? <> {location.votes} {location.votes === 1 ? "family is" : "families are"} in. At {LAUNCH_THRESHOLD}, Alpha moves forward and begins lease negotiation.</>
-                    : <> At {LAUNCH_THRESHOLD} families, Alpha moves forward and begins lease negotiation.</>
-                  }
-                </p>
-                {location.notHereVotes > 0 && (
-                  <p className="text-sm text-amber-600 mt-1">
-                    {location.notHereVotes} concern{location.notHereVotes !== 1 ? "s" : ""}
-                  </p>
-                )}
-                <div className="flex gap-3 mt-4">
-                  <button
-                    onClick={handleVoteIn}
-                    className="flex-1 py-2.5 rounded-lg text-sm font-semibold transition-colors bg-blue-600 text-white hover:bg-blue-700"
-                  >
-                    I&apos;m good with this location
-                  </button>
-                  <button
-                    onClick={handleVoteNotHere}
-                    className="px-5 py-2.5 rounded-lg text-sm font-medium transition-colors border border-gray-300 text-gray-700 hover:bg-white"
-                  >
-                    Not for me
-                  </button>
-                </div>
+              <div className="flex gap-3">
+                <button
+                  onClick={handleVoteIn}
+                  className="flex-1 py-2.5 rounded-lg text-sm font-semibold transition-colors bg-blue-600 text-white hover:bg-blue-700"
+                >
+                  I&apos;m good with this location
+                </button>
+                <button
+                  onClick={handleVoteNotHere}
+                  className="px-5 py-2.5 rounded-lg text-sm font-medium transition-colors border border-gray-300 text-gray-700 hover:bg-white"
+                >
+                  Not for me
+                </button>
               </div>
             )}
           </div>

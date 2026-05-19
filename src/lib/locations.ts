@@ -1,6 +1,7 @@
-import { Location, LocationScores, CitySummary } from "@/types";
+import { Location, LocationScores, SiteChampion, CommittedSubStage, CitySummary } from "@/types";
 import { supabase, isSupabaseConfigured } from "./supabase";
 import { sanitizeText } from "./validation";
+import { getStage, getCategory, parseCommittedSubStage } from "@/lib/sites";
 
 // Seeded pseudo-random for deterministic mock scores
 function seededRandom(seed: number): () => number {
@@ -178,15 +179,60 @@ export function getInitialMapView(
     (c) => getDistanceMiles(userLat, userLng, c.lat, c.lng) <= 100
   );
   if (!hasNearby) {
-    // Nothing near user — show US-wide so they can pick from the city list
     return { center: US_CENTER, zoom: US_ZOOM };
   }
 
-  // Center on user at zoom 11; fetchNearbyForce will load nearby dots
   return { center: { lat: userLat, lng: userLng }, zoom: 11 };
 }
 
-export async function getLocations(): Promise<Location[]> {
+export async function getCitySummaries(releasedOnly?: boolean, excludeRed?: boolean, excludeUnscored?: boolean): Promise<CitySummary[]> {
+  if (!isSupabaseConfigured || !supabase) {
+    // Inline mock aggregator: group mockLocations by city+state
+    const byCity = new Map<string, CitySummary>();
+    for (const loc of mockLocations) {
+      const key = `${loc.city}|${loc.state}`;
+      const existing = byCity.get(key);
+      if (existing) {
+        existing.locationCount += 1;
+        existing.totalVotes += loc.votes;
+      } else {
+        byCity.set(key, {
+          city: loc.city,
+          state: loc.state,
+          lat: loc.lat,
+          lng: loc.lng,
+          locationCount: 1,
+          totalVotes: loc.votes,
+        });
+      }
+    }
+    return Array.from(byCity.values());
+  }
+  try {
+    const { data, error } = await supabase.rpc("get_location_cities", {
+      released_only: releasedOnly ?? false,
+      exclude_red: excludeRed ?? false,
+      exclude_unscored: excludeUnscored ?? false,
+    });
+    if (error) {
+      console.error("Error fetching city summaries:", error);
+      return [];
+    }
+    return (data || []).map((row: Record<string, unknown>) => ({
+      city: row.city as string,
+      state: row.state as string,
+      lat: Number(row.lat),
+      lng: Number(row.lng),
+      locationCount: Number(row.location_count),
+      totalVotes: Number(row.total_votes),
+    }));
+  } catch (error) {
+    console.error("Failed to fetch city summaries:", error);
+    return [];
+  }
+}
+
+export async function getLocations(opts?: { withRedesignFields?: boolean }): Promise<Location[]> {
   // If Supabase is not configured, return mock data
   if (!isSupabaseConfigured || !supabase) {
     console.log("Supabase not configured, using mock data");
@@ -218,94 +264,154 @@ export async function getLocations(): Promise<Location[]> {
       from += PAGE_SIZE;
     }
 
-    return mapRows(allRows);
+    const locations = mapRows(allRows);
+    if (opts?.withRedesignFields) await attachChampions(locations);
+    return locations;
   } catch (error) {
     console.error("Failed to fetch locations:", error);
     return mockLocations;
   }
 }
 
+function applyDerived(location: Location, row: Record<string, unknown>): Location {
+  const leasing = (row.leasing_status as string) ?? null;
+  const loi = (row.loi_status as string) ?? null;
+  const strategy = (row.strategy_status as string) ?? null;
+  const leasingDetails = (row.leasing_details as { process_exception?: boolean }) ?? undefined;
+  const stage = getStage({
+    leasing,
+    loi,
+    strategy,
+    leasingDetails,
+    openedAt: location.openedAt,
+  });
+  const category = getCategory({ isBridge: location.isBridge, champions: location.champions ?? [] });
+
+  let committedSubStage: CommittedSubStage | undefined;
+  if (stage === "diligence" || stage === "build_out") {
+    committedSubStage = parseCommittedSubStage({ leasing, loi });
+  }
+
+  const reblScore = row.overall_score != null ? Number(row.overall_score) : null;
+  const fastOpenCapacity = row.dd_fast_open_capacity != null ? Number(row.dd_fast_open_capacity) : null;
+  const fastOpenDate = row.dd_fast_open_proj_open_date != null ? String(row.dd_fast_open_proj_open_date) : null;
+  const maxCapCapacity = row.dd_max_cap_capacity != null ? Number(row.dd_max_cap_capacity) : null;
+  const maxCapDate = row.dd_max_cap_proj_open_date != null ? String(row.dd_max_cap_proj_open_date) : null;
+
+  location.derived = {
+    stage,
+    category,
+    committedSubStage,
+    leasingStatus: leasing,
+    loiStatus: loi,
+    reblScore,
+    fastOpenCapacity,
+    fastOpenDate,
+    maxCapCapacity,
+    maxCapDate,
+  };
+  return location;
+}
+
 function mapRows(rows: Record<string, unknown>[]): Location[] {
-  return rows.map((row) => ({
-    id: row.id as string,
-    name: row.name as string,
-    address: row.address as string,
-    city: row.city as string,
-    state: row.state as string,
-    zip: (row.zip as string) || null,
-    lat: Number(row.lat),
-    lng: Number(row.lng),
-    votes: row.votes as number,
-    notHereVotes: Number(row.not_here_count) || 0,
-    suggested: row.source === "parent_suggested",
-    scores: mapRowToScores(row),
-    proposed: row.proposed === true,
-    rebl3SiteId: (row.property_source_key as string) || null,
-    feedbackDeadline: (row.feedback_deadline as string) || null,
-  }));
-}
-
-function getMockCitySummaries(releasedOnly?: boolean, excludeRed?: boolean, excludeUnscored?: boolean): CitySummary[] {
-  let locs = releasedOnly ? mockLocations.filter(l => l.released === true) : mockLocations;
-  if (excludeRed) {
-    locs = locs.filter(l => l.scores?.overallColor !== "RED" && l.scores?.sizeClassification !== "Red (Reject)");
-  }
-  if (excludeUnscored) {
-    locs = locs.filter(l => l.scores?.overallColor != null);
-  }
-  const map = new Map<string, { city: string; state: string; lats: number[]; lngs: number[]; count: number; votes: number }>();
-  for (const loc of locs) {
-    const key = `${loc.city}|${loc.state}`;
-    const entry = map.get(key);
-    if (entry) {
-      entry.lats.push(loc.lat);
-      entry.lngs.push(loc.lng);
-      entry.count++;
-      entry.votes += loc.votes;
-    } else {
-      map.set(key, { city: loc.city, state: loc.state, lats: [loc.lat], lngs: [loc.lng], count: 1, votes: loc.votes });
-    }
-  }
-  return Array.from(map.values()).map(e => ({
-    city: e.city,
-    state: e.state,
-    lat: e.lats.reduce((a, b) => a + b, 0) / e.lats.length,
-    lng: e.lngs.reduce((a, b) => a + b, 0) / e.lngs.length,
-    locationCount: e.count,
-    totalVotes: e.votes,
-  }));
-}
-
-export async function getCitySummaries(releasedOnly?: boolean, excludeRed?: boolean, excludeUnscored?: boolean): Promise<CitySummary[]> {
-  if (!isSupabaseConfigured || !supabase) {
-    return getMockCitySummaries(releasedOnly, excludeRed, excludeUnscored);
-  }
-
-  try {
-    const { data, error } = await supabase.rpc("get_location_cities", {
-      released_only: releasedOnly ?? false,
-      exclude_red: excludeRed ?? false,
-      exclude_unscored: excludeUnscored ?? false,
-    });
-    if (error) {
-      console.error("Error fetching city summaries:", error);
-      return getMockCitySummaries(releasedOnly, excludeRed, excludeUnscored);
-    }
-    return (data || []).map((row: Record<string, unknown>) => ({
+  return rows.map((row) => {
+    const location: Location = {
+      id: row.id as string,
+      name: row.name as string,
+      address: row.address as string,
       city: row.city as string,
       state: row.state as string,
+      zip: (row.zip as string) || null,
       lat: Number(row.lat),
       lng: Number(row.lng),
-      locationCount: Number(row.location_count),
-      totalVotes: Number(row.total_votes),
-    }));
-  } catch (error) {
-    console.error("Failed to fetch city summaries:", error);
-    return getMockCitySummaries(releasedOnly, excludeRed, excludeUnscored);
+      votes: row.votes as number,
+      notHereVotes: Number(row.not_here_count) || 0,
+      suggested: row.source === "parent_suggested",
+      scores: mapRowToScores(row),
+      proposed: row.proposed === true,
+      rebl3SiteId: (row.property_source_key as string) || null,
+      feedbackDeadline: (row.feedback_deadline as string) || null,
+      isBridge: row.is_bridge === true,
+      openedAt: (row.opened_at as string) || null,
+      upgradeForLocationId: (row.upgrade_for_location_id as string) || null,
+      regulatoryApproved: row.regulatory_approved === null || row.regulatory_approved === undefined
+        ? null
+        : Boolean(row.regulatory_approved),
+      permitsAcquired: row.permits_acquired === null || row.permits_acquired === undefined
+        ? null
+        : Boolean(row.permits_acquired),
+      zoningCleared: row.zoning_cleared === null || row.zoning_cleared === undefined
+        ? null
+        : Boolean(row.zoning_cleared),
+      summerProgram: row.summer_program === null || row.summer_program === undefined
+        ? null
+        : Boolean(row.summer_program),
+      capacityOverride: row.capacity_override != null ? Number(row.capacity_override) : null,
+      targetOpenDateOverride: (row.target_open_date_override as string) || null,
+      maxCapCapacityOverride: row.max_cap_capacity_override != null ? Number(row.max_cap_capacity_override) : null,
+      maxCapDateOverride: (row.max_cap_date_override as string) || null,
+      champions: [],
+    };
+    return applyDerived(location, row);
+  });
+}
+
+// Bulk-fetch active champions for the given location ids and merge them
+// into the locations in place, recomputing derived.category.
+async function attachChampions(locations: Location[]): Promise<void> {
+  if (!isSupabaseConfigured || !supabase) return;
+  const ids = locations.map((l) => l.id);
+  if (ids.length === 0) return;
+
+  // Chunk ids into batches small enough that the resulting `?site_id=in.(...)`
+  // URL stays under Supabase/PostgREST's URL-length limit (~8KB). 36-char UUIDs
+  // + commas → 150 IDs ≈ 5.5KB, well within limits.
+  const ID_CHUNK = 150;
+  const champById: Record<string, SiteChampion[]> = {};
+  for (let i = 0; i < ids.length; i += ID_CHUNK) {
+    const idChunk = ids.slice(i, i + ID_CHUNK);
+    let cFrom = 0;
+    while (true) {
+      const { data: rows, error: cErr } = await supabase
+        .from("pp_site_champions")
+        .select("id, site_id, user_id, role, claimed_at")
+        .in("site_id", idChunk)
+        .is("released_at", null)
+        .range(cFrom, cFrom + 999);
+      if (cErr || !rows) break;
+      for (const c of rows as Record<string, unknown>[]) {
+        const champ: SiteChampion = {
+          id: c.id as string,
+          siteId: c.site_id as string,
+          userId: c.user_id as string,
+          role: c.role as 'lead' | 'supporter',
+          claimedAt: c.claimed_at as string,
+          releasedAt: null,
+          passedToUserId: null,
+        };
+        (champById[champ.siteId] ??= []).push(champ);
+      }
+      if (rows.length < 1000) break;
+      cFrom += 1000;
+    }
+  }
+
+  for (const loc of locations) {
+    const cs = champById[loc.id] ?? [];
+    if (cs.length > 0) {
+      loc.champions = cs;
+      if (loc.derived) {
+        loc.derived = {
+          ...loc.derived,
+          category: getCategory({ isBridge: loc.isBridge, champions: cs }),
+        };
+      }
+    }
   }
 }
 
-export async function getNearbyLocations(centerLat: number, centerLng: number, limit: number = 500, releasedOnly?: boolean): Promise<Location[]> {
+
+export async function getNearbyLocations(centerLat: number, centerLng: number, limit: number = 500, releasedOnly?: boolean, opts?: { withRedesignFields?: boolean }): Promise<Location[]> {
   if (!isSupabaseConfigured || !supabase) {
     // Mock fallback: filter by released if needed
     const locs = releasedOnly ? mockLocations.filter(l => l.released === true) : mockLocations;
@@ -323,23 +429,40 @@ export async function getNearbyLocations(centerLat: number, centerLng: number, l
       console.error("Error fetching nearby locations:", error);
       return mockLocations;
     }
-    return (data || []).map((row: Record<string, unknown>) => ({
-      id: row.id as string,
-      name: row.name as string,
-      address: row.address as string,
-      city: row.city as string,
-      state: row.state as string,
-      zip: (row.zip as string) || null,
-      lat: Number(row.lat),
-      lng: Number(row.lng),
-      votes: Number(row.vote_count),
-      notHereVotes: Number(row.not_here_count) || 0,
-      suggested: (row.source as string) === "parent_suggested",
-      released: row.released as boolean | undefined,
-      scores: mapRowToScores(row),
-      rebl3SiteId: (row.property_source_key as string) || null,
-      feedbackDeadline: (row.feedback_deadline as string) || null,
-    }));
+    const locations: Location[] = (data || []).map((row: Record<string, unknown>) => {
+      const loc: Location = {
+        id: row.id as string,
+        name: row.name as string,
+        address: row.address as string,
+        city: row.city as string,
+        state: row.state as string,
+        zip: (row.zip as string) || null,
+        lat: Number(row.lat),
+        lng: Number(row.lng),
+        votes: Number(row.vote_count),
+        notHereVotes: Number(row.not_here_count) || 0,
+        suggested: (row.source as string) === "parent_suggested",
+        released: row.released as boolean | undefined,
+        scores: mapRowToScores(row),
+        rebl3SiteId: (row.property_source_key as string) || null,
+        feedbackDeadline: (row.feedback_deadline as string) || null,
+        isBridge: row.is_bridge === true,
+        openedAt: (row.opened_at as string) || null,
+        upgradeForLocationId: (row.upgrade_for_location_id as string) || null,
+        regulatoryApproved: row.regulatory_approved == null ? null : Boolean(row.regulatory_approved),
+        permitsAcquired: row.permits_acquired == null ? null : Boolean(row.permits_acquired),
+        zoningCleared: row.zoning_cleared == null ? null : Boolean(row.zoning_cleared),
+        summerProgram: row.summer_program == null ? null : Boolean(row.summer_program),
+        capacityOverride: row.capacity_override != null ? Number(row.capacity_override) : null,
+        targetOpenDateOverride: (row.target_open_date_override as string) || null,
+        maxCapCapacityOverride: row.max_cap_capacity_override != null ? Number(row.max_cap_capacity_override) : null,
+        maxCapDateOverride: (row.max_cap_date_override as string) || null,
+        champions: [],
+      };
+      return applyDerived(loc, row);
+    });
+    if (opts?.withRedesignFields) await attachChampions(locations);
+    return locations;
   } catch (error) {
     console.error("Failed to fetch nearby locations:", error);
     return mockLocations;
@@ -355,27 +478,42 @@ export interface Bounds {
 }
 
 function mapBoundsRows(rows: Record<string, unknown>[]): Location[] {
-  return rows.map((row) => ({
-    id: row.id as string,
-    name: row.name as string,
-    address: row.address as string,
-    city: row.city as string,
-    state: row.state as string,
-    zip: (row.zip as string) || null,
-    lat: Number(row.lat),
-    lng: Number(row.lng),
-    votes: Number(row.vote_count),
-    notHereVotes: Number(row.not_here_count) || 0,
-    suggested: (row.source as string) === "parent_suggested",
-    released: row.released as boolean | undefined,
-    scores: mapRowToScores(row),
-    proposed: row.proposed === true,
-    rebl3SiteId: (row.property_source_key as string) || null,
-    feedbackDeadline: (row.feedback_deadline as string) || null,
-  }));
+  return rows.map((row) => {
+    const loc: Location = {
+      id: row.id as string,
+      name: row.name as string,
+      address: row.address as string,
+      city: row.city as string,
+      state: row.state as string,
+      zip: (row.zip as string) || null,
+      lat: Number(row.lat),
+      lng: Number(row.lng),
+      votes: Number(row.vote_count),
+      notHereVotes: Number(row.not_here_count) || 0,
+      suggested: (row.source as string) === "parent_suggested",
+      released: row.released as boolean | undefined,
+      scores: mapRowToScores(row),
+      proposed: row.proposed === true,
+      rebl3SiteId: (row.property_source_key as string) || null,
+      feedbackDeadline: (row.feedback_deadline as string) || null,
+      isBridge: row.is_bridge === true,
+      openedAt: (row.opened_at as string) || null,
+      upgradeForLocationId: (row.upgrade_for_location_id as string) || null,
+      regulatoryApproved: row.regulatory_approved == null ? null : Boolean(row.regulatory_approved),
+      permitsAcquired: row.permits_acquired == null ? null : Boolean(row.permits_acquired),
+      zoningCleared: row.zoning_cleared == null ? null : Boolean(row.zoning_cleared),
+      summerProgram: row.summer_program == null ? null : Boolean(row.summer_program),
+      capacityOverride: row.capacity_override != null ? Number(row.capacity_override) : null,
+      targetOpenDateOverride: (row.target_open_date_override as string) || null,
+      maxCapCapacityOverride: row.max_cap_capacity_override != null ? Number(row.max_cap_capacity_override) : null,
+      maxCapDateOverride: (row.max_cap_date_override as string) || null,
+      champions: [],
+    };
+    return applyDerived(loc, row);
+  });
 }
 
-export async function getLocationsInBounds(bounds: Bounds, releasedOnly?: boolean): Promise<Location[]> {
+export async function getLocationsInBounds(bounds: Bounds, releasedOnly?: boolean, opts?: { withRedesignFields?: boolean }): Promise<Location[]> {
   if (!isSupabaseConfigured || !supabase) {
     const locs = releasedOnly ? mockLocations.filter(l => l.released === true) : mockLocations;
     return locs.filter(l =>
@@ -411,7 +549,9 @@ export async function getLocationsInBounds(bounds: Bounds, releasedOnly?: boolea
       from += PAGE_SIZE;
     }
 
-    return mapBoundsRows(allRows);
+    const locations = mapBoundsRows(allRows);
+    if (opts?.withRedesignFields) await attachChampions(locations);
+    return locations;
   } catch (error) {
     console.error("Failed to fetch locations in bounds:", error);
     return mockLocations;
@@ -480,7 +620,8 @@ export async function suggestLocation(
   state: string,
   notes?: string,
   coordinates?: { lat: number; lng: number } | null,
-  userId?: string
+  userId?: string,
+  opts?: { createChampion?: boolean }
 ): Promise<Location> {
   // Defense-in-depth: sanitize all text inputs before DB insert
   address = sanitizeText(address);
@@ -569,6 +710,21 @@ export async function suggestLocation(
         console.error("Error inserting location:", error.message, error.code, error.details, error.hint);
         // Fall through to return local-only location
       } else if (data) {
+        // Only auto-create champion when requested (redesign flow)
+        if (opts?.createChampion) {
+          try {
+            await supabase
+              .from("pp_site_champions")
+              .insert({
+                site_id: data.id,
+                user_id: userId,
+                role: 'lead',
+              });
+          } catch (e) {
+            // Non-fatal — the location was still created successfully
+            console.error("Failed to auto-create champion row:", e);
+          }
+        }
         return {
           id: data.id,
           name: data.name,

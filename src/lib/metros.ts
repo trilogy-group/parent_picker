@@ -1,5 +1,5 @@
-import { CitySummary } from "@/types";
 import { getDistanceMiles } from "./locations";
+import type { CitySummary } from "@/types";
 
 export interface Metro {
   name: string;
@@ -120,6 +120,11 @@ export const US_METROS: Metro[] = [
 
 const MAX_METRO_DISTANCE_MILES = 50;
 
+/**
+ * @deprecated Use findActiveMetro from "./active-metros" for parent-facing flows.
+ * Still used by src/app/api/admin/metro/[metro]/candidates/route.ts; migrate that route
+ * in a follow-up before deleting US_METROS + findNearestMetro.
+ */
 export function findNearestMetro(lat: number, lng: number): Metro | null {
   let nearest: Metro | null = null;
   let minDist = Infinity;
@@ -136,7 +141,6 @@ export function findNearestMetro(lat: number, lng: number): Metro | null {
 }
 
 /**
- * Consolidate per-city summaries into metro-level bubbles.
  * Cities within 50 miles of a known metro are merged.
  * The bubble position is the location-weighted centroid of the actual cities.
  */
@@ -190,3 +194,4 @@ export function consolidateToMetros(cities: CitySummary[]): CitySummary[] {
 
   return [...consolidated, ...unmatched];
 }
+

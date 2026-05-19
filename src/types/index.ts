@@ -33,6 +33,23 @@ export interface Location {
   brochureUrl?: string | null;
   rebl3SiteId?: string | null;
   feedbackDeadline?: string | null;
+  isBridge?: boolean;
+  // Community Site card fields (2026-05-18 migration)
+  // For regulatory/permits: true = approved/acquired, false = in progress, null = unknown/N/A
+  openedAt?: string | null;
+  upgradeForLocationId?: string | null;
+  regulatoryApproved?: boolean | null;
+  permitsAcquired?: boolean | null;
+  zoningCleared?: boolean | null;
+  summerProgram?: boolean | null;
+  // pp_location_overrides — temporary admin overrides until upstream data is fixed
+  capacityOverride?: number | null;
+  targetOpenDateOverride?: string | null;
+  maxCapCapacityOverride?: number | null;
+  maxCapDateOverride?: string | null;
+  champions?: SiteChampion[];
+  problems?: SiteProblem[];
+  derived?: LocationDerived;
 }
 
 export type VoteType = 'in' | 'not_here';
@@ -102,5 +119,122 @@ export interface AdminAction {
   state?: string;
   // Computed from rebl3_site_id
   overall_details_url?: string | null;
+}
+
+// === Parent Feedback Redesign types ===
+
+// Site stages map the real-estate pipeline parents see (4-stage taxonomy):
+//   prospecting → pre-LOI activity, evaluating fit
+//   diligence   → LOI signed, working out lease terms (incl. lease-ready)
+//   build_out   → lease signed, school under construction / awaiting first day
+//   open        → school operating
+//   moved_on    → killed / cut / process-exception (side track)
+export type SiteStage =
+  | 'prospecting'
+  | 'diligence'
+  | 'build_out'
+  | 'open'
+  | 'moved_on';
+export type SiteCategory = 'parent' | 'ai' | 'short_term';
+export type CommittedSubStage = 'loi' | 'lease' | 'zoning' | 'permits' | 'buildout' | 'co';
+export type ProblemStatus = 'open' | 'in_progress' | 'resolved' | 'unresolvable';
+export type ChampionRole = 'lead' | 'supporter';
+
+export interface SiteChampion {
+  id: string;
+  siteId: string;
+  userId: string;
+  role: ChampionRole;
+  claimedAt: string;
+  releasedAt: string | null;
+  passedToUserId: string | null;
+  // Joined display fields
+  displayName?: string;
+}
+
+export type ProblemCategory = 'zoning' | 'licensing' | 'other';
+export type ProblemSeverity = 'H' | 'M' | 'L';
+
+export interface ProblemSourceRef {
+  system: string;
+  site_id: string;
+  name: string;
+}
+
+export interface SiteProblem {
+  id: string;
+  siteId: string | null;
+  metro: string;
+  title: string;
+  description: string | null;
+  deadline: string | null;
+  pivotTrigger: boolean;
+  status: ProblemStatus;
+  outcomeText: string | null;
+  createdAt: string;
+  closedAt: string | null;
+  parentOwnable: boolean;
+  category: ProblemCategory;
+  severity: ProblemSeverity;
+  sourceRef: ProblemSourceRef | null;
+  // Derived
+  owner?: ProblemOwner | null;
+  updates?: ProblemUpdate[];
+}
+
+export interface ProblemOwner {
+  id: string;
+  problemId: string;
+  userId: string;
+  claimedAt: string;
+  releasedAt: string | null;
+  displayName?: string;
+}
+
+export interface ProblemUpdate {
+  id: string;
+  problemId: string;
+  userId: string;
+  body: string;
+  createdAt: string;
+  displayName?: string;
+}
+
+export interface PivotCondition {
+  triggerProblemId: string;
+  description: string;
+  newRoleAssignment?: { siteId: string; role: 'primary_long_term' | 'bridge' | 'watch' };
+}
+
+export interface MetroPlan {
+  metro: string;
+  narrativeTemplateInputs: {
+    primaryLongTermSiteId?: string;
+    bridgeSiteId?: string;
+    watchSiteIds?: string[];
+  };
+  pivotConditions: PivotCondition[];
+  narrativeOverride: string | null;
+  backupPlan: string | null;
+  lastCuratedAt: string;
+}
+
+// Extend Location with derived fields (set client-side, not stored)
+export interface LocationDerived {
+  stage: SiteStage;
+  category: SiteCategory;
+  committedSubStage?: CommittedSubStage;
+  movedOnReason?: string;
+  // Raw REBL pipeline state, surfaced for display (e.g. "LOI sent to landlord")
+  leasingStatus?: string | null;
+  loiStatus?: string | null;
+  // REBL numeric overall score (0-100); paired with scores.overallColor on the UI
+  reblScore?: number | null;
+  // Due-diligence "fast open" capacity + projected open date (committed sites only)
+  fastOpenCapacity?: number | null;
+  fastOpenDate?: string | null;
+  // Due-diligence "max capacity" (full buildout)
+  maxCapCapacity?: number | null;
+  maxCapDate?: string | null;
 }
 

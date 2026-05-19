@@ -1,11 +1,14 @@
 "use client";
 
 import { create } from "zustand";
-import { Location, CitySummary, VoterInfo, VoteType } from "@/types";
+import { Location, VoterInfo, VoteType, SiteChampion, CitySummary } from "@/types";
 import { supabase, isSupabaseConfigured } from "./supabase";
-import { getCitySummaries, getNearbyLocations, getLocationsInBounds, getDistanceMiles } from "./locations";
-import { consolidateToMetros } from "./metros";
+import { getLocationsInBounds, getCitySummaries } from "./locations";
 import { postRebl3FeedbackAllDimensions } from "./rebl3";
+import { getCategory } from "./sites";
+import { consolidateToMetros } from "./metros";
+
+let citySummarySeq = 0;
 
 interface MapBounds {
   north: number;
@@ -29,7 +32,6 @@ export type ReleasedFilter = "all" | "released" | "unreleased";
 
 interface VotesState {
   locations: Location[];
-  citySummaries: CitySummary[];
   lastFetchBounds: MapBounds | null;
   zoomLevel: number;
   votedLocationIds: Set<string>;
@@ -48,6 +50,9 @@ interface VotesState {
   userId: string | null;
   userEmail: string | null;
 
+  // UI variant flag (legacy vs redesign) — drives data-layer branches
+  isRedesignVariant: boolean;
+
   // Admin vs non-admin filter state
   isAdmin: boolean;
   viewAsParent: boolean;           // Admin toggle: preview parent experience
@@ -64,6 +69,8 @@ interface VotesState {
   showDriveFilter: boolean;                          // "Close to me" filter toggle
   showNoBlockers: boolean;                           // "No Blockers" filter — GREEN only
   userIsochrone: GeoJSON.FeatureCollection | null;   // Isochrone polygon from user's location
+  showCandidatesPanel: boolean;                      // Collapse/expand the scored-candidates browser
+  citySummaries: CitySummary[];
 
   setLocations: (locations: Location[]) => void;
   toggleScoreFilter: (category: ScoreFilterCategory, value: string) => void;
@@ -89,6 +96,7 @@ interface VotesState {
   setUserEmail: (email: string | null) => void;
   setZoomLevel: (zoom: number) => void;
   setIsAdmin: (isAdmin: boolean) => void;
+  setRedesignVariant: (v: boolean) => void;
   setViewAsParent: (viewAsParent: boolean) => void;
   setShowRedLocations: (show: boolean) => void;
   setShowUnscored: (show: boolean) => void;
@@ -103,15 +111,15 @@ interface VotesState {
   setShowDriveFilter: (show: boolean) => void;
   setShowNoBlockers: (show: boolean) => void;
   setUserIsochrone: (data: GeoJSON.FeatureCollection | null) => void;
-  loadCitySummaries: () => Promise<void>;
+  setShowCandidatesPanel: (show: boolean) => void;
   fetchNearby: (bounds: MapBounds) => Promise<void>;
   fetchNearbyForce: (bounds: MapBounds) => Promise<void>;
+  loadCitySummaries: () => Promise<void>;
   loadUserVotes: (userId: string) => Promise<void>;
   clearUserVotes: () => void;
+  refreshChampions: (locationId: string) => Promise<void>;
   filteredLocations: () => Location[];
 }
-
-let citySummarySeq = 0;
 
 // Fire-and-forget: sync vote data to rebl3_status for proposed locations with deadlines
 function syncParentStatus(locationId: string, getFn: () => VotesState) {
@@ -126,7 +134,6 @@ function syncParentStatus(locationId: string, getFn: () => VotesState) {
 
 export const useVotesStore = create<VotesState>((set, get) => ({
   locations: [],
-  citySummaries: [],
   lastFetchBounds: null,
   zoomLevel: 4,
   votedLocationIds: new Set<string>(),
@@ -151,6 +158,7 @@ export const useVotesStore = create<VotesState>((set, get) => ({
   isLoading: true,
   userId: null,
   userEmail: null,
+  isRedesignVariant: false,
   isAdmin: false,
   viewAsParent: false,
   showRedLocations: false,
@@ -166,6 +174,8 @@ export const useVotesStore = create<VotesState>((set, get) => ({
   showDriveFilter: false,
   showNoBlockers: false,
   userIsochrone: null,
+  showCandidatesPanel: false,
+  citySummaries: [],
 
   toggleScoreFilter: (category, value) => {
     const filters = get().scoreFilters;
@@ -218,6 +228,8 @@ export const useVotesStore = create<VotesState>((set, get) => ({
 
   setIsAdmin: (isAdmin) => set({ isAdmin }),
 
+  setRedesignVariant: (v) => set({ isRedesignVariant: v }),
+
   setViewAsParent: (viewAsParent) => set({ viewAsParent, lastFetchBounds: null }),
 
   setShowRedLocations: (showRedLocations) => set({ showRedLocations }),
@@ -243,6 +255,8 @@ export const useVotesStore = create<VotesState>((set, get) => ({
 
   setUserIsochrone: (data) => set({ userIsochrone: data }),
 
+  setShowCandidatesPanel: (show) => set({ showCandidatesPanel: show }),
+
   updateVoteComment: (locationId, comment) => {
     const state = get();
     if (!state.userId || !isSupabaseConfigured || !supabase) return;
@@ -257,24 +271,6 @@ export const useVotesStore = create<VotesState>((set, get) => ({
       });
   },
 
-  loadCitySummaries: async () => {
-    const seq = ++citySummarySeq;
-    const { isAdmin, viewAsParent, releasedFilter, showUnscored } = get();
-    const effectiveAdmin = isAdmin && !viewAsParent;
-    // Non-admins (or view-as-parent): always released only. Admins: based on filter.
-    const releasedOnly = !effectiveAdmin ? true : releasedFilter === "released" ? true : releasedFilter === "unreleased" ? false : undefined;
-    // Always include RED in counts (parents see all scored locations)
-    const excludeRed = false;
-    // Parents always exclude unscored; admins based on toggle
-    const excludeUnscored = !effectiveAdmin || !showUnscored;
-    const rawSummaries = await getCitySummaries(releasedOnly, excludeRed, excludeUnscored);
-    // Discard stale response if a newer fetch was started
-    if (seq !== citySummarySeq) return;
-    // Consolidate to metro-level bubbles
-    const summaries = consolidateToMetros(rawSummaries);
-    set({ citySummaries: summaries, isLoading: false });
-  },
-
   fetchNearby: async (bounds) => {
     const { lastFetchBounds, isAdmin, viewAsParent, releasedFilter, selectedLocationId, locations: prev } = get();
     // Skip if the new bounds are fully contained within the last fetched bounds
@@ -287,7 +283,7 @@ export const useVotesStore = create<VotesState>((set, get) => ({
     }
     const effectiveAdmin = isAdmin && !viewAsParent;
     const releasedOnly = !effectiveAdmin ? true : releasedFilter === "released" ? true : releasedFilter === "unreleased" ? false : undefined;
-    const fetched = await getLocationsInBounds(bounds, releasedOnly);
+    const fetched = await getLocationsInBounds(bounds, releasedOnly, { withRedesignFields: get().isRedesignVariant });
     // Preserve the deep-linked / selected location if it wasn't in the fetch results
     if (selectedLocationId && !fetched.some((l) => l.id === selectedLocationId)) {
       const kept = prev.find((l) => l.id === selectedLocationId);
@@ -300,13 +296,26 @@ export const useVotesStore = create<VotesState>((set, get) => ({
     const { isAdmin, viewAsParent, releasedFilter, selectedLocationId, locations: prev } = get();
     const effectiveAdmin = isAdmin && !viewAsParent;
     const releasedOnly = !effectiveAdmin ? true : releasedFilter === "released" ? true : releasedFilter === "unreleased" ? false : undefined;
-    const fetched = await getLocationsInBounds(bounds, releasedOnly);
+    const fetched = await getLocationsInBounds(bounds, releasedOnly, { withRedesignFields: get().isRedesignVariant });
     // Preserve the deep-linked / selected location if it wasn't in the fetch results
     if (selectedLocationId && !fetched.some((l) => l.id === selectedLocationId)) {
       const kept = prev.find((l) => l.id === selectedLocationId);
       if (kept) fetched.push(kept);
     }
     set({ locations: fetched, lastFetchBounds: bounds });
+  },
+
+  loadCitySummaries: async () => {
+    const seq = ++citySummarySeq;
+    const { isAdmin, viewAsParent, releasedFilter, showUnscored } = get();
+    const effectiveAdmin = isAdmin && !viewAsParent;
+    const releasedOnly = !effectiveAdmin ? true : releasedFilter === "released" ? true : releasedFilter === "unreleased" ? false : undefined;
+    const excludeRed = false;
+    const excludeUnscored = !effectiveAdmin || !showUnscored;
+    const rawSummaries = await getCitySummaries(releasedOnly, excludeRed, excludeUnscored);
+    if (seq !== citySummarySeq) return;
+    const summaries = consolidateToMetros(rawSummaries);
+    set({ citySummaries: summaries, isLoading: false });
   },
 
   loadUserVotes: async (userId: string) => {
@@ -336,6 +345,32 @@ export const useVotesStore = create<VotesState>((set, get) => ({
   },
 
   clearUserVotes: () => set({ votedLocationIds: new Set<string>(), votedNotHereIds: new Set<string>() }),
+
+  refreshChampions: async (locationId: string) => {
+    try {
+      const res = await fetch(`/api/locations/${locationId}/champions`);
+      if (!res.ok) return;
+      const champions: SiteChampion[] = await res.json();
+      set(state => ({
+        locations: state.locations.map(l =>
+          l.id === locationId
+            ? {
+                ...l,
+                champions,
+                derived: {
+                  stage: l.derived?.stage ?? 'prospecting',
+                  category: getCategory({ isBridge: l.isBridge, champions }),
+                  committedSubStage: l.derived?.committedSubStage,
+                  movedOnReason: l.derived?.movedOnReason,
+                },
+              }
+            : l
+        ),
+      }));
+    } catch {
+      // Network failure — leave existing state alone
+    }
+  },
 
   addLocation: (location) =>
     set((state) => ({
@@ -645,8 +680,15 @@ export const useVotesStore = create<VotesState>((set, get) => ({
     const { locations, scoreFilters, isAdmin, viewAsParent, showUnscored, releasedFilter, selectedLocationId } = get();
     const effectiveAdmin = isAdmin && !viewAsParent;
 
-    // Promoted locations (with feedback deadline) always pass through filters
-    const isPromoted = (loc: Location) => !!loc.feedbackDeadline;
+    // Sites anywhere in the active pipeline (diligence onward) always pass
+    // through filters — they're real deals, not candidates, regardless of
+    // size/score buckets. Falls back to the legacy feedback_deadline check
+    // for any pre-derivation rows.
+    const isPromoted = (loc: Location) =>
+      !!loc.feedbackDeadline ||
+      loc.derived?.stage === "diligence" ||
+      loc.derived?.stage === "build_out" ||
+      loc.derived?.stage === "open";
 
     // Deep-linked / selected location always passes through filters
     const ensureSelected = (result: typeof locations) => {

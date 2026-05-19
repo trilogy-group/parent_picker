@@ -46,6 +46,9 @@ yarn-error.log*
 # temp files
 tmp/
 
+# superpowers brainstorm cache
+.superpowers/
+
 # macOS
 Icon?
 
@@ -56,3 +59,4 @@ next-env.d.ts
 # Local test scripts
 test_compare.py
 test_smoke.py
+.playwright-mcp/

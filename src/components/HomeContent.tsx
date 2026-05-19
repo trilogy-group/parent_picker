@@ -5,7 +5,8 @@ import { useSearchParams } from "next/navigation";
 import { Map } from "@/components/Map";
 import { useVotesStore } from "@/lib/votes";
 import { useAuth } from "@/components/AuthProvider";
-import { AltPanel } from "@/components/AltPanel";
+import { AltPanelRedesign } from "@/components/AltPanelRedesign";
+import { AltPanelLegacy } from "@/components/AltPanelLegacy";
 import { AUSTIN_CENTER } from "@/lib/locations";
 
 function DeepLinkHandler() {
@@ -73,8 +74,8 @@ function DeepLinkHandler() {
   return null;
 }
 
-export function HomeContent() {
-  const { loadCitySummaries, setReferencePoint, setIsAdmin, releasedFilter, showUnscored, viewAsParent } = useVotesStore();
+export function HomeContent({ variant = "legacy" }: { variant?: "legacy" | "redesign" } = {}) {
+  const { loadCitySummaries, setReferencePoint, setIsAdmin, setRedesignVariant, releasedFilter, showUnscored, viewAsParent } = useVotesStore();
   const { isAdmin } = useAuth();
 
   // Sync isAdmin from AuthProvider into Zustand store
@@ -83,30 +84,34 @@ export function HomeContent() {
   }, [isAdmin, setIsAdmin]);
 
   useEffect(() => {
+    setRedesignVariant(variant === "redesign");
+  }, [variant, setRedesignVariant]);
+
+  useEffect(() => {
     setReferencePoint(AUSTIN_CENTER);
   }, [setReferencePoint]);
 
-  // Fetch city summaries on mount and when filters/admin state change
+  // Legacy panel reads citySummaries to populate its city-card list. Redesign uses ACTIVE_METROS.
   useEffect(() => {
-    loadCitySummaries();
-  }, [releasedFilter, isAdmin, showUnscored, viewAsParent, loadCitySummaries]);
+    if (variant === "legacy") loadCitySummaries();
+  }, [variant, releasedFilter, isAdmin, showUnscored, viewAsParent, loadCitySummaries]);
 
   return (
     <div className="relative h-screen w-screen overflow-hidden">
       <Suspense><DeepLinkHandler /></Suspense>
       {/* Full-screen Map — hidden on mobile */}
       <div className="absolute inset-0 hidden lg:block">
-        <Map />
+        <Map variant={variant} />
       </div>
 
       {/* Desktop: Left overlay panel */}
       <div data-testid="desktop-panel" className="hidden lg:flex flex-col absolute top-4 left-4 bottom-4 w-[400px] bg-white rounded-xl shadow-2xl overflow-hidden">
-        <AltPanel />
+        {variant === "redesign" ? <AltPanelRedesign /> : <AltPanelLegacy />}
       </div>
 
       {/* Mobile: Full-screen panel */}
       <div data-testid="mobile-bottom-sheet" className="lg:hidden absolute inset-0 bg-white flex flex-col">
-        <AltPanel />
+        {variant === "redesign" ? <AltPanelRedesign /> : <AltPanelLegacy />}
       </div>
     </div>
   );
