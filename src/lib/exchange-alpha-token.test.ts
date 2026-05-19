@@ -83,6 +83,26 @@ describe('exchangeAlphaToken', () => {
     await expect(exchangeAlphaToken('tok')).rejects.toThrow(/500/);
   });
 
+  it('strips trailing slash(es) from ALPHA_FUNCTIONS_URL so the request URL never has a double slash', async () => {
+    process.env.ALPHA_FUNCTIONS_URL = 'https://alpha.example.com/functions/v1/';
+    const mockFetch = vi.mocked(fetch);
+    mockFetch.mockResolvedValue(new Response(JSON.stringify({
+      user_profile_id: 'u_1',
+      email: 'a@b.com',
+      name: 'Jane Smith',
+      community: 'Miami',
+      lat: null, lon: null, city: null, zip: null,
+      enrollment_status: null,
+    }), { status: 200, headers: { 'Content-Type': 'application/json' } }));
+
+    await exchangeAlphaToken('the-token');
+
+    expect(mockFetch).toHaveBeenCalledWith(
+      'https://alpha.example.com/functions/v1/users/get-real-estate-info',
+      expect.anything()
+    );
+  });
+
   it('propagates network failures', async () => {
     vi.mocked(fetch).mockRejectedValue(new Error('ECONNREFUSED'));
 

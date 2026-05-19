@@ -26,10 +26,11 @@ export interface AlphaUserInfo {
  * can log and distinguish failure modes.
  */
 export async function exchangeAlphaToken(token: string): Promise<AlphaUserInfo> {
-  const base = process.env.ALPHA_FUNCTIONS_URL;
-  if (!base) {
+  const raw = process.env.ALPHA_FUNCTIONS_URL;
+  if (!raw) {
     throw new Error('ALPHA_FUNCTIONS_URL not configured');
   }
+  const base = raw.replace(/\/+$/, '');
 
   const res = await fetch(`${base}/users/get-real-estate-info`, {
     method: 'POST',
