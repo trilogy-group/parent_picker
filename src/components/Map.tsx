@@ -3,7 +3,7 @@
 import dynamic from "next/dynamic";
 
 const MapView = dynamic(
-  () => import("./MapView").then((mod) => mod.MapView),
+  () => import("./MapViewRedesign").then((mod) => mod.MapViewRedesign),
   {
     loading: () => (
       <div className="flex items-center justify-center h-full bg-muted animate-pulse">

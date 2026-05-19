@@ -36,7 +36,7 @@ function formatOpeningDate(iso: string | null | undefined): string | null {
   return d.toLocaleDateString("en-US", { month: "short", year: "numeric" });
 }
 
-export function AltPanel() {
+export function AltPanelRedesign() {
   const {
     locations, filteredLocations, selectedLocationId, setSelectedLocation,
     voteIn, voteNotHere, removeVote, updateVoteComment, votedLocationIds, votedNotHereIds,
