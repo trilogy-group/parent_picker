@@ -6,6 +6,7 @@ import { Map } from "@/components/Map";
 import { useVotesStore } from "@/lib/votes";
 import { useAuth } from "@/components/AuthProvider";
 import { AltPanelRedesign } from "@/components/AltPanelRedesign";
+import { AltPanelLegacy } from "@/components/AltPanelLegacy";
 import { AUSTIN_CENTER } from "@/lib/locations";
 
 function DeepLinkHandler() {
@@ -73,7 +74,7 @@ function DeepLinkHandler() {
   return null;
 }
 
-export function HomeContent() {
+export function HomeContent({ variant = "legacy" }: { variant?: "legacy" | "redesign" } = {}) {
   const { setReferencePoint, setIsAdmin } = useVotesStore();
   const { isAdmin } = useAuth();
 
@@ -91,17 +92,17 @@ export function HomeContent() {
       <Suspense><DeepLinkHandler /></Suspense>
       {/* Full-screen Map — hidden on mobile */}
       <div className="absolute inset-0 hidden lg:block">
-        <Map />
+        <Map variant={variant} />
       </div>
 
       {/* Desktop: Left overlay panel */}
       <div data-testid="desktop-panel" className="hidden lg:flex flex-col absolute top-4 left-4 bottom-4 w-[400px] bg-white rounded-xl shadow-2xl overflow-hidden">
-        <AltPanelRedesign />
+        {variant === "redesign" ? <AltPanelRedesign /> : <AltPanelLegacy />}
       </div>
 
       {/* Mobile: Full-screen panel */}
       <div data-testid="mobile-bottom-sheet" className="lg:hidden absolute inset-0 bg-white flex flex-col">
-        <AltPanelRedesign />
+        {variant === "redesign" ? <AltPanelRedesign /> : <AltPanelLegacy />}
       </div>
     </div>
   );
