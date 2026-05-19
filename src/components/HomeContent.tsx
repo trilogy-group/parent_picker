@@ -75,7 +75,7 @@ function DeepLinkHandler() {
 }
 
 export function HomeContent({ variant = "legacy" }: { variant?: "legacy" | "redesign" } = {}) {
-  const { setReferencePoint, setIsAdmin, setRedesignVariant } = useVotesStore();
+  const { loadCitySummaries, setReferencePoint, setIsAdmin, setRedesignVariant, releasedFilter, showUnscored, viewAsParent } = useVotesStore();
   const { isAdmin } = useAuth();
 
   // Sync isAdmin from AuthProvider into Zustand store
@@ -90,6 +90,11 @@ export function HomeContent({ variant = "legacy" }: { variant?: "legacy" | "rede
   useEffect(() => {
     setReferencePoint(AUSTIN_CENTER);
   }, [setReferencePoint]);
+
+  // Legacy panel reads citySummaries to populate its city-card list. Redesign uses ACTIVE_METROS.
+  useEffect(() => {
+    if (variant === "legacy") loadCitySummaries();
+  }, [variant, releasedFilter, isAdmin, showUnscored, viewAsParent, loadCitySummaries]);
 
   return (
     <div className="relative h-screen w-screen overflow-hidden">
