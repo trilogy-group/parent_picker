@@ -566,6 +566,19 @@ export default function LocationDetailView({
             </a>
           )}
 
+          {/* Help requests / problems — above AI scoring so asks land first */}
+          {(location.derived?.stage === "diligence" ||
+            location.derived?.stage === "build_out") && (
+            <div className="px-4 py-3 mt-5 border-t border-stone-200">
+              <ProblemList
+                siteId={location.id}
+                isAuthenticated={isAuthenticated}
+                session={session}
+                onSignInNeeded={() => setShowSignIn(true)}
+              />
+            </div>
+          )}
+
           {/* AI scoring breakdown — expanded by default */}
           {(rebl3Loading || rebl3Data || location.scores?.overallColor) && (
             <div className="mt-5 border-t border-gray-200 pt-4">
@@ -625,20 +638,10 @@ export default function LocationDetailView({
           {/* Tier-specific bottom sections */}
           {(location.derived?.stage === "diligence" ||
             location.derived?.stage === "build_out") && (
-            <>
-              <div className="px-4 py-3 mt-5 pt-4 border-t border-stone-200">
-                <h3 className="text-xs font-bold uppercase tracking-wider text-stone-500 mb-2">Path to opening</h3>
-                <StageTimeline current={location.derived.stage} />
-              </div>
-              <div className="px-4 py-3">
-                <ProblemList
-                  siteId={location.id}
-                  isAuthenticated={isAuthenticated}
-                  session={session}
-                  onSignInNeeded={() => setShowSignIn(true)}
-                />
-              </div>
-            </>
+            <div className="px-4 py-3 mt-5 pt-4 border-t border-stone-200">
+              <h3 className="text-xs font-bold uppercase tracking-wider text-stone-500 mb-2">Path to opening</h3>
+              <StageTimeline current={location.derived.stage} />
+            </div>
           )}
 
           {location.derived?.stage === "moved_on" && (
