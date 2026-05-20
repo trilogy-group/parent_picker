@@ -21,8 +21,13 @@ export interface ActiveMetro {
 export const ALL_METROS: ActiveMetro[] = [
   { slug: "austin",     displayName: "Austin",             state: "TX", lat: 30.2672, lng: -97.7431,  defaultZoom: 10, radiusMiles: 40 },
   { slug: "dfw",        displayName: "Dallas–Fort Worth", state: "TX", lat: 32.8205, lng: -96.8716,  defaultZoom: 9,  radiusMiles: 50 },
+  { slug: "highland-park", displayName: "Highland Park",   state: "TX", lat: 32.832,  lng: -96.802,   defaultZoom: 12, radiusMiles: 12 },
   { slug: "la",         displayName: "Los Angeles",        state: "CA", lat: 34.0522, lng: -118.2437, defaultZoom: 9,  radiusMiles: 50 },
   { slug: "oc",         displayName: "Orange County",      state: "CA", lat: 33.7175, lng: -117.8311, defaultZoom: 10, radiusMiles: 35 },
+  { slug: "newport-beach", displayName: "Newport Beach",   state: "CA", lat: 33.622,  lng: -117.929,  defaultZoom: 12, radiusMiles: 12 },
+  { slug: "beverly-hills", displayName: "Beverly Hills",   state: "CA", lat: 34.073,  lng: -118.400,  defaultZoom: 12, radiusMiles: 12 },
+  { slug: "south-bay",  displayName: "South Bay LA",       state: "CA", lat: 33.840,  lng: -118.360,  defaultZoom: 11, radiusMiles: 14 },
+  { slug: "malibu",     displayName: "Malibu",             state: "CA", lat: 34.040,  lng: -118.660,  defaultZoom: 12, radiusMiles: 12 },
   { slug: "sf",         displayName: "San Francisco Bay",  state: "CA", lat: 37.7749, lng: -122.4194, defaultZoom: 9,  radiusMiles: 50 },
   { slug: "miami",       displayName: "Miami",              state: "FL", lat: 25.7617, lng: -80.1918,  defaultZoom: 10, radiusMiles: 40 },
   { slug: "miami-beach", displayName: "Miami Beach",        state: "FL", lat: 25.81,   lng: -80.14,    defaultZoom: 12, radiusMiles: 12 },
@@ -32,24 +37,38 @@ export const ALL_METROS: ActiveMetro[] = [
   { slug: "nyc",        displayName: "New York",           state: "NY", lat: 40.7128, lng: -74.0060,  defaultZoom: 10, radiusMiles: 40 },
   { slug: "greenwich",  displayName: "Greenwich",          state: "CT", lat: 41.0262, lng: -73.6282,  defaultZoom: 11, radiusMiles: 25 },
   { slug: "boston",     displayName: "Boston",             state: "MA", lat: 42.3601, lng: -71.0589,  defaultZoom: 10, radiusMiles: 35 },
+  { slug: "lexington",  displayName: "Lexington",          state: "MA", lat: 42.440,  lng: -71.225,   defaultZoom: 12, radiusMiles: 12 },
   { slug: "dc",         displayName: "Washington DC",      state: "DC", lat: 38.9072, lng: -77.0369,  defaultZoom: 10, radiusMiles: 40 },
   { slug: "chicago",    displayName: "Chicago",            state: "IL", lat: 41.8781, lng: -87.6298,  defaultZoom: 10, radiusMiles: 40 },
   { slug: "oklahoma",   displayName: "Oklahoma",           state: "OK", lat: 35.6,    lng: -97.0,     defaultZoom: 9,  radiusMiles: 60 },
+  { slug: "tulsa",      displayName: "Tulsa",              state: "OK", lat: 36.120,  lng: -95.970,   defaultZoom: 11, radiusMiles: 15 },
   { slug: "raleigh",    displayName: "Raleigh–Durham",    state: "NC", lat: 35.8801, lng: -78.7880,  defaultZoom: 10, radiusMiles: 30 },
   { slug: "denver",     displayName: "Denver",             state: "CO", lat: 39.7392, lng: -104.9903, defaultZoom: 10, radiusMiles: 40 },
   { slug: "nashville",  displayName: "Nashville",          state: "TN", lat: 36.1627, lng: -86.7816,  defaultZoom: 10, radiusMiles: 30 },
 ];
 
 /**
- * Temporary scope-down: only the South Florida metros are surfaced while we
- * curate Plan-of-Record content. To re-enable a stashed metro, just add its
- * slug back to this set.
+ * Curated set of metros surfaced in the UI. Started as South Florida only;
+ * expanded 2026-05-20 with a national wave (Tulsa, Highland Park, Chicago,
+ * Newport Beach, Beverly Hills, Nashville, South Bay LA, Lexington, Malibu,
+ * Greenwich) as their Plan-of-Record content was curated. To stash a metro,
+ * remove its slug from this set; its config stays in ALL_METROS.
  */
 const ENABLED_METRO_SLUGS = new Set<string>([
   "miami",
   "miami-beach",
   "palm-beach",
   "boca",
+  "tulsa",
+  "highland-park",
+  "chicago",
+  "newport-beach",
+  "beverly-hills",
+  "nashville",
+  "south-bay",
+  "lexington",
+  "malibu",
+  "greenwich",
 ]);
 
 /**
