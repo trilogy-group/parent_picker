@@ -26,7 +26,7 @@ export const ALL_METROS: ActiveMetro[] = [
   { slug: "oc",         displayName: "Orange County",      state: "CA", lat: 33.7175, lng: -117.8311, defaultZoom: 10, radiusMiles: 35 },
   { slug: "newport-beach", displayName: "Newport Beach",   state: "CA", lat: 33.622,  lng: -117.929,  defaultZoom: 12, radiusMiles: 14 },
   { slug: "beverly-hills", displayName: "Beverly Hills",   state: "CA", lat: 34.073,  lng: -118.400,  defaultZoom: 12, radiusMiles: 12 },
-  { slug: "south-bay",  displayName: "South Bay LA",       state: "CA", lat: 33.840,  lng: -118.360,  defaultZoom: 11, radiusMiles: 14 },
+  { slug: "south-bay",  displayName: "South Bay LA",       state: "CA", lat: 33.897,  lng: -118.385,  defaultZoom: 11, radiusMiles: 14 },
   { slug: "malibu",     displayName: "Malibu",             state: "CA", lat: 34.040,  lng: -118.660,  defaultZoom: 12, radiusMiles: 12 },
   { slug: "sf",         displayName: "San Francisco Bay",  state: "CA", lat: 37.7749, lng: -122.4194, defaultZoom: 9,  radiusMiles: 50 },
   { slug: "miami",       displayName: "Miami",              state: "FL", lat: 25.7617, lng: -80.1918,  defaultZoom: 10, radiusMiles: 40 },
