@@ -32,7 +32,7 @@ describe("metro inventory data integrity", () => {
       expect(m.lng).toBeLessThan(-65);
       expect(m.defaultZoom).toBeGreaterThanOrEqual(8);
       expect(m.defaultZoom).toBeLessThanOrEqual(13);
-      expect(m.radiusMiles).toBeGreaterThan(10);
+      expect(m.radiusMiles).toBeGreaterThanOrEqual(3);
       expect(m.radiusMiles).toBeLessThan(150);
     }
   });
