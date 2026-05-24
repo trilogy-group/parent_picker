@@ -37,7 +37,7 @@ export const ALL_METROS: ActiveMetro[] = [
   { slug: "nyc",        displayName: "New York",           state: "NY", lat: 40.7128, lng: -74.0060,  defaultZoom: 10, radiusMiles: 40 },
   { slug: "greenwich",  displayName: "Greenwich",          state: "CT", lat: 41.0262, lng: -73.6282,  defaultZoom: 12, radiusMiles: 12 },
   { slug: "boston",     displayName: "Boston",             state: "MA", lat: 42.3601, lng: -71.0589,  defaultZoom: 10, radiusMiles: 35 },
-  { slug: "lexington",  displayName: "Lexington",          state: "MA", lat: 42.440,  lng: -71.225,   defaultZoom: 12, radiusMiles: 12 },
+  { slug: "lexington",  displayName: "Lexington",          state: "MA", lat: 42.440,  lng: -71.225,   defaultZoom: 12, radiusMiles: 7 },
   { slug: "dc",         displayName: "Washington DC",      state: "DC", lat: 38.9072, lng: -77.0369,  defaultZoom: 10, radiusMiles: 40 },
   { slug: "chicago",    displayName: "Chicago",            state: "IL", lat: 41.8781, lng: -87.6298,  defaultZoom: 10, radiusMiles: 40 },
   { slug: "oklahoma",   displayName: "Oklahoma",           state: "OK", lat: 35.6,    lng: -97.0,     defaultZoom: 9,  radiusMiles: 60 },
