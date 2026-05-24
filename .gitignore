@@ -60,3 +60,9 @@ next-env.d.ts
 test_compare.py
 test_smoke.py
 .playwright-mcp/
+
+# session scratch
+.claude/settings.local.json
+tmp_brochures/
+/*.pdf
+tmp_*.mjs
